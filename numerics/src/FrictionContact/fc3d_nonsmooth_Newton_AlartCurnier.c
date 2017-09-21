@@ -58,9 +58,15 @@ void fc3d_AlartCurnierFunction(
   //assert(problemSize / 3 > 0);
   assert(problemSize % 3 == 0);
 
+  double s;
+  if (result) s = result[0];
+
   unsigned int i;
   for (i = 0; i < problemSize; i += 3)
   {
+
+    if (result)
+      result[0] = s;
 
     computeACFun3x3(reaction, velocity, *mu, rho, result, A, B);
 
@@ -113,6 +119,9 @@ int fc3d_nonsmooth_Newton_AlartCurnier_setDefaultSolverOptions(
   /* 0 STD AlartCurnier, 1 JeanMoreau, 2 STD generated, 3 JeanMoreau generated */
   options->iparam[SICONOS_FRICTION_3D_NSN_LINESEARCH] = SICONOS_FRICTION_3D_NSN_LINESEARCH_GOLDSTEINPRICE;     /* 0 GoldsteinPrice line search, 1 FBLSA */
   options->iparam[SICONOS_FRICTION_3D_NSN_LINESEARCH_MAXITER] = 100;   /* max iter line search */
+
+  options->iparam[SICONOS_FRICTION_3D_NSN_SUBG_SET_SIZE] = 1; /* number of subgradients evaluations */
+  options->iparam[SICONOS_FRICTION_3D_NSN_SUBG_METHOD] = 2; /* method for subgradients evaluations (2 || 3 ==> random)*/
 
 #ifdef WITH_MUMPS
   options->iparam[13] = 1;

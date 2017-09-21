@@ -150,8 +150,8 @@ int fc3d_nonsmooth_Newton_NaturalMap_setDefaultSolverOptions(
   options->numberOfInternalSolvers = 0;
   options->isSet = 1;
   options->filterOn = 1;
-  options->iSize = 14;
-  options->dSize = 14;
+  options->iSize = 20;
+  options->dSize = 20;
   options->iparam = (int *)calloc(options->iSize, sizeof(int));
   options->dparam = (double *)calloc(options->dSize, sizeof(double));
   options->dWork = NULL;
@@ -174,6 +174,8 @@ int fc3d_nonsmooth_Newton_NaturalMap_setDefaultSolverOptions(
 #else
   options->iparam[13] = 0;     /* Linear solver used at each Newton iteration. 0: cs_lusol, 1 mumps */
 #endif
+
+  options->iparam[SICONOS_FRICTION_3D_NSN_SUBG_SET_SIZE] = 1;
 
   options->internalSolvers = NULL;
 

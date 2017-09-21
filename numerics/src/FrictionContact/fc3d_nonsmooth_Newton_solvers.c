@@ -529,11 +529,12 @@ int frictionContactFBLSA(
 }
 
 
-void fc3d_nonsmooth_Newton_solvers_solve(fc3d_nonsmooth_Newton_solvers* equation,
-                                      double* reaction,
-                                      double* velocity,
-                                      int* info,
-                                      SolverOptions* options)
+void fc3d_nonsmooth_Newton_solvers_solve(
+  fc3d_nonsmooth_Newton_solvers* equation,
+  double* reaction,
+  double* velocity,
+  int* info,
+  SolverOptions* options)
 {
 
 
@@ -565,9 +566,9 @@ void fc3d_nonsmooth_Newton_solvers_solve(fc3d_nonsmooth_Newton_solvers* equation
   unsigned int iter = 0;
   unsigned int itermax = options->iparam[0];
   unsigned int erritermax = options->iparam[7];
-
+  unsigned int nsubg = options->iparam[SICONOS_FRICTION_3D_NSN_SUBG_SET_SIZE];
   assert(itermax > 0);
-
+  assert(nsubg > 0);
 
   double tolerance = options->dparam[0];
   assert(tolerance > 0);
@@ -582,7 +583,7 @@ void fc3d_nonsmooth_Newton_solvers_solve(fc3d_nonsmooth_Newton_solvers* equation
 
   if (!options->dWork)
   {
-    buffer = calloc((11 * problemSize) , sizeof(double)); // F(1),
+    buffer = calloc((nsubg*problemSize + nsubg*problemSize + problemSize + problemSize + nsubg*_3problemSize + nsubg*_3problemSize + _3problemSize) , sizeof(double)); // F(1),
                                                           // tmp1(1),
                                                           // tmp2(1),
                                                           // tmp3(1),
@@ -594,12 +595,17 @@ void fc3d_nonsmooth_Newton_solvers_solve(fc3d_nonsmooth_Newton_solvers* equation
     buffer = options->dWork;
   }
   double *F = (double *) buffer;
-  double *tmp1 = (double *) F + problemSize;
-  double *tmp2 = (double *) tmp1 + problemSize;
+  double *tmp1 = (double *) F + nsubg*problemSize;
+  double *tmp2 = (double *) tmp1 + nsubg*problemSize;
   double *tmp3 = (double *) tmp2 + problemSize;
   double *Ax = tmp3 + problemSize;
-  double *Bx = Ax + _3problemSize;
-  double *rho = Bx + _3problemSize;
+  double *Bx = Ax + nsubg*_3problemSize;
+  double *rho = Bx + nsubg*_3problemSize;
+
+  double *Fp;
+  double *Axp;
+  double *Bxp;
+  double *tmp1p;
 
   NumericsMatrix *AWpB;
   if (!options->dWork)
@@ -663,49 +669,95 @@ void fc3d_nonsmooth_Newton_solvers_solve(fc3d_nonsmooth_Newton_solvers* equation
 
   while (iter++ < itermax)
   {
-
-    equation->function(equation->data,
-                       problemSize,
-                       reaction, velocity, equation->problem->mu,
-                       rho,
-                       F, Ax, Bx);
-    // AW + B
-    computeAWpB(Ax, problem->M, Bx, AWpB);
-
-    cblas_dcopy_msan(problemSize, F, 1, tmp1, 1);
-    cblas_dscal(problemSize, -1., tmp1, 1);
-
-    /* Solve: AWpB X = -F */
-//    NM_copy(AWpB, AWpB_backup);
-    int lsi = NM_gesv(AWpB, tmp1, true);
-
-    /* NM_copy needed here */
-//    NM_copy(AWpB_backup, AWpB);
-
-    if (lsi)
+    Fp = F;
+    Axp = Ax;
+    Bxp = Bx;
+    tmp1p = tmp1;
+    double min_subg_norm = DBL_MAX;
+    double current_subg_norm;
+    unsigned int min_subg = 0;
+    for (unsigned int ns=0; ns<nsubg; ++ns)
     {
+//      Fp[0] = (double) rand() / RAND_MAX;
+      if (options->iparam[SICONOS_FRICTION_3D_NSN_SUBG_METHOD] > 1)
+      {
+        Fp[0] = (double) rand()/RAND_MAX;
+      }
+      else /* 0 || 1 */
+      {
+        Fp[0] = ((double) ns)/ fmax(1, (nsubg - 1));
+      }
+
+      equation->function(equation->data,
+                         problemSize,
+                         reaction, velocity, equation->problem->mu,
+                         rho,
+                         Fp, Axp, Bxp);
+
+      // AW + B
+      computeAWpB(Axp, problem->M, Bxp, AWpB);
+
+      cblas_dcopy_msan(problemSize, Fp, 1, tmp1p, 1);
+      cblas_dscal(problemSize, -1., tmp1p, 1);
+
+      /* Solve: AWpB X = -F */
+      //    NM_copy(AWpB, AWpB_backup);
+      int lsi = NM_gesv(AWpB, tmp1p, true);
+
+      /* NM_copy needed here */
+      //    NM_copy(AWpB_backup, AWpB);
+
+      if (lsi)
+      {
+        if (verbose > 0)
+        {
+          numerics_warning("fc3d_nonsmooth_Newton_solvers_solve -",
+                           "warning! linear solver exit with code = %d\n", lsi);
+        }
+      }
+
       if (verbose > 0)
       {
-        numerics_warning("fc3d_nonsmooth_Newton_solvers_solve -",
-                         "warning! linear solver exit with code = %d\n", lsi);
+        cblas_dcopy_msan(problemSize, Fp, 1, tmp3, 1);
+        NM_gemv(1., AWpB, tmp1p, 1., tmp3);
+        linear_solver_residual = cblas_dnrm2(problemSize, tmp3, 1);
+        /* fprintf(stderr, "fc3d esolve: linear equation residual = %g\n", */
+        /*         cblas_dnrm2(problemSize, tmp3, 1)); */
+        /* for the component wise scaled residual: cf mumps &
+         * http://www.netlib.org/lapack/lug/node81.html */
       }
+
+      if (options->iparam[SICONOS_FRICTION_3D_NSN_SUBG_METHOD] == 1 ||
+          options->iparam[SICONOS_FRICTION_3D_NSN_SUBG_METHOD] == 3)
+      {
+        current_subg_norm = cblas_dnrm2(problemSize, tmp1p, 1);
+      }
+      else /* 0 || 2 */
+      {
+        current_subg_norm = cblas_dnrm2(problemSize, Fp, 1);
+      }
+
+      if (current_subg_norm <= min_subg_norm)
+      {
+        min_subg_norm = current_subg_norm;
+        min_subg = ns;
+      }
+
+      Fp += problemSize;
+      Axp += _3problemSize;
+      Bxp += _3problemSize;
+      tmp1p += problemSize;
     }
 
-    if (verbose > 0)
-    {
-      cblas_dcopy_msan(problemSize, F, 1, tmp3, 1);
-      NM_gemv(1., AWpB, tmp1, 1., tmp3);
-      linear_solver_residual = cblas_dnrm2(problemSize, tmp3, 1);
-      /* fprintf(stderr, "fc3d esolve: linear equation residual = %g\n", */
-      /*         cblas_dnrm2(problemSize, tmp3, 1)); */
-      /* for the component wise scaled residual: cf mumps &
-       * http://www.netlib.org/lapack/lug/node81.html */
-    }
+    assert(min_subg <= nsubg);
+
+    tmp1p = tmp1 + min_subg*problemSize;
+
     // line search
     double alpha = 1;
     int info_ls = 0;
 
-    cblas_dcopy_msan(problemSize, tmp1, 1, tmp3, 1);
+    cblas_dcopy_msan(problemSize, tmp1p, 1, tmp3, 1);
 
     switch (options->iparam[SICONOS_FRICTION_3D_NSN_LINESEARCH])
     {
@@ -716,12 +768,12 @@ void fc3d_nonsmooth_Newton_solvers_solve(fc3d_nonsmooth_Newton_solvers* equation
 
     case SICONOS_FRICTION_3D_NSN_LINESEARCH_GOLDSTEINPRICE:
       /* Goldstein Price */
-      info_ls = globalLineSearchGP(equation, reaction, velocity, problem->mu, rho, F, Ax, Bx, problem->M, problem->q, AWpB, tmp1, tmp2, &alpha, options->iparam[12]);
+      info_ls = globalLineSearchGP(equation, reaction, velocity, problem->mu, rho, F, Ax, Bx, problem->M, problem->q, AWpB, tmp1p, tmp2, &alpha, options->iparam[12]);
       break;
     case SICONOS_FRICTION_3D_NSN_LINESEARCH_ARMIJO:
       /* FBLSA */
       info_ls = frictionContactFBLSA(equation, reaction, velocity, problem->mu, rho, F, Ax, Bx,
-                                     problem->M, problem->q, AWpB, tmp1, tmp2, &alpha, options->iparam[12]);
+                                     problem->M, problem->q, AWpB, tmp1p, tmp2, &alpha, options->iparam[12]);
       break;
     default:
     {
@@ -732,7 +784,7 @@ void fc3d_nonsmooth_Newton_solvers_solve(fc3d_nonsmooth_Newton_solvers* equation
 
     if (!info_ls)
       // tmp2 should contains the reaction iterate of the line search
-      //  for GP this should be the same as cblas_daxpy(problemSize, alpha, tmp1, 1, reaction, 1);
+      //  for GP this should be the same as cblas_daxpy(problemSize, alpha, tmp1p, 1, reaction, 1);
       cblas_dcopy(problemSize, tmp2, 1, reaction, 1);
     else
       cblas_daxpy(problemSize, 1., tmp3, 1., reaction, 1);

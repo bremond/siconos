@@ -1,5 +1,10 @@
 #include "fc3d_AlartCurnierFABGenerated.h"
 #include "funcodegen.h"
+#include <stdio.h>
+#undef Heaviside
+#define Heaviside(x) (x < 0 ? 0 : ((x > 0) ? 1 : s))
+
+
 /*@
 requires (0.0 <= rn <= 1.0e+6);
 requires (-1.0e+6 <= rt1 <= 1.0e+6);
@@ -46,6 +51,8 @@ void fc3d_AlartCurnierFABGenerated(
     double rhot2,
     double *result)
 {
+  double s = result[0];
+
     /*@ assert \is_finite((double) un); */
     /*@ assert \is_finite((double) rn); */
     /*@ assert \is_finite((double) rhon); */
@@ -85,7 +92,7 @@ void fc3d_AlartCurnierFABGenerated(
     /*@ assert x11 >= 0; */
     x12 = sqrt(x11);
     x13 = mu*x3;
-    x14 = Max(0.0000000000000002220446049250313080847263336181640625, x13);
+    x14 = Max(0., x13);
     /*@ assert x14 >= 0; */
     /*@ assert x14 != 0; */
     x15 = x12 <= x14;
@@ -123,7 +130,7 @@ void fc3d_AlartCurnierFABGenerated(
         /*@ assert x12 < -1.09476442525e-47 || x12 > 1.09476442525e-47; */
         x17 = 1.0/x12;
         x18 = x14*x17;
-        x20 = Heaviside(x13 - 0.0000000000000002220446049250313080847263336181640625);
+        x20 = Heaviside(x13 - 0.);
         x21 = mu*rhon*x17*x20*x4;
         /*@ assert x11 < -1.09476442525e-47 || x11 > 1.09476442525e-47; */
         x22 = 1.0/((sqrt(x11))*(sqrt(x11))*(sqrt(x11)));

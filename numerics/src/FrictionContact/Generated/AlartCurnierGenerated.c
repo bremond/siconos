@@ -21,6 +21,7 @@ void fc3d_AlartCurnierFunctionGenerated(
   SET3(velocity);
   SET3(rho);
 
+  result[0] = f[0];
 
   if (f && A && B)
   {

@@ -237,7 +237,11 @@ enum SICONOS_FRICTION_3D_NSN_IPARAM
   /** index in iparam to store the maximum number of loop for the hybrid solver */
   SICONOS_FRICTION_3D_NSN_HYBRID_MAX_LOOP = 15,
   /** index in iparam to store the maximum number of iterations for the projection solver */
-  SICONOS_FRICTION_3D_NSN_HYBRID_MAX_ITER = 16
+  SICONOS_FRICTION_3D_NSN_HYBRID_MAX_ITER = 16,
+  /** index in iparam to store subgradient set size*/
+  SICONOS_FRICTION_3D_NSN_SUBG_SET_SIZE = 17,
+  /** index in iparam to store method for subgradient selection */
+  SICONOS_FRICTION_3D_NSN_SUBG_METHOD = 18
 };
 
 enum SICONOS_FRICTION_3D_NSN_DPARAM
