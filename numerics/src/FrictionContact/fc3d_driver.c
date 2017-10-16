@@ -28,6 +28,7 @@
 const char* const   SICONOS_FRICTION_3D_NSGS_STR = "FC3D_NSGS";
 const char* const   SICONOS_FRICTION_3D_NSGSV_STR = "FC3D_NSGSV";
 const char* const   SICONOS_FRICTION_3D_TFP_STR = "FC3D_TFP";
+const char* const   SICONOS_FRICTION_3D_PFP_STR = "FC3D_PFP";
 const char* const   SICONOS_FRICTION_3D_NSN_AC_STR = "FC3D_NSN_AC";
 const char* const   SICONOS_FRICTION_3D_NSN_FB_STR = "FC3D_NSN_FB";
 const char* const   SICONOS_FRICTION_3D_NSN_NM_STR = "FC3D_NSN_NM";
@@ -45,7 +46,9 @@ const char* const  SICONOS_FRICTION_3D_NCPGlockerFBPATH_STR = "FC3D_NCPGlockerFB
 const char* const  SICONOS_FRICTION_3D_ONECONTACT_ProjectionOnCylinder_STR = "FC3D_projectionOnCylinder";
 const char* const  SICONOS_FRICTION_3D_ONECONTACT_ProjectionOnCylinderWithLocalIteration_STR =  "FC3D_projectionOnCylinderWithLocalIteration";
 const char* const  SICONOS_FRICTION_3D_ONECONTACT_ProjectionOnCone_velocity_STR = "FC3D_ProjectionOnCone_velocity";
-const char* const  SICONOS_FRICTION_3D_PGoC_STR = "FC3D_PGoC";
+const char* const  SICONOS_FRICTION_3D_ConvexQP_PG_Cylinder_STR = "FC3D ConvexQP PG solver";
+const char* const  SICONOS_FRICTION_3D_VI_FPP_Cylinder_STR = "FC3D_VI_FPP_Cylinder";
+
 const char* const  SICONOS_FRICTION_3D_DeSaxceFixedPoint_STR = "FC3D_DeSaxceFixedPoint";
 const char* const  SICONOS_FRICTION_3D_EG_STR = "FC3D_ExtraGradient";
 const char* const  SICONOS_FRICTION_3D_FPP_STR = "FC3D_FixedPointProjection";
@@ -123,6 +126,13 @@ int fc3d_driver(FrictionContactProblem* problem,
   {
     numerics_printf(" ========================== Call TFP (Tresca Fixed Point) solver for Friction-Contact 3D problem ==========================\n");
     fc3d_TrescaFixedPoint(problem, reaction , velocity , &info , options);
+    break;
+  }
+  /* Panagiotopoulos Fixed point algorithm */
+  case SICONOS_FRICTION_3D_PFP:
+  {
+    numerics_printf(" ========================== Call PFP (Panagiotopoulos Fixed Point) solver for Friction-Contact 3D problem ==========================\n");
+    fc3d_Panagiotopoulos_FixedPoint(problem, reaction , velocity , &info , options);
     break;
   }
   /* ACLM Fixed point algorithm */

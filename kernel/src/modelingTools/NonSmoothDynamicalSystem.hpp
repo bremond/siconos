@@ -126,6 +126,16 @@ public:
     return _topology->getDynamicalSystem(nb);
   }
 
+  /** remove a dynamical system
+   * \param ds a pointer to the dynamical system to remove
+   * \param removeInterations if true, all interactions connected to the ds will also be removed
+   */
+  inline void removeDynamicalSystem(SP::DynamicalSystem ds,
+                                    bool removeInteractions=true)
+  {
+    _topology->removeDynamicalSystem(ds, removeInteractions);
+  };
+
 
 
   // === Interactions management ===
@@ -189,6 +199,15 @@ public:
     _topology->setName(ds, name);
   };
 
+  /** get the name for this Dynamical System
+   * \param ds a pointer to the system
+   * \return name the name of the DynamicalSystem, or empty string if not found.
+   */
+  std::string name(SP::DynamicalSystem ds)
+  {
+    return _topology->name(ds);
+  }
+
   /** set the name for this Interaction
    * \param interaction a pointer to the Interaction
    * \param name the name of the Interaction
@@ -198,6 +217,14 @@ public:
     _topology->setName(interaction, name);
   };
 
+  /** get the name for this Interaction
+   * \param ds a pointer to the system
+   * \return name the name of the Interaction, or empty string if not found.
+   */
+  std::string name(SP::Interaction inter)
+  {
+    return _topology->name(inter);
+  }
 
     /** specify id the given Interaction is for controlling the DS
    * \param inter the Interaction

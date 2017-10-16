@@ -11,6 +11,9 @@ A task, see :class:`machinery.ci_tasks.CiTask` must be defined with at least:
 from machinery.ci_task import CiTask
 import os
 
+# PLEASE KEEP CONFIG AS WHAT THEY MEAN.
+# DO NOT ADD PACKAGES IF THEY ARE NOT NECESSARY.
+
 #
 # 1. where the packages configurations are defined
 # Used in driver.py.
@@ -23,7 +26,7 @@ default = CiTask(
     ci_config='default',
     distrib='ubuntu:16.04',
     pkgs=['build-base', 'gcc', 'gfortran', 'gnu-c++', 'atlas-lapack',
-          'lpsolve', 'python-env'],
+          'python-env'],
     srcs=['.'],
     targets={'.': ['docker-build', 'docker-ctest']})
 
@@ -49,6 +52,14 @@ minimal_with_python = CiTask(
 
 siconos_default = default
 
+siconos_default_nix = default.copy()(
+    ci_config='nix',
+    distrib='nixos/nix:latest',
+    targets={'.': ['docker-build', 'docker-ctest']})
+
+siconos_with_lpsolve = siconos_default.copy()(
+    add_pkgs=['lpsolve'])
+
 siconos_debian_latest = siconos_default.copy()(
     ci_config='with_bullet',
     add_pkgs=['bullet', 'h5py'],  # for mechanics.io
@@ -64,13 +75,9 @@ siconos_ubuntu_16_10 = siconos_default.copy()(
     distrib='ubuntu:16.10')
 
 siconos_ubuntu_17_04 = siconos_default.copy()(
-    distrib='ubuntu:17.04',
-    ci_config='with_mumps',
-    add_pkgs=['mumps'])
+    distrib='ubuntu:17.04')
 
 siconos_ubuntu_15_10 = siconos_default.copy()(
-    ci_config='with_umfpack',
-    add_pkgs=['umfpack'],
     distrib='ubuntu:15.10')
 
 siconos_cxx_11_ubuntu_17_04 = siconos_default.copy()(
@@ -111,11 +118,11 @@ siconos_ubuntu_latest_mechanisms = siconos_default.copy()(
               'oce-pythonocc'],
     distrib='ubuntu:latest')
 
-siconos_numerics_only = siconos_ubuntu_16_10.copy()(
+siconos_numerics_only = siconos_ubuntu_17_04.copy()(
     ci_config='no_cxx',
     remove_pkgs=['gnu-c++'])
 
-siconos_profiling = siconos_ubuntu_16_10.copy()(
+siconos_profiling = siconos_ubuntu_17_04.copy()(
     build_configuration='Profiling',
     add_pkgs=['profiling'])
 
@@ -127,11 +134,10 @@ siconos_fedora_latest = siconos_default.copy()(
     add_pkgs=['openblas-lapacke', 'python3-env', 'umfpack'])
 
 siconos_openblas_lapacke = siconos_default.copy()(
-    ci_config='with_umfpack',
     remove_pkgs=['atlas-lapack'],
-    add_pkgs=['openblas-lapacke', 'umfpack', 'path', 'wget'],)  # wget for path
+    add_pkgs=['openblas-lapacke'])
 
-siconos_clang = siconos_ubuntu_16_10.copy()(
+siconos_clang = siconos_ubuntu_17_04.copy()(
     ci_config=('with_bullet', 'with_py3'),
     remove_pkgs=['python-env'],
     add_pkgs=['clang-3.9', 'bullet', 'cppunit_clang-3.9', 'wget', 'xz', 'python3-env', 'path', 'h5py3'])  # h5py-3 for mechanics.io
@@ -171,13 +177,17 @@ siconos_gcc_asan_latest = siconos_fedora_latest.copy()(
 
 # There is a bug in boost 1.58 distributed with Xenial (Ubuntu LTS 16.04).
 # As long as it is not patched, we have to build on a newer ubuntu
-siconos_serialization = siconos_ubuntu_16_10.copy()(
+siconos_serialization = siconos_ubuntu_17_04.copy()(
     ci_config='with_serialization',
     add_pkgs=['serialization'])
 
 siconos_with_mumps = siconos_default.copy()(
     ci_config='with_mumps',
     add_pkgs=['mumps'])
+
+siconos_with_umfpack = siconos_default.copy()(
+    ci_config='with_umfpack',
+    add_pkgs=['umfpack'])
 
 
 # --- Config to run siconos examples ---
@@ -193,17 +203,17 @@ siconos_light_examples = minimal_with_python.copy()(
     ci_config='examples_light',
     targets={'.': ['docker-build', 'docker-cmake', 'docker-make',
                    'docker-make-install', 'docker-make-clean'],
-             'examples': ['docker-build', 'docker-ctest']},
+             'examples': ['docker-build', 'docker-ctest', 'docker-make-clean']},
     add_srcs=['examples'])
 
 # Case2 : siconos with mechanics components and bullet + related examples
 siconos_all_examples = minimal_with_python.copy()(
     ci_config='examples_all',
+    add_pkgs=['bullet', 'h5py'],
     targets={'.': ['docker-build', 'docker-cmake', 'docker-make',
-                   'docker-make-install'],
-             'examples': ['docker-build', 'docker-ctest']},
-    add_srcs=['examples'],
-    fast=True)
+                   'docker-make-install', 'docker-make-clean'],
+             'examples': ['docker-build', 'docker-ctest', 'docker-make-clean']},
+    add_srcs=['examples'])
 
 siconos_test_deb = CiTask(
     ci_config='examples',
@@ -230,31 +240,35 @@ known_tasks = {'siconos---vm0':
                (siconos_fedora_latest,
                 siconos_gcc_asan,
                 siconos_gcc_asan_latest,
-                siconos_ubuntu_15_10_with_mechanisms,
                 siconos_debian_mechanisms,
                 siconos_ubuntu_15_10),
 
                'siconos---vm1':
                (minimal,
                 minimal_with_python,
+                siconos_with_lpsolve,
                 siconos_documentation,
-                siconos_numerics_only,
                 siconos_clang,
-                siconos_clang_asan,
-                siconos_clang_msan,
-                siconos_ubuntu_15_04,
-                siconos_ubuntu_14_04),
+                siconos_clang_asan),
 
                'siconos---vm2':
-               (),
+               (siconos_clang_msan,
+                siconos_default_nix,
+                siconos_ubuntu_15_10_with_mechanisms,
+                siconos_ubuntu_15_04,
+                siconos_ubuntu_14_04),
 
                'siconos---vm3':
                (siconos_debian_latest,
                 siconos_openblas_lapacke,
-                siconos_serialization,
                 siconos_with_mumps,
+                siconos_with_umfpack,
                 siconos_light_examples,
-                siconos_all_examples,
-                siconos_profiling,
+                siconos_all_examples),
+
+               'siconos---vm4':
+               (siconos_profiling,
                 siconos_ubuntu_17_04,
-                siconos_cxx_11_ubuntu_17_04)}
+                siconos_numerics_only,
+                siconos_cxx_11_ubuntu_17_04,
+                siconos_serialization)}

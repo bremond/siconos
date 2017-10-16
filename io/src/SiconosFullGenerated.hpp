@@ -31,6 +31,8 @@
 #include "JointFrictionR.hpp"
 #include "BodyDS.hpp"
 #include "SiconosShape.hpp"
+#include "SiconosCollisionQueryResult.hpp"
+#include "SiconosContactor.hpp"
 #include "SiconosCollisionManager.hpp"
 #include "SiconosKernel.hpp"
 #include "FirstOrderNonLinearDS.hpp"
@@ -60,6 +62,7 @@ SICONOS_IO_REGISTER(GraphProperties,
 SICONOS_IO_REGISTER(DynamicalSystemProperties,
   (W)
   (WBoundaryConditions)
+  (absolute_position)
   (lower_block)
   (osi)
   (upper_block)
@@ -67,6 +70,8 @@ SICONOS_IO_REGISTER(DynamicalSystemProperties,
   (workVectors))
 SICONOS_IO_REGISTER(InteractionProperties,
   (DSlink)
+  (absolute_position)
+  (absolute_position_proj)
   (block)
   (forControl)
   (source)
@@ -238,8 +243,6 @@ SICONOS_IO_REGISTER_WITH_BASES(FirstOrderR,(Relation),
   (_K))
 SICONOS_IO_REGISTER(Interaction,
   (__count)
-  (_absolutePosition)
-  (_absolutePositionProj)
   (_has2Bodies)
   (_interactionSize)
   (_lambda)
@@ -487,7 +490,6 @@ SICONOS_IO_REGISTER_WITH_BASES(TimeSteppingDirectProjection,(TimeStepping),
   (_projectionMaxIteration))
 SICONOS_IO_REGISTER_WITH_BASES(LinearOSNS,(OneStepNSProblem),
   (_M)
-  (_MStorageType)
   (_keepLambdaAndYState)
   (_q)
   (_w)
@@ -694,7 +696,7 @@ SICONOS_IO_REGISTER_WITH_BASES(ExternalBody,(LagrangianDS),
 )
 SICONOS_IO_REGISTER_WITH_BASES(Circle,(CircularDS),
 )
-SICONOS_IO_REGISTER_WITH_BASES(FixedJointR,(NewtonEulerR),
+SICONOS_IO_REGISTER_WITH_BASES(FixedJointR,(NewtonEulerJointR),
   (_G10G20d1x)
   (_G10G20d1y)
   (_G10G20d1z)
@@ -711,7 +713,10 @@ SICONOS_IO_REGISTER_WITH_BASES(KneeJointR,(NewtonEulerJointR),
   (_G2P0z)
   (_P0))
 SICONOS_IO_REGISTER_WITH_BASES(NewtonEulerJointR,(NewtonEulerR),
-  (_allowSelfCollide))
+  (_absoluteRef)
+  (_allowSelfCollide)
+  (_axes)
+  (_points))
 SICONOS_IO_REGISTER_WITH_BASES(SphereLDS,(LagrangianDS),
   (I)
   (massValue)
@@ -772,8 +777,12 @@ SICONOS_IO_REGISTER(SiconosBodies,
   (_model)
   (_plans)
   (_playground))
-SICONOS_IO_REGISTER_WITH_BASES(SiconosCollisionManager,(InteractionManager),
-)
+SICONOS_IO_REGISTER(SiconosCollisionQueryResult,
+  (body)
+  (contactor)
+  (distance)
+  (point)
+  (shape))
 SICONOS_IO_REGISTER_WITH_BASES(SphereNEDS,(NewtonEulerDS),
   (radius))
 SICONOS_IO_REGISTER_WITH_BASES(BodyDS,(NewtonEulerDS),
@@ -797,6 +806,8 @@ SICONOS_IO_REGISTER_WITH_BASES(JointStopR,(NewtonEulerR),
   (_jachqTmp)
   (_joint)
   (_pos))
+SICONOS_IO_REGISTER_WITH_BASES(SiconosCollisionManager,(InteractionManager),
+)
 SICONOS_IO_REGISTER(SiconosShape,
   (_inside_margin)
   (_outside_margin)
@@ -1127,6 +1138,7 @@ void siconos_io_register_generated(Archive& ar)
   ar.register_type(static_cast<Disk*>(NULL));
   ar.register_type(static_cast<DiskDiskR*>(NULL));
   ar.register_type(static_cast<DiskPlanR*>(NULL));
+  ar.register_type(static_cast<SiconosCollisionQueryResult*>(NULL));
   ar.register_type(static_cast<SphereNEDS*>(NULL));
   ar.register_type(static_cast<BodyDS*>(NULL));
   ar.register_type(static_cast<CircularDS*>(NULL));

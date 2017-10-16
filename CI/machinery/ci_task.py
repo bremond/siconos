@@ -66,8 +66,8 @@ def timeout(seconds, force_kill=True):
             return inner
         return wrapper
 
-
-@timeout(3000)
+#Some builds take really a long time
+@timeout(10000)
 def call(*args, **kwargs):
     return check_call(*args, **kwargs)
 
@@ -87,7 +87,7 @@ class CiTask():
                  directories=[]):
         """Create a task, see examples in tasks.py.
         """
-                 
+
         self._fast = fast
         self._distrib = distrib
         self._mode = mode
@@ -107,8 +107,8 @@ class CiTask():
             ci_config_name = self._ci_config
         else:
             ci_config_name = '-'.join(self._ci_config)
-        return src.replace('.', '_') + self._distrib.replace(':', '-') + '_' +\
-            ci_config_name
+        return ('build-' + src.replace('.', '-') + self._distrib.replace(':', '-') + '-' +
+                ci_config_name).replace('/', '-')
 
     def templates(self):
         # remove build-base, gnu-c++, gfortran, it is redundant

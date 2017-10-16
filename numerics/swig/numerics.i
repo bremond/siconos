@@ -45,7 +45,7 @@ static char* format_msg_concat(const char* msg1, const char* msg2)
 {
   strncpy(error_msg, msg1, strlen(msg1)+1);
   strncat(error_msg, "\n", 2);
-  strncat(error_msg, msg2, strlen(msg2) - 1);
+  strncat(error_msg, msg2, strlen(msg2));
   return error_msg;
 }
 
@@ -290,6 +290,7 @@ namespace std11 = boost;
 #include "NCP_cst.h"
 #include "mlcp_cst.h"
 #include "VI_cst.h"
+#include "ConvexQP_cst.h"
 #include "GenericMechanical_cst.h"
 #include "fc2d_Solvers.h"
 #include "fc3d_Solvers.h"
@@ -297,6 +298,8 @@ namespace std11 = boost;
 #include "MCP_Solvers.h"
 #include "NCP_Solvers.h"
 #include "MLCP_Solvers.h"
+#include "ConvexQP_Solvers.h"
+#include "SOCLCP_Solvers.h"
 #include "NonSmoothDrivers.h"
   %}
 
@@ -428,6 +431,8 @@ namespace std11 = boost;
 %include Numerics_MCP2.i
 %include Numerics_NCP.i
 %include Numerics_VI.i
+%include Numerics_ConvexQP.i
+%include Numerics_SOCLCP.i
 
 
 

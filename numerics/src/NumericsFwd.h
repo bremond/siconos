@@ -49,9 +49,14 @@ TYPEDEF_STRUCT(GlobalFrictionContactProblem)
 TYPEDEF_STRUCT(GenericMechanicalProblem)
 TYPEDEF_STRUCT(listNumericsProblem)
 TYPEDEF_STRUCT(FrictionContactProblem_as_VI)
+TYPEDEF_STRUCT(FrictionContactProblem_as_ConvexQP)
+TYPEDEF_STRUCT(GlobalFrictionContactProblem_as_VI)
 TYPEDEF_STRUCT(FrictionContactProblem)
+TYPEDEF_STRUCT(SplittedFrictionContactProblem)
 TYPEDEF_STRUCT(VariationalInequality)
 TYPEDEF_STRUCT(AffineVariationalInequalities)
+TYPEDEF_STRUCT(ConvexQP)
+TYPEDEF_STRUCT(ConvexQP_as_VI)
 
 
 

@@ -41,10 +41,6 @@ if(LpSolve_FOUND)
   set(HAS_ONE_LP_SOLVER TRUE)
   set(HAS_EXTREME_POINT_ALGO TRUE)
   set(WITH_LPSOLVE TRUE)
-  if(WITH_CXX)
-    string(REPLACE "-Werror=conversion" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
-  endif()
-  string(REPLACE "-Werror=conversion" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
 endif(LpSolve_FOUND)
 
 # --- Mumps ---
@@ -88,7 +84,12 @@ endif()
 
 # --- Fclib ---
 IF(WITH_FCLIB)
-  COMPILE_WITH(FCLIB REQUIRED)   
+  COMPILE_WITH(FCLIB REQUIRED)
+  IF(FCLib_FCLIB_HEADER_ONLY)
+    COMPILE_WITH(HDF5 REQUIRED COMPONENTS C HL)
+  ELSE()
+    APPEND_C_FLAGS("-DFCLIB_NOT_HEADER_ONLY")
+ENDIF()
   IF(FCLIB_NOTFOUND)
     # try the package stuff
     # need FCLib_DIR !!
@@ -202,7 +203,7 @@ endif()
 # -- HDF5 --
 # For logging in Numerics
 IF(WITH_HDF5)
-  COMPILE_WITH(HDF5 REQUIRED)
+  COMPILE_WITH(HDF5 REQUIRED COMPONENTS C HL)
 ENDIF(WITH_HDF5)
 
 #

@@ -30,7 +30,7 @@ def condensed_from_global(fcp):
 
     # this is a hack to deal with the inability of fc3d solvers to work with
     # sparse matrices
-    _, Wsbm = sn.sparseToSBM(3, WW)
+    _, Wsbm = sn.SBM_from_csparse(3, WW)
     fcp_reduced.M = Wsbm
     fcp_reduced.mu = fcp.mu
     fcp_reduced.q = fcp.b + qprime
@@ -61,7 +61,7 @@ def solve_global(fcp, solver):
 
 
 def test_gfc3d():
-    data_files = ('CubeH8.hdf5', 'LMGC_GlobalFrictionContactProblem00046.hdf5')
+    data_files = ('LMGC_GFC3D_CubeH8.hdf5', 'LMGC_GlobalFrictionContactProblem00046.hdf5')
     mark_as_failed = False
 
     for d in data_files:

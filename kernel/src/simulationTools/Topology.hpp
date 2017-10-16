@@ -109,6 +109,12 @@ private:
    */
   void __removeInteractionFromIndexSet(SP::Interaction inter);
 
+  /** remove a DynamicalSystem from _IG and _DSG
+   * \param ds a pointer to the Dynamical System to be removed
+   */
+  void __removeDynamicalSystemFromIndexSet(SP::DynamicalSystem ds,
+                                           bool removeInterations);
+
 public:
 
   // --- CONSTRUCTORS/DESTRUCTOR ---
@@ -141,17 +147,38 @@ public:
    */
   void insertDynamicalSystem(SP::DynamicalSystem ds);
 
+  /** remove a Dynamical System from the topology. The dynamical
+   *  system is removed from Dynamical Systems graph and Interactions
+   *  Graph.  The dynamical system is not removed from actives
+   *  subgraphs : see updateIndexSet
+   *  \param ds the dynamical system to remove
+   *  \param removeInteractions if true, also remove all interactions with this ds
+   */
+  void removeDynamicalSystem(SP::DynamicalSystem ds, bool removeInteractions=true);
+
   /** set the name for this Dynamical System
    * \param ds a pointer to the system
    * \param name the name of the DynamicalSystem
    */
   void setName(SP::DynamicalSystem ds, const std::string& name);
 
+  /** get the name for this Dynamical System
+   * \param ds a pointer to the system
+   * \return name the name of the DynamicalSystem, or empty string if not found.
+   */
+  std::string name(SP::DynamicalSystem ds);
+
   /** set the name for an Interaction
    * \param inter a pointer to the Interaction
    * \param name the name of the Interaction
    */
   void setName(SP::Interaction inter, const std::string& name);
+
+  /** get the name for this Interaction
+   * \param ds a pointer to the system
+   * \return name the name of the Interaction, or empty string if not found.
+   */
+  std::string name(SP::Interaction inter);
 
   /** set the OSI for this DynamicalSystem
    * \param ds the DynamicalSystem

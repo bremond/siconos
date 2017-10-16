@@ -95,7 +95,13 @@ public:
 
   bool removeStaticContactorSet(StaticContactorSetID id);
 
+  void removeBody(const SP::BodyDS& body);
+
   void updateInteractions(SP::Simulation simulation);
+
+  std::vector<SP::SiconosCollisionQueryResult>
+  lineIntersectionQuery(const SiconosVector& start, const SiconosVector& end,
+                        bool closestOnly=false, bool sorted=true);
 
   void clearOverlappingPairCache();
 

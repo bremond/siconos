@@ -21,9 +21,9 @@
   detection.
 */
 
+#include <algorithm>
 #include <MechanicsFwd.hpp>
-
-#include "BulletSiconosFwd.hpp"
+#include <BulletSiconosFwd.hpp>
 
 #undef SICONOS_VISITABLES
 #define SICONOS_VISITABLES()                    \
@@ -932,17 +932,17 @@ std::pair<SP::btTriangleIndexVertexArray, SCALAR*>
 make_bt_vertex_array(SP::SiconosMesh mesh,
                      SCALAR _s1, SCALAR _s2)
 {
-  assert(mesh->vertices()->size(1) == 3);
+  assert(mesh->vertices()->size(0) == 3);
   SP::btTriangleIndexVertexArray bttris(
     std11::make_shared<btTriangleIndexVertexArray>(
       mesh->indexes()->size()/3,
       (int*)mesh->indexes()->data(),
       sizeof(int)*3,
-      mesh->vertices()->size(0),
+      mesh->vertices()->size(1),
       mesh->vertices()->getArray(),
       sizeof(btScalar)*3));
 
-  return std::make_pair(bttris, mesh->vertices()->getArray());
+  return std::make_pair(bttris, (btScalar*)NULL);
 }
 
 // If type of SiconosMatrix is not the same as btScalar, we must copy
@@ -950,21 +950,22 @@ template<typename SCALAR1, typename SCALAR2>
 std::pair<SP::btTriangleIndexVertexArray, btScalar*>
 make_bt_vertex_array(SP::SiconosMesh mesh, SCALAR1 _s1, SCALAR2 _s2)
 {
-  assert(mesh->vertices()->size(1) == 3);
-  unsigned int num = mesh->vertices()->size(0);
-  btScalar *vertices = new btScalar[num*3];
-  for (unsigned int i=0; i < num; i++)
+  assert(mesh->vertices()->size(0) == 3);
+  unsigned int numIndices = mesh->indexes()->size();
+  unsigned int numVertices = mesh->vertices()->size(1);
+  btScalar *vertices = new btScalar[numVertices*3];
+  for (unsigned int i=0; i < numVertices; i++)
   {
-    vertices[i*3+0] = (*mesh->vertices())(i,0);
-    vertices[i*3+1] = (*mesh->vertices())(i,1);
-    vertices[i*3+2] = (*mesh->vertices())(i,2);
+    vertices[i*3+0] = (*mesh->vertices())(0,i);
+    vertices[i*3+1] = (*mesh->vertices())(1,i);
+    vertices[i*3+2] = (*mesh->vertices())(2,i);
   }
   SP::btTriangleIndexVertexArray bttris(
     std11::make_shared<btTriangleIndexVertexArray>(
-      num,
+      numIndices/3,
       (int*)mesh->indexes()->data(),
       sizeof(int)*3,
-      mesh->vertices()->size(0),
+      numVertices,
       vertices,
       sizeof(btScalar)*3));
   return std::make_pair(bttris, vertices);
@@ -985,7 +986,7 @@ void SiconosBulletCollisionManager_impl::createCollisionObject(
   if (!mesh->vertices())
     throw SiconosException("No vertices matrix specified for mesh.");
 
-  if (mesh->vertices()->size(1) != 3)
+  if (mesh->vertices()->size(0) != 3)
     throw SiconosException("Convex hull vertices matrix must have 3 columns.");
 
   // Create Bullet triangle list, either by copying on non-copying method
@@ -1220,6 +1221,22 @@ void SiconosBulletCollisionManager_impl::createCollisionObjectsForBodyContactorS
     ccosv->contactor = *it;
     ccosv->contactor->shape->acceptSP(ccosv);
   }
+}
+
+void SiconosBulletCollisionManager::removeBody(const SP::BodyDS& body)
+{
+  BodyShapeMap::iterator it( impl->bodyShapeMap.find(&*body) );
+  if (it == impl->bodyShapeMap.end())
+    return;
+
+  std::vector<std11::shared_ptr<BodyShapeRecord> >::iterator it2;
+  for (it2 = it->second.begin(); it2 != it->second.end(); it2++)
+  {
+    printf("removing a collision object\n");
+    impl->_collisionWorld->removeCollisionObject( &* (*it2)->btobject );
+  }
+
+  impl->bodyShapeMap.erase(it);
 }
 
 /** This class allows to iterate over all the contact points in a
@@ -1487,8 +1504,8 @@ void SiconosBulletCollisionManager::updateInteractions(SP::Simulation simulation
 
       /* update the relation */
       SP::BulletR rel(std11::static_pointer_cast<BulletR>((*p_inter)->relation()));
-      rel->updateContactPoints(*it->point, pairA->ds->q(),
-                               pairB->ds ? pairB->ds->q() : SP::SiconosVector());
+      rel->updateContactPoints(*it->point, pairA->ds,
+                               pairB->ds ? pairB->ds : SP::NewtonEulerDS());
 
       _stats.existing_interactions_processed ++;
     }
@@ -1514,6 +1531,11 @@ void SiconosBulletCollisionManager::updateInteractions(SP::Simulation simulation
                                     pairA->sshape->outsideMargin(),
                                     pairB->sshape->outsideMargin(),
                                     1.0 / _options.worldScale));
+
+        if (!rel) continue;
+        rel->updateContactPoints(*it->point,
+                                 pairA->ds ? pairA->ds : SP::NewtonEulerDS(),
+                                 pairB->ds ? pairB->ds : SP::NewtonEulerDS());
 
         // We wish to be sure that no Interactions are created without
         // sufficient warning before contact.  TODO: Replace with exception or
@@ -1569,4 +1591,95 @@ void SiconosBulletCollisionManager::clearOverlappingPairCache()
       }
     }
   }
+}
+
+/** Implement comparison for std::sort(). */
+static
+bool cmpQueryResult(const SP::SiconosCollisionQueryResult &a,
+                    const SP::SiconosCollisionQueryResult &b)
+{
+  return a->distance < b->distance;
+}
+
+std::vector<SP::SiconosCollisionQueryResult>
+SiconosBulletCollisionManager::lineIntersectionQuery(const SiconosVector& start,
+                                                     const SiconosVector& end,
+                                                     bool closestOnly,
+                                                     bool sorted)
+{
+  std::vector<SP::SiconosCollisionQueryResult> result_list;
+
+  btVector3 btstart(start(0), start(1), start(2));
+  btVector3 btend(end(0), end(1), end(2));
+
+  // Return at most one object
+  if (closestOnly)
+  {
+    btCollisionWorld::ClosestRayResultCallback rayResult(btstart, btend);
+    impl->_collisionWorld->rayTest(btstart, btend, rayResult);
+
+    if (rayResult.hasHit())
+    {
+      const BodyShapeRecord *rec =
+        reinterpret_cast<const BodyShapeRecord*>(
+          rayResult.m_collisionObject->getUserPointer());
+
+      if (rec) {
+        SP::SiconosCollisionQueryResult result(
+          std11::make_shared<SiconosCollisionQueryResult>());
+        result->point.resize(3);
+        result->point.setValue(0, rayResult.m_hitPointWorld.getX());
+        result->point.setValue(1, rayResult.m_hitPointWorld.getY());
+        result->point.setValue(2, rayResult.m_hitPointWorld.getZ());
+        result->distance = (result->point - start).norm2();
+        result->body = rec->ds; // note: may be null for static contactors
+        result->shape = rec->sshape;
+        result->contactor = rec->contactor;
+        result_list.push_back(result);
+      }
+      else {
+        DEBUG_PRINTF("Siconos warning: BodyShapeRecord found by intersection was null.");
+      }
+    }
+  }
+
+  // Return more than one object, Bullet provides a different
+  // interface
+  else
+  {
+    btCollisionWorld::AllHitsRayResultCallback rayResult(btstart, btend);
+    impl->_collisionWorld->rayTest(btstart, btend, rayResult);
+
+    if (rayResult.hasHit())
+    {
+      for (int i=0; i < rayResult.m_collisionObjects.size(); i++)
+      {
+        const BodyShapeRecord *rec =
+          reinterpret_cast<const BodyShapeRecord*>(
+            rayResult.m_collisionObjects[i]->getUserPointer());
+
+        if (rec) {
+          SP::SiconosCollisionQueryResult result(
+            std11::make_shared<SiconosCollisionQueryResult>());
+          result->point.resize(3);
+          result->point.setValue(0, rayResult.m_hitPointWorld[i].getX());
+          result->point.setValue(1, rayResult.m_hitPointWorld[i].getY());
+          result->point.setValue(2, rayResult.m_hitPointWorld[i].getZ());
+          result->distance = (result->point - start).norm2();
+          result->body = rec->ds; // note: null for static contactors
+          result->shape = rec->sshape;
+          result->contactor = rec->contactor;
+          result_list.push_back(result);
+        }
+        else {
+          DEBUG_PRINTF("Siconos warning: BodyShapeRecord found by intersection was null.");
+        }
+      }
+    }
+  }
+
+  if (sorted && result_list.size() > 1)
+    std::sort(result_list.begin(), result_list.end(), cmpQueryResult);
+
+  return result_list;
 }

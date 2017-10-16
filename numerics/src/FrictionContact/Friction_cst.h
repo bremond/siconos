@@ -57,6 +57,8 @@ enum FRICTION_SOLVER
   /** Non-smooth Newton, natural map, local formulation */
   SICONOS_FRICTION_3D_NSN_NM = 520,
   SICONOS_FRICTION_3D_NSN_AC_TEST = 521,
+  /** Panagiotopoulos, fixed point, local formulation */
+  SICONOS_FRICTION_3D_PFP = 522,
 
   /* 3D Frictional Contact solvers for one contact (used mainly inside NSGS solvers) */
   
@@ -71,7 +73,7 @@ enum FRICTION_SOLVER
   SICONOS_FRICTION_3D_ONECONTACT_ProjectionOnConeWithRegularization = 554,
   SICONOS_FRICTION_3D_ONECONTACT_ProjectionOnConeWithDiagonalization = 555,
   SICONOS_FRICTION_3D_ONECONTACT_ProjectionOnCone_velocity = 558,
-  SICONOS_FRICTION_3D_PGoC = 559,
+
   /** De Saxce fixed point, one contact solver */
   SICONOS_FRICTION_3D_DeSaxceFixedPoint = 560,
   /** Fischer Burmeister/Path, Glocker formulation, one contact solver */
@@ -83,6 +85,8 @@ enum FRICTION_SOLVER
   SICONOS_FRICTION_3D_ONECONTACT_ProjectionOnCylinder = 557,
   SICONOS_FRICTION_3D_ONECONTACT_ProjectionOnCylinderWithLocalIteration = 564,
   SICONOS_FRICTION_3D_ONECONTACT_NSN_GP_HYBRID = 565,
+  SICONOS_FRICTION_3D_VI_FPP_Cylinder = 566,
+  SICONOS_FRICTION_3D_ConvexQP_PG_Cylinder = 567,
   
   /** 3D Frictional contact local solvers on global formulation */
   SICONOS_GLOBAL_FRICTION_3D_NSGS_WR = 600,
@@ -94,8 +98,11 @@ enum FRICTION_SOLVER
   SICONOS_GLOBAL_FRICTION_3D_NSN_AC_WR = 606,
   SICONOS_GLOBAL_FRICTION_3D_NSN_AC = 607,
   SICONOS_GLOBAL_FRICTION_3D_GAMS_PATH = 608,
-  SICONOS_GLOBAL_FRICTION_3D_GAMS_PATHVI = 609
-
+  SICONOS_GLOBAL_FRICTION_3D_GAMS_PATHVI = 609,
+  /** VI formulation, Fixed Point Projection, local formulation */
+  SICONOS_GLOBAL_FRICTION_3D_VI_FPP = 610,
+  /** VI formulation, Extra-gradient, local formulation */
+  SICONOS_GLOBAL_FRICTION_3D_VI_EG = 611
 };
 
 
@@ -110,6 +117,7 @@ extern const char* const   SICONOS_FRICTION_3D_NSGS_STR ;
 extern const char* const   SICONOS_FRICTION_3D_NSGSV_STR ;
 extern const char* const   SICONOS_FRICTION_3D_PROX_STR;
 extern const char* const   SICONOS_FRICTION_3D_TFP_STR ;
+extern const char* const   SICONOS_FRICTION_3D_PFP_STR ;
 extern const char* const   SICONOS_FRICTION_3D_NSN_AC_STR ;
 extern const char* const   SICONOS_FRICTION_3D_NSN_FB_STR ;
 extern const char* const   SICONOS_FRICTION_3D_NSN_NM_STR ;
@@ -131,7 +139,8 @@ extern const char* const   SICONOS_FRICTION_3D_ONECONTACT_ProjectionOnConeWithRe
 extern const char* const   SICONOS_FRICTION_3D_NCPGlockerFBPATH_STR;
 extern const char* const   SICONOS_FRICTION_3D_ONECONTACT_ProjectionOnCylinder_STR;
 extern const char* const   SICONOS_FRICTION_3D_ONECONTACT_ProjectionOnCone_velocity_STR;
-extern const char* const   SICONOS_FRICTION_3D_PGoC_STR;
+extern const char* const   SICONOS_FRICTION_3D_ConvexQP_PG_Cylinder_STR;
+extern const char* const   SICONOS_FRICTION_3D_VI_FPP_Cylinder_STR;
 extern const char* const   SICONOS_FRICTION_3D_DeSaxceFixedPoint_STR;
 extern const char* const   SICONOS_FRICTION_3D_GAMS_PATH_STR;
 extern const char* const   SICONOS_FRICTION_3D_GAMS_PATHVI_STR;
@@ -148,6 +157,10 @@ extern const char* const   SICONOS_GLOBAL_FRICTION_3D_NSGS_STR ;
 extern const char* const   SICONOS_GLOBAL_FRICTION_3D_NSN_AC_WR_STR ;
 extern const char* const   SICONOS_GLOBAL_FRICTION_3D_NSN_AC_STR;
 extern const char* const   SICONOS_GLOBAL_FRICTION_3D_GAMS_PATH_STR;
+extern const char* const   SICONOS_GLOBAL_FRICTION_3D_GAMS_PATHVI_STR;
+extern const char* const   SICONOS_GLOBAL_FRICTION_3D_VI_FPP_STR;
+extern const char* const   SICONOS_GLOBAL_FRICTION_3D_VI_EG_STR;
+extern const char* const   SICONOS_FRICTION_3D_ONECONTACT_QUARTIC_STR ;
 extern const char* const   SICONOS_GLOBAL_FRICTION_3D_GAMS_PATHVI_STR;
 extern const char* const   SICONOS_FRICTION_3D_ONECONTACT_QUARTIC_STR ;
 extern const char* const   SICONOS_FRICTION_3D_ONECONTACT_QUARTIC_NU_STR ;
@@ -229,7 +242,7 @@ enum SICONOS_FRICTION_3D_NSN_IPARAM
 
 enum SICONOS_FRICTION_3D_NSN_DPARAM
 {
-  /** index in dparam to store the rho value for porjection formulation */
+  /** index in dparam to store the rho value for projection formulation */
   SICONOS_FRICTION_3D_NSN_RHO = 3,
 
 };
@@ -263,7 +276,18 @@ enum SICONOS_FRICTION_3D_NSN_HYBRID_ENUM
   SICONOS_FRICTION_3D_NSN_HYBRID_STRATEGY_VI_EG_NSN =4,
 };
 
+enum SICONOS_FRICTION_3D_FP_IPARAM
+{
+  /** index in iparam to store the maximum number of iterations */
+  SICONOS_FRICTION_3D_FP_ERROR_STRATEGY =2
+};
 
+enum SICONOS_FRICTION_3D_ERROR_STRATEGY
+{
+  SICONOS_FRICTION_3D_FP_ERROR_STRATEGY_ADAPTIVE =0,
+  SICONOS_FRICTION_3D_FP_ERROR_STRATEGY_FRACTION =1,
+  SICONOS_FRICTION_3D_FP_ERROR_STRATEGY_GIVEN_VALUE =2
+};
 
 
 

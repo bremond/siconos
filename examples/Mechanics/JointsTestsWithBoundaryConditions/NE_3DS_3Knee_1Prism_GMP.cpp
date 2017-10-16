@@ -249,15 +249,15 @@ int main(int argc, char* argv[])
     SP::SiconosVector P(new SiconosVector(3));
     P->zero();
 
-    SP::KneeJointR relation1(new KneeJointR(beam1, P));
+    SP::KneeJointR relation1(new KneeJointR(P, true, beam1));
 
     SP::SiconosVector G20(new SiconosVector(3));
     P->zero();
     P->setValue(0, L1 / 2);
-    SP::KneeJointR relation2(new KneeJointR(beam1, beam2, P));
+    SP::KneeJointR relation2(new KneeJointR(P, false, beam1, beam2));
     P->zero();
     P->setValue(0, -L1 / 2);
-    SP::KneeJointR relation3(new KneeJointR(beam2, beam3, P));
+    SP::KneeJointR relation3(new KneeJointR(P, false, beam2, beam3));
 
     SP::NonSmoothLaw nslaw1(new EqualityConditionNSL(relation1->numberOfConstraints()));
     SP::NonSmoothLaw nslaw2(new EqualityConditionNSL(relation2->numberOfConstraints()));
@@ -269,7 +269,7 @@ int main(int argc, char* argv[])
     SP::SiconosVector axe1(new SiconosVector(3));
     axe1->zero();
     axe1->setValue(0, 1);
-    SP::PrismaticJointR relation4(new PrismaticJointR(beam3, axe1));
+    SP::PrismaticJointR relation4(new PrismaticJointR(axe1, false, beam3));
 
     SP::NonSmoothLaw nslaw4(new EqualityConditionNSL(relation4->numberOfConstraints()));
 
@@ -299,14 +299,8 @@ int main(int argc, char* argv[])
 
     // -- (1) OneStepIntegrators --
     SP::MoreauJeanOSI OSI1(new MoreauJeanOSI(theta));
-    myModel->nonSmoothDynamicalSystem()->topology()->setOSI(beam1,OSI1);
-
     SP::MoreauJeanOSI OSI2(new MoreauJeanOSI(theta));
-    myModel->nonSmoothDynamicalSystem()->topology()->setOSI(beam2,OSI2);
-
     SP::MoreauJeanOSI OSI3(new MoreauJeanOSI(theta));
-    myModel->nonSmoothDynamicalSystem()->topology()->setOSI(beam3,OSI3);
-
 
     // -- (2) Time discretisation --
     SP::TimeDiscretisation t(new TimeDiscretisation(t0, h));
@@ -316,9 +310,9 @@ int main(int argc, char* argv[])
 
     // -- (4) Simulation setup with (1) (2) (3)
     SP::TimeStepping s(new TimeStepping(t, OSI1, osnspb));
-    s->insertIntegrator(OSI2);
-    s->insertIntegrator(OSI3);
-
+    s->prepareIntegratorForDS(OSI1, beam1, myModel, t0);
+    s->prepareIntegratorForDS(OSI2, beam2, myModel, t0);
+    s->prepareIntegratorForDS(OSI3, beam3, myModel, t0);
 
     //    s->setComputeResiduY(true);
     //  s->setUseRelativeConvergenceCriteron(false);

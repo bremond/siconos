@@ -202,6 +202,43 @@ struct VertexIsRemoved
   SP::InteractionsGraph __IG;
 };
 
+/* an edge is removed from _DSG graph if the corresponding vertex is
+   removed from the adjoint graph (_IG)
+*/
+struct VertexIsRemovedDS
+{
+  VertexIsRemovedDS(SP::DynamicalSystem ds,
+                    SP::DynamicalSystemsGraph sg, SP::InteractionsGraph asg) :
+    _ds(ds), __DSG(sg), __IG(asg) {};
+  bool operator()(DynamicalSystemsGraph::EDescriptor ed)
+  {
+    if (__IG->is_vertex(__DSG->bundle(ed)))
+    {
+      InteractionsGraph::VDescriptor ivd = __IG->descriptor(__DSG->bundle(ed));
+
+      if (__IG->properties(ivd).source == _ds
+          || __IG->properties(ivd).target == _ds)
+      {
+        __IG->remove_vertex(__DSG->bundle(ed));
+
+        assert(__IG->size() == __DSG->edges_number() - 1);
+
+        return true;
+      }
+      else
+      {
+        return false;
+      }
+    }
+    else
+    {
+      return true;
+    }
+  }
+  SP::DynamicalSystem _ds;
+  SP::DynamicalSystemsGraph __DSG;
+  SP::InteractionsGraph __IG;
+};
 
 /* remove an interaction : remove edges (Interaction) from _DSG if
    corresponding vertices are removed from _IG */
@@ -219,7 +256,27 @@ void Topology::__removeInteractionFromIndexSet(SP::Interaction inter)
 void Topology::insertDynamicalSystem(SP::DynamicalSystem ds)
 {
   _DSG[0]->add_vertex(ds);
+  setHasChanged(true);
 }
+
+/* remove a dynamical system : remove edges (DynamicalSystem) from _IG if
+   corresponding vertices are removed from _DSG */
+void Topology::__removeDynamicalSystemFromIndexSet(SP::DynamicalSystem ds,
+                                                   bool removeInteractions)
+{
+  if (removeInteractions) {
+    // _DSG[0]->remove_out_edge_if(_DSG[0]->descriptor(ds),
+    //                             VertexIsRemovedDS(ds, _DSG[0], _IG[0]));
+    // _DSG[0]->remove_in_edge_if(_DSG[0]->descriptor(ds),
+    //                            VertexIsRemovedDS(ds, _DSG[0], _IG[0]));
+    _DSG[0]->remove_edge_if(_DSG[0]->descriptor(ds),
+                               VertexIsRemovedDS(ds, _DSG[0], _IG[0]));
+  }
+
+  // note: remove_vertex also calls clear_vertex and removes all in/out edges
+  _DSG[0]->remove_vertex(ds);
+}
+
 
 void Topology::setName(SP::DynamicalSystem ds, const std::string& name)
 {
@@ -227,10 +284,28 @@ void Topology::setName(SP::DynamicalSystem ds, const std::string& name)
   _DSG[0]->name.insert(dsgv, name);
 }
 
+std::string Topology::name(SP::DynamicalSystem ds)
+{
+  DynamicalSystemsGraph::VDescriptor dsgv = _DSG[0]->descriptor(ds);
+  if (dsgv)
+    return _DSG[0]->name.at(dsgv);
+  else
+    return "";
+}
+
 void Topology::setName(SP::Interaction inter, const std::string& name)
 {
   InteractionsGraph::VDescriptor igv = _IG[0]->descriptor(inter);
   _IG[0]->name.insert(igv, name);
+}
+
+std::string Topology::name(SP::Interaction inter)
+{
+  InteractionsGraph::VDescriptor igv = _IG[0]->descriptor(inter);
+  if (igv)
+    return _IG[0]->name.at(igv);
+  else
+    return "";
 }
 
 void Topology::setOSI(SP::DynamicalSystem ds, SP::OneStepIntegrator OSI)
@@ -264,6 +339,18 @@ void Topology::removeInteraction(SP::Interaction inter)
   assert(_DSG[0]->edges_number() == _IG[0]->size());
   __removeInteractionFromIndexSet(inter);
   assert(_DSG[0]->edges_number() == _IG[0]->size());
+  setHasChanged(true);
+}
+
+void Topology::removeDynamicalSystem(SP::DynamicalSystem ds,
+                                     bool removeInteractions)
+{
+  DEBUG_PRINTF("removeDynamicalSystem : %p\n", &*ds);
+
+  assert(_DSG[0]->edges_number() == _IG[0]->size() && "1");
+  __removeDynamicalSystemFromIndexSet(ds, removeInteractions);
+  assert(_DSG[0]->edges_number() == _IG[0]->size() && "2");
+  setHasChanged(true);
 }
 
 

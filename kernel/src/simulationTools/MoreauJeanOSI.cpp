@@ -37,10 +37,11 @@
 #include "OneStepNSProblem.hpp"
 #include "BlockVector.hpp"
 
-// #define DEBUG_BEGIN_END_ONLY
+
 // #define DEBUG_NOCOLOR
 // #define DEBUG_STDOUT
 // #define DEBUG_MESSAGES
+// #define DEBUG_BEGIN_END_ONLY
 // #define DEBUG_WHERE_MESSAGES
 #include <debug.h>
 
@@ -110,8 +111,10 @@ void MoreauJeanOSI::initializeDynamicalSystem(Model&, double t, SP::DynamicalSys
 
   // Check dynamical system type
   Type::Siconos dsType = Type::value(*ds);
-  assert(dsType == Type::LagrangianLinearTIDS || dsType == Type::LagrangianDS || Type::NewtonEulerDS
-     || dsType == Type::LagrangianLinearDiagonalDS);
+  assert(dsType == Type::LagrangianLinearTIDS
+         || dsType == Type::LagrangianDS
+         || dsType == Type::NewtonEulerDS
+         || dsType == Type::LagrangianLinearDiagonalDS);
 
   // Compute W (iteration matrix)
   initializeIterationMatrixW(t, ds);
