@@ -25,7 +25,7 @@ from siconos.kernel import \
 import siconos.kernel as Kernel
 
 # Siconos Mechanics imports
-from siconos.mechanics.collision.tools import Contactor, Volume
+from siconos.mechanics.collision.tools import Contactor, Volume, Shape
 from siconos.mechanics import joints
 from siconos.io.io_base import MechanicsIO
 
@@ -964,7 +964,7 @@ class Hdf5():
                         velocity, contactors, mass, given_inertia, body_class,
                         shape_class, face_class, edge_class, number=None):
 
-        if mass is None or mass == 0.:
+        if mass is None or mass <= 0.:
             # a static object
             body = None
 
@@ -1024,9 +1024,7 @@ class Hdf5():
                                          contactor.translation,
                                          contactor.orientation,
                                          contactor.group)
-                else:
-                    occ.occ_move(contact_shape, list(contactor.translation) +\
-                                 list(contactor.orientation))
+
 
             if reference_shape not in ref_added:
                 if body is not None:
@@ -1748,13 +1746,21 @@ class Hdf5():
                             # occ shape
                             occ_type = True
                             # fix: not only contactors here
-                            contactors.append(
-                                Volume(
-                                    instance_name=ctr.attrs['instance_name'],
-                                    shape_data=ctr.attrs['name'],
-                                    parameters=pickle.loads(ctr.attrs['parameters']),
-                                    relative_translation=np.subtract(ctr.attrs['translation'].astype(float), center_of_mass),
-                                    relative_orientation=ctr.attrs['orientation'].astype(float)))
+                            if 'parameters' in ctr.attrs:
+                                contactors.append(
+                                    Volume(
+                                        instance_name=ctr.attrs['instance_name'],
+                                        shape_data=ctr.attrs['name'],
+                                        parameters=pickle.loads(ctr.attrs['parameters']),
+                                        relative_translation=np.subtract(ctr.attrs['translation'].astype(float), center_of_mass),
+                                        relative_orientation=ctr.attrs['orientation'].astype(float)))
+                            else:
+                                contactors.append(
+                                    Shape(
+                                        instance_name=ctr.attrs['instance_name'],
+                                        shape_data=ctr.attrs['name'],
+                                        relative_translation=np.subtract(ctr.attrs['translation'].astype(float), center_of_mass),
+                                        relative_orientation=ctr.attrs['orientation'].astype(float)))
 
                     if 'inertia' in obj.attrs:
                         inertia = obj.attrs['inertia']
@@ -1765,7 +1771,7 @@ class Hdf5():
                         # Occ object
                         self.importOccObject(
                             name, floatv(translation), floatv(orientation),
-                            floatv(velocity), contactors, float(mass),
+                            floatv(velocity), contactors, mass,
                             inertia, body_class, shape_class, face_class,
                             edge_class,
                             number = self.instances()[name].attrs['id'])
@@ -1776,6 +1782,13 @@ class Hdf5():
                             floatv(velocity), contactors, float(mass),
                             inertia, body_class, shape_class,
                             number = self.instances()[name].attrs['id'])
+
+# FIX : why direct import here ?
+#                        # start from initial conditions
+#                        self.importObject(name, body_class, shape_class,
+#                                          face_class, edge_class)
+
+
             # import nslaws
             # note: no time of birth for nslaws and joints
             for name in self._nslaws_data:
