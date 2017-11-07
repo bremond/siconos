@@ -441,9 +441,6 @@ void TimeStepping::advanceToEvent()
     indexSet0->bundle(*ui)->resetAllLambda();
   }
   newtonSolve(_newtonTolerance, _newtonMaxIteration);
-
-  updateWorldFromDS();
-  updateInteractions();
 }
 
 /*update of the nabla */
@@ -617,7 +614,7 @@ void TimeStepping::newtonSolve(double criterion, unsigned int maxStep)
     }
   }
   else
-    RuntimeException::selfThrow("TimeStepping::NewtonSolve failed. Unknow newtonOptions: " + _newtonOptions);
+    RuntimeException::selfThrow("TimeStepping::NewtonSolve failed. Unknown newtonOptions: " + _newtonOptions);
   DEBUG_END("TimeStepping::newtonSolve(double criterion, unsigned int maxStep)\n");
 }
 
