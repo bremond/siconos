@@ -24,7 +24,7 @@ before_script:
 
 script:
   - if test "$TRAVIS" = true; then
-      ../CI/driver.py --run --root-dir=.. --task=$TRAVIS_TASK
+      ../CI/driver.py --run --root-dir=.. --task=$TRAVIS_TASK;
     else
-      ../CI/driver.py --run --root-dir=..
+      ../CI/driver.py --run --root-dir=..;
     fi
