@@ -1,5 +1,10 @@
 sudo: required
 
+addons:
+  hosts:
+  - travis.dev
+  - travis
+
 services:
   - docker
 
@@ -13,4 +18,4 @@ before_script:
 script:
   - echo $TRAVIS_BRANCH
   - echo $TRAVIS_PULL_REQUEST_BRANCH
-  - ../CI/driver.py --run --root-dir=..
+  - hostname
