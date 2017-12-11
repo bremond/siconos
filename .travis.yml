@@ -1,5 +1,5 @@
 #
-# this travis config is also used in Jenkins
+# this travis config is also used with jenkins
 #
 
 
@@ -9,11 +9,12 @@ services:
   - docker
 
 env:
-  - TRAVIS_TASK=siconos_fedora_latest
-  - TRAVIS_TASK=siconos_gcc_asan
-  - TRAVIS_TASK=siconos_gcc_asan_latest
-  - TRAVIS_TASK=siconos_debian_mechanisms
-  - TRAVIS_TASK=siconos_ubuntu_15_10
+  - TRAVIS_TASK=siconos_ubuntu_14_04
+  - TRAVIS_TASK=siconos_openblas_lapacke
+  - TRAVIS_TASK=siconos_with_mumps
+  - TRAVIS_TASK=siconos_with_umfpack
+  - TRAVIS_TASK=siconos_ubuntu_17_04
+  - TRAVIS_TASK=siconos_ubuntu_17_10
   
 before_install:
   - CI/before_install.sh
