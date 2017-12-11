@@ -1,13 +1,12 @@
 sudo: required
 
-addons:
-  hosts:
-  - travis.dev
-  - travis
-
 services:
   - docker
 
+hosts:
+  - travis.dev
+  - travis
+  
 before_install:
   - CI/before_install.sh
 
