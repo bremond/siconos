@@ -4,17 +4,14 @@
 sudo: required
 
 env:
-  - TASK=ubuntu_14_04
-  - TASK=openblas_lapacke
-  - TASK=with_mumps
-  - TASK=with_umfpack
-  - TASK=ubuntu_17_04
-  - TASK=ubuntu_17_10
+  
 
 matrix:
   include:
-    env:
-      TASK=ubuntu_14_04
+    - service: docker
+      env: TASK=ubuntu_14_04
+    - service: docker
+      env: TASK=openblas_lapacke
 
   
 before_install:
