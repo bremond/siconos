@@ -286,7 +286,7 @@ class CiTask():
                     msg += '\n  - make target, \n for target in '
                     msg += '{:}'.format(' '.join(self._targets[src]))
                     msg += '\n both from path ' + bdir
-                    print msg
+                    print (msg)
 
             except Exception as error:
                 return_code = 1
