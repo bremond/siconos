@@ -9,7 +9,7 @@ before_install:
   - CI/before_install.sh
 
 env:
-  - TASK=siconos_default:docker=false:distrib=ubuntu,14.04
+  - TASK=siconos_default:docker=false:distrib=ubuntu,14.04:targets=all,
   - TASK=siconos_openblas_lapacke
 
 before_script:
