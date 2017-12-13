@@ -49,7 +49,7 @@ jobs:
   include:
     script:
       - if test "$TRAVIS" = true; then
-        ../CI/driver.py --run --root-dir=.. --task=$TASK;
-      else
-        ../CI/driver.py --run --root-dir=..;
-      fi
+          ../CI/driver.py --run --root-dir=.. --task=$TASK;
+        else
+          ../CI/driver.py --run --root-dir=..;
+        fi
