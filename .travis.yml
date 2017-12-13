@@ -40,7 +40,8 @@ matrix:
 before_script:
   - case $TASK in
       *docker=false*)
-        pip install lxml
+        pip install lxml;
+        pip install scipy
         ;;
     esac
   - mkdir -p build
