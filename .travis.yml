@@ -19,8 +19,6 @@ matrix:
             - george-edison55-precise-backports
 
           packages:
-            - cmake
-            - cmake-data
             - libboost-dev
             - libgmp-dev
             - swig
