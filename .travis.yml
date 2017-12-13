@@ -36,7 +36,7 @@ matrix:
     - env:
       - TASK=siconos_openblas_lapacke
       os: linux
-      python: "3.6"
+      python: "2.7"
 
       
 before_script:
