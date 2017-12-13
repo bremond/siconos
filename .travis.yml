@@ -35,6 +35,8 @@ matrix:
             - gfortran-4.9
     - env:
       - TASK=siconos_openblas_lapacke
+      os: linux
+      python: "3.6"
 
       
 before_script:
@@ -42,6 +44,8 @@ before_script:
       *docker=false*)
         pip install lxml;
         pip install scipy
+        ;;
+      *)
         ;;
     esac
   - mkdir -p build
