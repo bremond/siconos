@@ -70,6 +70,7 @@ namespace std11 = std;
 #else
 // Case 2 : ref == boost shared pointers
 #include <boost/shared_ptr.hpp>
+#include <cstddef>  // cf https://gcc.gnu.org/gcc-4.6/porting_to.html
 #include <boost/make_shared.hpp>
 #include <boost/enable_shared_from_this.hpp>
 namespace std11 = boost;
