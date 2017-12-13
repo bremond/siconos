@@ -10,8 +10,8 @@ before_install:
 
 matrix:
   include:
-    - env:
-      - TASK=siconos_default:docker=false:distrib=ubuntu,14.04:targets=all,
+
+    - env: TYPE=travis
       os: linux
       addons:
         apt:
@@ -20,8 +20,6 @@ matrix:
             - george-edison55-precise-backports # cmake 3.2.3 / doxygen 1.8.3
 
           packages:
-            - g++-4.9
-            - gfortran-4.9
             - blas
             - lapack
             - cmake
@@ -40,10 +38,23 @@ matrix:
             - python-pytest
             - python-scipy
             - python-matplotlib
-            
     - env:
+        TASK=siconos_default:docker=false:distrib=ubuntu,14.04:targets=all,
+      addons:
+        apt:
+          packages:
+            - g++-4.9
+            - gfortran-4.9
+    - env:
+      - TYPE=docker
       - TASK=siconos_openblas_lapacke
 
+matrix:
+  exclude:
+    env:
+      - TYPE=travis
+      - TYPE=docker
+      
 before_script:
   - mkdir -p build
   - cd build
