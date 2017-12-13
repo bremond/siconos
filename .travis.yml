@@ -5,18 +5,20 @@ sudo: required
 
 service: docker
 
-before_install:
-    - CI/before_install.sh
-
 matrix:
   include:
-    - env: TASK=siconos_default:docker=false:distrib=ubuntu,14.04:targets=all,
+    - env:
+        - TASK=siconos_default:docker=false:distrib=ubuntu,14.04:targets=all,
+        - CXX=g++-4.9
+        - CC=gcc-4.9
+        - FC=gfortran-4.9
+        
       os: linux
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - george-edison55-precise-backports
+
 
           packages:
             - libboost-dev
