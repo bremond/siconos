@@ -38,6 +38,11 @@ matrix:
 
       
 before_script:
+  - case $TASK in
+      *docker=false*)
+        pip install lxml
+        ;;
+    esac
   - mkdir -p build
   - cd build
 
