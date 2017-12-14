@@ -95,8 +95,9 @@ class CiTask(object):
                  srcs=None,
                  targets=None,
                  cmake_cmd='cmake',
-                 make_cmd='make',
                  cmake_args=[],
+                 make_cmd='make',
+                 make_args=[],
                  directories=[]):
 
         """Create a task, see examples in tasks.py.
@@ -114,6 +115,7 @@ class CiTask(object):
         self._cmake_cmd = cmake_cmd
         self._make_cmd = make_cmd
         self._cmake_args = cmake_args
+        self._make_args = make_args
         self._directories = directories
 
     def template_maker(self):
@@ -154,6 +156,7 @@ class CiTask(object):
                  cmake_cmd=self._cmake_cmd,
                  make_cmd=self._make_cmd,
                  cmake_args=self._cmake_args,
+                 make_args=self._make_args,
                  add_directories=None,
                  add_pkgs=None, remove_pkgs=None, add_srcs=None,
                  remove_srcs=None, add_targets=None, remove_targets=None):
@@ -217,6 +220,7 @@ class CiTask(object):
                               pkgs=pkgs, srcs=srcs, targets=new_targets, cmake_cmd=cmake_cmd,
                               cmake_args=cmake_args,
                               make_cmd=make_cmd,
+                              make_args=make_args,
                               directories=directories)
             return new_task
             
@@ -247,6 +251,7 @@ class CiTask(object):
 
             # --- List of arguments for cmake command ---
             cmake_args = self._cmake_args
+            make_args = self._make_args
             if self._docker:
                 cmake_args += ['-DMODE={0}'.format(self._mode),
                                '-DCI_CONFIG={0}'.format(ci_config_args),
@@ -281,7 +286,7 @@ class CiTask(object):
                     print("cmake command is: {:}".format(' '.join(full_cmd)))
                     return_code += call(full_cmd, cwd=bdir)
                     for target in self._targets[src]:
-                        return_code += call([self._make_cmd] + [target], cwd=bdir)
+                        return_code += call([self._make_cmd] + make_args + [target], cwd=bdir)
                 else:
                     msg = 'Would call: \n  - {:}'.format(' '.join(full_cmd))
                     msg += '\n  - make target, \n for target in '
@@ -305,11 +310,11 @@ class CiTask(object):
 
             try:
                 if self._docker:
-                    return_code += call([self._make_cmd] + ['docker-clean-usr-local'], cwd=bdir)
+                    return_code += call([self._make_cmd] + make_args + ['docker-clean-usr-local'], cwd=bdir)
 
                     if not self._fast:
 
-                        return_code += call([self._make_cmd] + ['docker-clean'],
+                        return_code += call([self._make_cmd] + make_args + ['docker-clean'],
                                             cwd=bdir)
 
             except Exception as error:
