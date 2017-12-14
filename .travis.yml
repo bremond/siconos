@@ -11,6 +11,13 @@ python: 3.6
 
 matrix:
   include:
+    - env: TASK=base:docker=true:distrib=ubuntu,14.04:targets=all,test
+    - env: TASK=siconos_ubuntu_15_04
+    - env: TASK=siconos_ubuntu_16_04
+    - env: TASK=siconos_ubuntu_17_04
+    - env: TASK=siconos_ubuntu_17_10
+    - env: TASK=siconos_debian_latest
+    - env: TASK=siconos_fedora_latest
     - env:
         - TASK=siconos_default:docker=false:distrib=ubuntu,14.04:targets=all,test
         - CXX=g++-4.9
@@ -35,10 +42,7 @@ matrix:
             - libatlas-dev
             - g++-4.9
             - gfortran-4.9
-    - env:
-        - TASK=siconos_ubuntu_14_04
-        - TASK=siconos_openblas_lapacke      
-
+    
       
 before_script:
   - case $TASK in
@@ -59,3 +63,6 @@ script:
     else
       ../CI/driver.py --run --root-dir=..;
     fi
+
+
+myentry: hello
