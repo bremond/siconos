@@ -7,10 +7,12 @@ service: docker
 
 language: python
 
+python: 3.6
+
 matrix:
   include:
     - env:
-        - TASK=siconos_default:docker=false:distrib=ubuntu,14.04:targets=all,
+        - TASK=siconos_default:docker=false:distrib=ubuntu,14.04:targets=all,test
         - CXX=g++-4.9
         - CC=gcc-4.9
         - FC=gfortran-4.9
@@ -34,9 +36,8 @@ matrix:
             - g++-4.9
             - gfortran-4.9
     - env:
-      - TASK=siconos_openblas_lapacke
-      os: linux
-      python: "2.7"
+        - TASK=siconos_ubuntu_14_04
+        - TASK=siconos_openblas_lapacke      
 
       
 before_script:
@@ -46,6 +47,7 @@ before_script:
         pip install scipy
         ;;
       *)
+        pip install pyyaml
         ;;
     esac
   - mkdir -p build
