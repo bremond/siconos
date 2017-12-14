@@ -11,9 +11,7 @@ python: 3.6
 
 matrix:
   include:
-    - env:
-        - BASE=empty:ci_config=default:pkgs=build_base,gcc,gfortran,gnu-c++,atlas-lapack,python-env:srcs=.,
-        - TASK=$BASE:docker=true:distrib=ubuntu,16.04:targets=docker-build,docker-ctest:make_args=-j,
+    - env: TASK=default:docker=true:distrib=ubuntu,16.04:targets=docker-build,docker-ctest:make_args=-j,
     - env: TASK=siconos_ubuntu_15_04
     - env: TASK=siconos_ubuntu_16_04
     - env: TASK=siconos_ubuntu_17_04

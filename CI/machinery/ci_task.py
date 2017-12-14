@@ -93,7 +93,7 @@ class CiTask(object):
                  fast=True,
                  pkgs=None,
                  srcs=None,
-                 targets=None,
+                 targets=dict(),
                  cmake_cmd='cmake',
                  cmake_args=[],
                  make_cmd='make',
@@ -169,20 +169,14 @@ class CiTask(object):
 
             new_distrib = None
 
+            new_srcs = srcs
+
             if type(distrib) == list:
                 new_distrib = ':'.join(distrib)
             else:
                 if distrib is not None:
                     assert type(distrib) == str
                     new_distrib = distrib
-
-            if type(targets) == list:
-                for src in self._targets.keys():
-                    new_targets[src] = targets
-
-            else:
-                assert type(targets) == dict
-                new_targets = targets
 
             if add_pkgs is not None:
                 pkgs = self._pkgs + add_pkgs
@@ -191,17 +185,17 @@ class CiTask(object):
                 pkgs = list(filter(lambda p: p not in remove_pkgs, pkgs))
 
             if add_srcs is not None:
-                srcs = self._srcs + add_srcs
+                new_srcs = self._srcs + add_srcs
 
             if remove_srcs is not None:
-                srcs = list(filter(lambda p: p not in remove_srcs, srcs))
+                new_srcs = list(filter(lambda p: p not in remove_srcs, srcs))
 
             if add_targets is not None:
-                for src in self._targets.keys():
+                for src in new_srcs:
                     new_targets[src] += add_targets
 
             if remove_targets is not None:
-                for src in self._targets.keys():
+                for src in new_srcs:
                     new_targets[src] = list(
                         filter(lambda p: p not in remove_targets, self._targets[src]))
 
@@ -210,6 +204,13 @@ class CiTask(object):
             else:
                 directories = self._directories
 
+            if type(targets) == list:
+                for src in new_srcs:
+                    new_targets[src] = targets
+            else:
+                assert type(targets) == dict
+                new_targets = targets
+                
             from copy import deepcopy
 
             new_task = deepcopy(self)
@@ -217,7 +218,7 @@ class CiTask(object):
             new_task.__init__(mode=mode, build_configuration=build_configuration,
                               docker=docker,
                               distrib=new_distrib, ci_config=ci_config, fast=fast,
-                              pkgs=pkgs, srcs=srcs, targets=new_targets, cmake_cmd=cmake_cmd,
+                              pkgs=pkgs, srcs=new_srcs, targets=new_targets, cmake_cmd=cmake_cmd,
                               cmake_args=cmake_args,
                               make_cmd=make_cmd,
                               make_args=make_args,
@@ -296,7 +297,7 @@ class CiTask(object):
 
             except Exception as error:
                 return_code = 1
-                print(error)
+                raise error
 
         return return_code
 
