@@ -82,7 +82,7 @@ def call(*args, **kwargs):
     return return_code
 
 
-class CiTask():
+class CiTask(object):
 
     def __init__(self,
                  mode='Continuous',
