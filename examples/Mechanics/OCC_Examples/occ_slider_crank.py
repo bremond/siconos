@@ -145,13 +145,13 @@ with Hdf5() as io:
                 joint_class='PivotJointR')
 
     io.addJoint('joint2', 'part2', 'slider',
-                pivot_point=[0.5*l2, 0., 0.],
-                axis=[0., 1., 0],
+                points=[[0.5*l2, 0., 0.]],
+                axes=[[0., 1., 0]],
                 joint_class='PivotJointR')
 
     io.addJoint('joint3', 'part1', 'part2',
-                pivot_point=[l1, 0., 0.],
-                axis=[0., 1., 0.],
+                points=[[l1, 0., 0.]],
+                axes=[[0., 1., 0.]],
                 joint_class='PivotJointR')
 
     io.addInteraction('contact10',
