@@ -41,7 +41,7 @@ class MovedShape(object):
       ([x, y, z], angle)
     """
     def __init__(self,
-                 shape_name,
+                 shape_name=None,
                  shape_data=None,
                  relative_translation=[0, 0, 0],
                  relative_orientation=[1, 0, 0, 0]):
@@ -60,7 +60,11 @@ class MovedShape(object):
             assert len(relative_orientation) == 4
             ori = relative_orientation
 
-        self.shape_name = shape_name
+
+        if shape_name is not None:
+            self.shape_name = shape_name
+        else:
+            self.shape_name = shape_data
         self.data = shape_data
         self.translation = relative_translation
         self.orientation = ori
@@ -90,7 +94,7 @@ class Shape(MovedShape):
     """
 
     def __init__(self,
-                 shape_name,
+                 shape_name=None,
                  shape_data=None,
                  instance_name=None,
                  relative_translation=[0, 0, 0],
@@ -133,7 +137,7 @@ class Volume(Shape):
     """
 
     def __init__(self,
-                 shape_name,
+                 shape_name=None,
                  shape_data=None,
                  instance_name=None,
                  mass=None,
@@ -183,7 +187,7 @@ class Contactor(Shape):
     """
 
     def __init__(self,
-                 shape_name,
+                 shape_name=None,
                  shape_data=None,
                  instance_name=None,
                  collision_group=0,
