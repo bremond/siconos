@@ -107,8 +107,6 @@ public:
 
   void computeV1V2FromAxis();
 
-  int twistCount() { return _twistCount; }
-
   /** destructor
    */
   virtual ~CylindricalJointR() {};
