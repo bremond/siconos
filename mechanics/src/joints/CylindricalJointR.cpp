@@ -106,11 +106,11 @@ CylindricalJointR::CylindricalJointR(SP::SiconosVector P, SP::SiconosVector A,
   setPoint(0, P);
   setAxis(0, A);
   if (d1)
-    setBasePositions(d1->q(), d2 ? d2->q() : SP::SiconosVector());
+    setInitialConditions(d1->q(), d2 ? d2->q() : SP::SiconosVector());
 }
 
-void CylindricalJointR::setBasePositions(SP::SiconosVector q1,
-                                         SP::SiconosVector q2)
+void CylindricalJointR::setInitialConditions(SP::SiconosVector q1,
+                                             SP::SiconosVector q2)
 {
   // in the two-DS case, _P is unused.
   _G1P0->zero();
