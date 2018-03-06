@@ -827,14 +827,9 @@ SICONOS_IO_REGISTER(SiconosShape,
 SICONOS_IO_REGISTER_WITH_BASES(CouplerJointR,(NewtonEulerJointR),
   (_dof1)
   (_dof2)
-  (_joint1)
-  (_joint2)
+  (_joint)
   (_offset)
-  (_ratio)
-  (_ref1)
-  (_ref1_index)
-  (_ref2)
-  (_ref2_index))
+  (_ratio))
 SICONOS_IO_REGISTER_WITH_BASES(CylindricalJointR,(NewtonEulerJointR),
   (_G1P0)
   (_G2P0)
