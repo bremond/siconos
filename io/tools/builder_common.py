@@ -29,7 +29,6 @@ input_headers = {
                   "PrismaticJointR.hpp",
                   "FixedJointR.hpp",
                   "CylindricalJointR.hpp",
-                  "CouplerJointR.hpp",
                   "NewtonEulerJointR.hpp",
                   "JointStopR.hpp",
                   "JointFrictionR.hpp",

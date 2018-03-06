@@ -27,7 +27,6 @@
   REGISTER(CylindricalJointR)                   \
   REGISTER(NewtonEulerJointR)                   \
   REGISTER(FixedJointR)                         \
-  REGISTER(CouplerJointR)                       \
   REGISTER(JointStopR)                          \
   REGISTER(JointFrictionR)                      \
   REGISTER(FMatrix)                             \
