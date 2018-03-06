@@ -25,10 +25,8 @@
 
 #if defined(__GNUC__)
 #define DESTRUCTOR_ATTR __attribute__ ((destructor))
-#define CONSTRUCTOR_ATTR __attribute__ ((constructor))
 #else
 #define DESTRUCTOR_ATTR 
-#define CONSTRUCTOR_ATTR
 #endif
 
 
