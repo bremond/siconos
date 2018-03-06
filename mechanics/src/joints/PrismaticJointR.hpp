@@ -40,6 +40,7 @@ protected:
   /** serialization hooks
    */
   ACCEPT_SERIALIZATION(PrismaticJointR);
+  PrismaticJointR(): NewtonEulerJointR() {};
 
   /** Axis of the prismatic point in the q1 frame of reference
    */
@@ -82,10 +83,6 @@ protected:
                           bool absoluteRef=true);
 
 public:
-
-  /** Empty constructor. The relation may be initialized later by
-   * setPoint, setAbsolute, and setBasePositions. */
-  PrismaticJointR();
 
   /** Constructor based on one or two dynamical systems and an axis.
    *  \param d1 first DynamicalSystem linked by the joint.
