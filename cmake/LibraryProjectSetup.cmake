@@ -90,14 +90,12 @@ macro(LIBRARY_PROJECT_SETUP)
   include_directories(${${PROJECT_NAME}_LOCAL_INCLUDE_DIRECTORIES})
   # and for headers of external libraries
   include_directories(${SICONOS_INCLUDE_DIRECTORIES})
-
-  if(BUILD_SHARED_LIBS AND NOT BUILD_${COMPONENT}_STATIC)
-    add_library(${COMPONENT} SHARED ${${COMPONENT}_SRCS})
-  else()
+  
+  if(NOT BUILD_SHARED_LIBS)
     add_library(${COMPONENT} STATIC ${${COMPONENT}_SRCS})
-    set_property(TARGET ${COMPONENT} PROPERTY POSITION_INDEPENDENT_CODE ON)
+  else()
+    add_library(${COMPONENT} SHARED ${${COMPONENT}_SRCS})
   endif()
-
   list(APPEND installed_targets ${COMPONENT})
   list(REMOVE_DUPLICATES installed_targets)
   set(installed_targets ${installed_targets}
