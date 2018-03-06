@@ -40,6 +40,7 @@ protected:
   /** serialization hooks
    */
   ACCEPT_SERIALIZATION(CylindricalJointR);
+  CylindricalJointR(): NewtonEulerJointR() {};
 
   /** Axis of the cylindrical point in the q1 frame of reference
    */
@@ -77,10 +78,6 @@ protected:
   double _initialAngle;
 
 public:
-
-  /** Empty constructor. The relation may be initialized later by
-   * setPoint, setAbsolute, and setBasePositions. */
-  CylindricalJointR();
 
   /** Constructor based on one or two dynamical systems, a point and an axis.
    *  \param d1 first DynamicalSystem linked by the joint.
