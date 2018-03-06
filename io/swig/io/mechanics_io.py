@@ -1193,7 +1193,7 @@ class Hdf5():
 
     def contact_forces_data(self):
         """
-        Contact points information.
+        Contact points informations.
         """
         return self._cf_data
 
@@ -2906,7 +2906,7 @@ class Hdf5():
           tolerance : friction contact solver tolerance
           numerics_verbose : set verbose mode in numerics
           output_frequency :
-          contact_index_set : index set from which contact point information is retrieved.
+          contact_index_set : index set from which contact points informations are retrieved.
         """
         self.verbose = verbose
         def print_verbose(*args):

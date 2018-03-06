@@ -108,7 +108,7 @@ void MLCPProjectOnConstraints::updateInteractionBlocks()
 
 
 
-  // we put diagonal information on vertices
+  // we put diagonal informations on vertices
   // self loops with bgl are a *nightmare* at the moment
   // (patch 65198 on standard boost install)
 
