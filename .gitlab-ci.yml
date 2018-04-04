@@ -5,7 +5,7 @@ make_doc:
     - "sh CI/make_siconos_doc.sh"
   artifacts:
     paths:
-      - docs/build
+      - build/docs/build
   only:
   - update_doc
 
@@ -13,7 +13,9 @@ pages:
 
   image: python:alpine
   script:
-  - mv docs/build/html public
+  - pwd
+  - ls
+  - mv build/docs/build/html public
   artifacts:
     paths:
     - public

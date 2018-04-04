@@ -10,3 +10,5 @@ sphinxcontrib-bibtex
 sphinxcontrib-pandoc-markdown
 sphinxcontrib-versioning
 sphinxcontrib-websupport
+breathe
+exhale
