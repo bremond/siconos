@@ -6,8 +6,6 @@ apt-get update -qq && apt-get install -y -qq cmake git-core wget make \
 pip3 install -r ./docs/requirements.txt
 mkdir build
 cd build
-pwd
-ls ..
 cmake ../ -DUSER_OPTIONS_FILE=$PWD/../CI/siconos_docs.cmake
 make doxygen
 make doc
