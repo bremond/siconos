@@ -78,7 +78,7 @@ macro(add_docker_targets)
   # Call print_command from mksenv.py to write Dockerfile
   execute_process(COMMAND ${DOCKER_MKSENV_COMMAND} --docker --distrib ${DOCKER_DISTRIB} --pkgs ${DOCKER_TEMPLATES} --split=${DOCKER_MKSENV_SPLIT} ${DOCKER_MKSENV_INPUT} OUTPUT_VARIABLE _contents_)
   file(APPEND ${GENERATED_DOCKER_FILE} ${_contents_})
-  file(APPEND ${GENERATED_DOCKER_FILE} "RUN mkdir -p /usr/local\n")
+  file(APPEND ${GENERATED_DOCKER_FILE} "RUN mkdir -p /usr/local")
   # ================== End of Dockerfile creation ==================
 
 
@@ -91,7 +91,7 @@ macro(add_docker_targets)
   string(REPLACE ":" "-" DOCKER_WORKDIR_VOLUME ${DOCKER_WORKDIR_VOLUME})
   string(REPLACE "." "-" DOCKER_WORKDIR_VOLUME ${DOCKER_WORKDIR_VOLUME})
 
-  set(CTEST_OPTIONS_WITHOUT_DOCKER)
+  set(CTEST_OPTIONS_WITHOUT_DOCKER "--output-on-failure")
   # List of options (-DOPTION=VALUE ...) to be passed to ctest
   # Warning : these are not siconos conf. options for cmake but
   # the options needed by ctest to prepare the pipeline (cmake, make ...)

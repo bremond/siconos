@@ -1,5 +1,7 @@
 #!/usr/bin/env @PYTHON_EXECUTABLE@
-"""Viewer for Siconos mechanics-IO HDF5 files based on VTK."""
+"""
+Description: Viewer and exporter for Siconos mechanics-IO HDF5 files based on VTK.
+"""
 
 # Lighter imports before command line parsing
 from __future__ import print_function
@@ -19,7 +21,8 @@ else:
 
 ## Persistent configuration
 class VViewConfig(dict):
-    def __init__(self, d={'window_size': [600,600]}, filename=None):
+    def __init__(self, d={'background_color' : [0., 0. , 0.],
+                          'window_size': [600,600]}, filename=None):
         super(self.__class__, self).__init__(d)
         self.should_save_config = True
         if filename is not None:
@@ -68,11 +71,12 @@ class VViewOptions(object):
               .format(os.path.split(sys.argv[0])[1]))
         print()
         if not long:
-            print("""[--help] [tmin=<float value>] [tmax=<float value>]
-    [--cf-scale=<float value>] [--no-cf]
-    [--advance=<'fps' or float value>] [--fps=float value]
-    [--camera=x,y,z] [--lookat=x,y,z] [--up=x,y,z] [--ortho=scale]
-    """)
+            print("""[--help] [--tmin=<float value>] [--tmax=<float value>]
+            [--cf-scale=<float value>] [--no-cf] [--normalcone-ratio = <float value>]
+            [--advance=<'fps' or float value>] [--fps=float value]
+            [--camera=x,y,z] [--lookat=x,y,z] [--up=x,y,z] [--ortho=scale]
+            [--visible=all,avatars,contactors]
+            """)
         else:
             print("""Options:
      --help
@@ -1277,14 +1281,13 @@ class VView(object):
 
         for shape_name in self.mappers.keys():
             if shape_name not in self.unfrozen_mappers:
-                print (shape_name)
                 self.unfrozen_mappers[shape_name] = next(self.mappers[shape_name])
 
     def init_contactor(self, contactor_instance_name, instance, instid):
         contactor = instance[contactor_instance_name]
         contact_shape_indx = None
         if 'shape_name' not in contactor.attrs:
-            print("Warning: old format: ctr.name must be ctr.shape_name for body {0}, contact {1}".format(instance_name, contactor_instance_name))
+            print("Warning: old format: ctr.name must be ctr.shape_name for contact {0}".format(contactor_instance_name))
             shape_attr_name='name'
         else:
             shape_attr_name='shape_name'
@@ -1414,7 +1417,7 @@ class VView(object):
             self.static_actors[instid] = list()
 
         for contactor_instance_name in instance:
-            self.init_contactor(contactor_instance_name, instance, instid)
+            self.init_contactor(contactor_instance_name, instance,  instid)
 
     def init_instances(self):
         for instance_name in self.io.instances():
@@ -1424,7 +1427,7 @@ class VView(object):
     def set_position_i(self, instance, q0, q1, q2, q3, q4, q5, q6):
         if (numpy.any(numpy.isnan([q0, q1, q2, q3, q4, q5, q6]))
            or numpy.any(numpy.isinf([q0, q1, q2, q3, q4, q5, q6]))):
-            print('Bad position for', instance, q0, q1, q2, q3, q4, q5, q6)
+            print('Bad position for object number', int(instance),' :',  q0, q1, q2, q3, q4, q5, q6)
             return
 
         q = Quaternion((q3, q4, q5, q6))
@@ -1584,6 +1587,17 @@ class VView(object):
         slider_repres.SetTitleHeight(0.02)
         slider_repres.SetLabelHeight(0.02)
 
+        background_color = self.config.get('background_color', [.0,.0,.0])
+        reverse_background_color =numpy.ones(3) - background_color
+
+        if (numpy.linalg.norm(background_color-reverse_background_color) < 0.2):
+            reverse_background_color = numpy.ones(3)
+        slider_repres.GetSliderProperty().SetColor(*reverse_background_color)
+        slider_repres.GetTitleProperty().SetColor(*reverse_background_color);
+        slider_repres.GetLabelProperty().SetColor(*reverse_background_color);
+        slider_repres.GetTubeProperty().SetColor(*reverse_background_color);
+        slider_repres.GetCapProperty().SetColor(*reverse_background_color);
+
         slider_widget = vtk.vtkSliderWidget()
         slider_widget.SetInteractor(interactor)
         slider_widget.SetRepresentation(slider_repres)
@@ -1650,6 +1664,8 @@ class VView(object):
         # Set the occlusion ratio (initial value is 0.0, exact image)
         self.renderer.SetOcclusionRatio(0.1)
 
+
+        
         # Set the initial camera position and orientation if specified
         if self.opts.initial_camera[0] is not None:
             self.renderer.GetActiveCamera().SetPosition(*self.opts.initial_camera[0])
@@ -1686,6 +1702,7 @@ class VView(object):
         # hlight.SetPosition(0, 0, 500)
         hlight.SetLightTypeToHeadlight()
         self.renderer.AddLight(hlight)
+        self.renderer.SetBackground(*self.config.get('background_color', [.0,.0,.0]))
 
     def setup_charts(self):
         # Warning! numpy support offer a view on numpy array
@@ -1786,6 +1803,18 @@ class VView(object):
             slider_repres.SetLabelFormat("%3.4lf")
             slider_repres.SetTitleHeight(0.02)
             slider_repres.SetLabelHeight(0.02)
+            
+            background_color = self.config.get('background_color', [.0,.0,.0])
+            reverse_background_color =numpy.ones(3) - background_color
+
+            if (numpy.linalg.norm(background_color-reverse_background_color) < 0.2):
+                reverse_background_color = numpy.ones(3)
+
+            slider_repres.GetSliderProperty().SetColor(*reverse_background_color)
+            slider_repres.GetTitleProperty().SetColor(*reverse_background_color);
+            slider_repres.GetLabelProperty().SetColor(*reverse_background_color);
+            slider_repres.GetTubeProperty().SetColor(*reverse_background_color);
+            slider_repres.GetCapProperty().SetColor(*reverse_background_color);
 
             slider_widget = vtk.vtkSliderWidget()
             self.slider_widget = slider_widget
