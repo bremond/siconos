@@ -2,7 +2,7 @@ sudo: required
 
 service: docker
 
-# 
+#
 # for CI driver
 #
 language: python
@@ -69,4 +69,3 @@ script:
     else
       ../CI/driver.py --run --root-dir=.. --packages-db=../CI/config/siconos.yml;
     fi
-
