@@ -66,10 +66,11 @@ def get_entry(spec=None, distrib=None, distrib_version=None, pkg=None,
     Notes
     -----
     * precedence order is
-       1 distrib with version
-       2 distrib only (full name)
-       3 match with distrib
-       4 wildcard (as defined in spec)
+       1 distrib version
+       2 distrib version match with other distrib
+       3 distrib without version
+       4 distrib without version match with other distrib
+       5 wildcard (as defined in spec)
 
     """
 
@@ -81,10 +82,15 @@ def get_entry(spec=None, distrib=None, distrib_version=None, pkg=None,
         if distrib_full in spec[section][pkg]:
             return spec[section][pkg][distrib_full]
 
-        elif distrib in spec[section][pkg]:
+        if distrib_full in spec['match']:
+            match_distrib = spec['match'][distrib_full]
+            if match_distrib in spec[section][pkg]:
+                return spec[section][pkg][match_distrib]
+
+        if distrib in spec[section][pkg]:
             return spec[section][pkg][distrib]
 
-        elif distrib in spec['match']:
+        if distrib in spec['match']:
             match_distrib = spec['match'][distrib]
             if match_distrib in spec[section][pkg]:
                 return spec[section][pkg][match_distrib]
@@ -92,8 +98,7 @@ def get_entry(spec=None, distrib=None, distrib_version=None, pkg=None,
         if wildcard(spec) in spec[section][pkg]:
             return spec[section][pkg][wildcard(spec)]
 
-        else:
-            return None
+        return None
 
 
 def pkg_entries(spec=None, distrib=None, distrib_version=None, pkg=None):
