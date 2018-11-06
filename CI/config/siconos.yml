@@ -333,7 +333,7 @@ pkgs:
       - gmp-devel
     fedora: gmp-devel
 
-    
+
   cppunit:
     nix:
       - cppunit
@@ -383,7 +383,7 @@ pkgs:
       - libblas-dev
       - liblapack-dev
       - libatlas-base-dev
-      
+
     fedora:
       - blas
       - blas-devel
@@ -406,11 +406,11 @@ pkgs:
       - libgmp10-6.1.2-5.1.x86_64
       - mumps
       - mumps-devel
-      
+
     debian:
       - libmumps-seq
       - libmumps-seq-dev
-      
+
   mumps-par:
     nix:
       - pfff_mumps_is_missing
