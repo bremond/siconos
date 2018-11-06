@@ -10,7 +10,6 @@ match:
   ubuntu: debian
   ubuntu-18.10: ubuntu-18.04
   ubuntu-18.04: ubuntu-17.10
-  ubuntu-17.10: ubuntu
   nixos/nix: nix
   nvidia/opengl: debian
   suse: opensuse

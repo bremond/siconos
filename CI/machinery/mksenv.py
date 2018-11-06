@@ -25,7 +25,6 @@ output_mode_spec['script'] = OutputMode.Script
 output_mode_spec['docker'] = OutputMode.Docker
 output_mode_spec['vagrant'] = OutputMode.Vagrant
 
-
 def wildcard(spec):
     if 'wildcard' in spec:
         return spec['wildcard']
@@ -46,6 +45,14 @@ def is_str(a):
 def is_atom(a):
     return not (hasattr(a, '__iter__'))
 
+def recurse_match(spec, section, pkg, something):
+    if something in spec['match']:
+        match_something = spec['match'][something]
+        if match_something in spec[section][pkg]:
+            return spec[section][pkg][match_something]
+        if match_something in spec['match']:
+            return recurse_match(spec, section, pkg, match_something)
+    return None
 
 def get_entry(spec=None, distrib=None, distrib_version=None, pkg=None,
               section=None):
@@ -68,9 +75,9 @@ def get_entry(spec=None, distrib=None, distrib_version=None, pkg=None,
     * precedence order is
        1 distrib version
        2 distrib version match with other distrib
-       3 distrib without version
-       4 distrib without version match with other distrib
-       5 wildcard (as defined in spec)
+       3 distrib
+       4 distrib match with other distrib
+       3 wildcard (as defined in spec)
 
     """
 
@@ -79,22 +86,25 @@ def get_entry(spec=None, distrib=None, distrib_version=None, pkg=None,
     # Look for specific config matching
     if section in spec and pkg in spec[section]:
 
+        # 1. distrib + version specified
         if distrib_full in spec[section][pkg]:
             return spec[section][pkg][distrib_full]
 
-        if distrib_full in spec['match']:
-            match_distrib = spec['match'][distrib_full]
-            if match_distrib in spec[section][pkg]:
-                return spec[section][pkg][match_distrib]
+        # 2. some match on distrib + version
+        try_match_full = recurse_match(spec, section, pkg, distrib_full)
+        if try_match_full is not None:
+            return try_match_full
 
+        # 3. distrib + version specified
         if distrib in spec[section][pkg]:
             return spec[section][pkg][distrib]
 
-        if distrib in spec['match']:
-            match_distrib = spec['match'][distrib]
-            if match_distrib in spec[section][pkg]:
-                return spec[section][pkg][match_distrib]
+        # 4. some match on distrib
+        try_match = recurse_match(spec, section, pkg, distrib)
+        if try_match is not None:
+            return try_match
 
+        # 5. wildcard
         if wildcard(spec) in spec[section][pkg]:
             return spec[section][pkg][wildcard(spec)]
 
