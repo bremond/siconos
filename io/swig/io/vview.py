@@ -14,7 +14,6 @@ import traceback
 from vtk.util.vtkAlgorithm import VTKPythonAlgorithmBase
 from vtk.numpy_interface import dataset_adapter as dsa
 
-
 # Exports from this module
 __all__ = ['VView', 'VViewOptions', 'VExportOptions', 'VViewConfig']
 
@@ -854,37 +853,37 @@ class IOReader(VTKPythonAlgorithmBase):
                     self._contact_field[mu].AddArray(self.ids[mu])
                     self._output[mu].GetPointData().AddArray(self.ids[mu])
 
-                    dsa_ids = numpy.unique(self.ids_at_time[mu][:, 1])
-                    dsb_ids = numpy.unique(self.ids_at_time[mu][:, 2])
-                    _i, _i, dsa_pos_ids = numpy.intersect1d(
-                        self.pos_data[:, 1],
-                        dsa_ids, return_indices=True)
-                    _i, _i, dsb_pos_ids = numpy.intersect1d(
-                        self.pos_data[:, 1],
-                        dsb_ids, return_indices=True)
+                    if NumpyVersion(numpy.__version__) >= '1.15.0':
+                        dsa_ids = numpy.unique(self.ids_at_time[mu][:, 1])
+                        dsb_ids = numpy.unique(self.ids_at_time[mu][:, 2])
+                        _i, _i, dsa_pos_ids = numpy.intersect1d(
+                            self.pos_data[:, 1],
+                            dsa_ids, return_indices=True)
+                        _i, _i, dsb_pos_ids = numpy.intersect1d(
+                            self.pos_data[:, 1],
+                            dsb_ids, return_indices=True)
 
-                    # objects a & b translations
-                    obj_pos_a = self.pos_data[dsa_pos_ids, 2:5]
-                    obj_pos_b = self.pos_data[dsb_pos_ids, 2:5]
+                        # objects a & b translations
+                        obj_pos_a = self.pos_data[dsa_pos_ids, 2:5]
+                        obj_pos_b = self.pos_data[dsb_pos_ids, 2:5]
 
-                    self._all_objs_pos[mu] = numpy.vstack((obj_pos_a,
-                                                           obj_pos_b))
+                        self._all_objs_pos[mu] = numpy.vstack((obj_pos_a,
+                                                               obj_pos_b))
 
-                    self._all_objs_pos_vtk[mu] = numpy_support.numpy_to_vtk(
-                        self._all_objs_pos[mu])
-                    self._objs_points[mu].SetData(self._all_objs_pos_vtk[mu])
+                        self._all_objs_pos_vtk[mu] = numpy_support.numpy_to_vtk(
+                            self._all_objs_pos[mu])
+                        self._objs_points[mu].SetData(self._all_objs_pos_vtk[mu])
 
-                    self._objs_output[mu].GetPointData().AddArray(self.cn[mu])
-                    self._objs_output[mu].GetPointData().AddArray(self.cf[mu])
+                        self._objs_output[mu].GetPointData().AddArray(self.cn[mu])
+                        self._objs_output[mu].GetPointData().AddArray(self.cf[mu])
 
-
-                    #if dom_imu is not None:
-                    #    self.dom_at_time[mu] = self._dom_data[
-                    #        dom_imu, 1]
-                    #    self.dom[mu] = numpy_support.numpy_to_vtk(
-                    #        self.dom_at_time[mu])
-                    #    self.dom[mu].SetName('domains')
-                    #    self._contact_field[mu].AddArray(self.dom[mu])
+                        #if dom_imu is not None:
+                        #    self.dom_at_time[mu] = self._dom_data[
+                        #        dom_imu, 1]
+                        #    self.dom[mu] = numpy_support.numpy_to_vtk(
+                        #        self.dom_at_time[mu])
+                        #    self.dom[mu].SetName('domains')
+                        #    self._contact_field[mu].AddArray(self.dom[mu])
 
         except Exception:
             traceback.print_exc()
@@ -2374,6 +2373,7 @@ from math import pi
 import bisect
 from numpy.linalg import norm
 import numpy
+from numpy.lib import NumpyVersion
 import random
 
 from siconos.io.mechanics_hdf5 import MechanicsHdf5
