@@ -27,8 +27,11 @@ set(PROJECT_NAME_CAP Siconos)
 
 
 # Get current year (for licence and other cartridges)
-execute_process(COMMAND date "+\"%Y\"" OUTPUT_VARIABLE YEAR)
-string(STRIP ${YEAR} YEAR)
+find_program(DATE_COMMAND date)
+if(DATE_COMMAND)
+  execute_process(COMMAND date "+\"%Y\"" OUTPUT_VARIABLE YEAR)
+  string(STRIP ${YEAR} YEAR)
+endif()
 if(USER_OPTIONS_FILE)
   get_filename_component(input_file ${USER_OPTIONS_FILE} NAME)
   get_filename_component(path_to_file ${USER_OPTIONS_FILE} PATH)
