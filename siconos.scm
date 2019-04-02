@@ -14,12 +14,8 @@
   #:use-module (gnu packages base)
   #:use-module (gnu packages cmake)
   #:use-module (gnu packages maths)
-  #:use-module (gnu packages xml))
-
-;(use-modules (guix git-download)
-;             (guix build-system cmake)
-;             (guix licenses)
-;             (guix packages))
+  #:use-module (gnu packages xml)
+  #:use-module (gnu packages game-development))
 
 (define-public siconos
   (package
@@ -35,21 +31,22 @@
     (build-system cmake-build-system)
     (arguments
      '(#:build-type "Release"           ;Build without '-g' to save space.
-                  #:configure-flags '()
-                  #:tests? #f))                              ;XXX: no "test" target
-    (inputs
+                    #:configure-flags '()
+                    #:tests? #f))                              ;XXX: no "test" target
+    (native-inputs
      `(("swig" ,swig)
-       ("boost" ,boost)
+       ("gcc" ,gcc)
+       ("gfortran" ,gfortran)
+       ("gnu-make" ,gnu-make)
+       ("cmake" ,cmake)))
+    (inputs
+     `(("boost" ,boost)
        ("gmp" ,gmp)
        ("openblas" ,openblas)
        ("lapack" ,lapack)
        ("python" ,python)
        ("python-numpy" ,python-numpy)
-     ("python-scipy" ,python-scipy)
-     ("gfortran" ,gfortran)
-     ("gcc" ,gcc)
-     ("gnu-make" ,gnu-make)
-     ("cmake" ,cmake)))
+       ("python-scipy" ,python-scipy)))
     (home-page "https://nonsmooth.gricad-pages.univ-grenoble-alpes.fr/siconos/index.html")
     (synopsis "Library for nonsmooth numerical simulation")
     (description
