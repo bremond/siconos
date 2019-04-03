@@ -130,7 +130,9 @@ static char* format_msg_concat(const char* msg1, const char* msg2)
 
 #ifdef WITH_SERIALIZATION
 %{
+#ifdef __cplusplus
 #include <SiconosFullNumerics.hpp>
+#endif
 %}
 #endif
 %include picklable.i

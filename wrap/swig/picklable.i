@@ -2,6 +2,8 @@
 #define PICKLABLE_i
 
 #ifdef WITH_SERIALIZATION
+#ifdef __cplusplus
+
 %{
 #include <boost/numeric/ublas/matrix_sparse.hpp>
 #include <boost/archive/binary_oarchive.hpp>
@@ -109,7 +111,7 @@ typedef std::string bytes;
  }
 %enddef
 #endif
-
+#endif
 #ifndef WITH_SERIALIZATION
 
 %define %make_picklable(CLASS, COMPONENT)
