@@ -73,7 +73,7 @@ macro(doxy2swig_docstrings COMP)
       )
     
     # -- command to build .i files from xml (doxygen outputs) for current component  --
-    # Call a python function from doctools.py (build_docstrings).
+    # Call a python function from gendoctools (build_docstrings).
     add_custom_command(OUTPUT  ${SICONOS_SWIG_ROOT_DIR}/${COMP}-docstrings.i
       DEPENDS ${COMP}_xml4swig
       COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH=${CMAKE_BINARY_DIR}/share ${PYTHON_EXECUTABLE} -c
@@ -145,10 +145,16 @@ macro(add_siconos_swig_sub_module fullname)
   # extra per-module flags if any
   set(${COMPONENT}_SWIG_DEFS_${_name} "${${COMPONENT}_SWIG_DEFS};${${COMPONENT}_SWIG_DEFS_${_name}}")
 
-  if(WITH_CXX AND (BUILD_AS_CPP OR NOT ${COMPONENT} MATCHES "numerics"))
+  IF(WITH_CXX AND (BUILD_AS_CPP OR NOT ${COMPONENT} MATCHES "numerics"))
     set_source_files_properties(${swig_file}
       PROPERTIES SWIG_FLAGS "${${COMPONENT}_SWIG_DEFS_${_name}}" CPLUSPLUS ON)
-  endif()
+  ELSE(WITH_CXX AND (BUILD_AS_CPP OR NOT ${COMPONENT} MATCHES "numerics"))
+    # C compilation, pass SWIG_FLAGS.
+    IF(${COMPONENT} MATCHES "numerics")
+      set_source_files_properties(${swig_file}
+        PROPERTIES SWIG_FLAGS "${${COMPONENT}_SWIG_DEFS_${_name}}")
+    ENDIF()
+  ENDIF()
 
   # --- build swig module ---
   if(CMAKE_VERSION VERSION_LESS 3.8.0)
@@ -187,12 +193,11 @@ macro(add_siconos_swig_sub_module fullname)
   endif()
   # Check dependencies and then link ...
   add_dependencies(${SWIG_MODULE_${_name}_REAL_NAME} ${COMPONENT})
-
   if(UNIX AND NOT APPLE)
     # do not link against the Python library on unix, it is useless
     swig_link_libraries(${_name} ${${COMPONENT}_LINK_LIBRARIES} ${COMPONENT})
   else()
-    swig_link_libraries(${_name} ${PYTHON_LIBRARIES} ${${COMPONENT}_LINK_LIBRARIES} ${COMPONENT})
+    swig_link_libraries(${_name} ${Python3_LIBRARIES} ${${COMPONENT}_LINK_LIBRARIES} ${COMPONENT})
   endif()
 
   # set dependency of sphinx apidoc to this target

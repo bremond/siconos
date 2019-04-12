@@ -9,10 +9,12 @@
 # ============= Global 'standard' cmake Settings =============
 
 # Set minimum version for cmake
-cmake_minimum_required(VERSION 3.0.2)
+# We advise 3.12 at least, but 3.7 is authorized since it's the default version on current debian stable.
+cmake_minimum_required(VERSION 3.7)
 
 # Set cmake modules directory (i.e. the one which contains all user-defined FindXXX.cmake files among other things)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/docs/cmake)
 
 # Force out-of-source build
 include(OutOfSourcesBuild)
@@ -32,30 +34,35 @@ if(DATE_COMMAND)
   execute_process(COMMAND date "+\"%Y\"" OUTPUT_VARIABLE YEAR)
   string(STRIP ${YEAR} YEAR)
 endif()
+
+# Read user option file, if provided on command line
 if(USER_OPTIONS_FILE)
-  get_filename_component(input_file ${USER_OPTIONS_FILE} NAME)
-  get_filename_component(path_to_file ${USER_OPTIONS_FILE} PATH)
-  find_file(filefound NAMES ${input_file}
-    PATHS ${path_to_file} ${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}
-    )
-  if(NOT ${filefound}-NOTFOUND)
-    configure_file(${path_to_file}/${input_file} ${CMAKE_SOURCE_DIR}/${input_file})
-  else()
-    message(FATAL_ERROR "Cannot find file ${USER_OPTIONS_FILE}")
+  # Check for tilde in file name (not handled properly by cmake)
+  string(FIND ${USER_OPTIONS_FILE} "\~" res)
+  if(res EQUAL 0)
+    string(REPLACE "\~" "$ENV{HOME}" USER_OPTIONS_FILE ${USER_OPTIONS_FILE})
   endif()
-  message("\n !!!!! Load user-defined options set from file ${filefound} !!!!! \n")
-  include(${input_file})
-  # copy user file to binary dir, just for 'visual' check.
-  configure_file(${input_file} ${input_file} COPYONLY)
-  assert(WITH_FORTRAN "The option WITH_FORTRAN is not defined in the user options file")
+  if(NOT IS_ABSOLUTE ${USER_OPTIONS_FILE})
+    get_filename_component(USER_OPTIONS_FILE ${USER_OPTIONS_FILE} REALPATH
+      BASE_DIR ${CMAKE_CURRENT_BINARY_DIR})
+  endif()
+  message("\n !!!!! Load user-defined options set from file ${USER_OPTIONS_FILE} !!!!! \n")
+  # Configure to take into account any change in ${USER_OPTIONS_FILE}
+  configure_file(${USER_OPTIONS_FILE} current_options.cmake COPYONLY)
+  include(${CMAKE_CURRENT_BINARY_DIR}/current_options.cmake)
 else()
+  message("\n !!!!! Load default configuration set from file ${CMAKE_SOURCE_DIR}/cmake/default_options.cmake !!!!! \n")
   include(default_options)
 endif()
 
 # Set target names from components list
-assert(COMPONENTS)
+if(NOT COMPONENTS)
+  message(WARNING "Components list is empty - Nothing will be built.")
+endif()
+
 set(AVAILABLE_COMPONENTS "externals numerics kernel control mechanics mechanisms io")
 foreach(component_name IN LISTS COMPONENTS)
+  # Check and set components list
   string(TOUPPER ${component_name} upname)
   list(FIND ${AVAILABLE_COMPONENTS} ${component_name} comp_exists)
   if(NOT comp_exists)
@@ -192,8 +199,10 @@ if (USE_SYSTEM_SUITESPARSE)
 else()
   message(STATUS "CSparse headers : externals/SuiteSparse/CSparse")
 endif()
-message(STATUS "Python interpreter is ${PYTHON_EXECUTABLE}")
-message(STATUS "Python libraries are ${PYTHON_LIBRARIES}")
+message(STATUS "Python interpreter is ${Python3_EXECUTABLE}")
+if(WITH_PYTHON_WRAPPER)
+  message(STATUS "Python libraries are ${Python3_LIBRARIES}")
+endif()
 message(STATUS "All linking libraries are : ${SICONOS_LINK_LIBRARIES}.")
 message(STATUS "All include directories are : ${SICONOS_INCLUDE_DIRECTORIES}.")
 message(STATUS "The project will be installed in ${CMAKE_INSTALL_PREFIX}")

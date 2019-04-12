@@ -18,9 +18,7 @@ if(WITH_PYTHON_WRAPPER)
     list(APPEND CMAKE_SWIG_FLAGS "-D__${SYSTEM_ARCHITECTURE}__")
   endif()
 
-  if(PYTHON_VERSION_MAJOR VERSION_GREATER 2)
-    list(APPEND CMAKE_SWIG_FLAGS "-py3")
-  endif()
+  list(APPEND CMAKE_SWIG_FLAGS "-py3")
 
   list(REMOVE_DUPLICATES CMAKE_SWIG_FLAGS)
   set(CMAKE_SWIG_FLAGS "${CMAKE_SWIG_FLAGS}" CACHE INTERNAL "Swig flags")
@@ -30,6 +28,10 @@ if(WITH_PYTHON_WRAPPER)
   # protected methods needed to the interface to compile.
   # - with "dirprot" swig will attemp to wrap all the public and protected methods at once.
   set(SWIG_DEFS "-dirprot;-dirvtable;-Wextra")
+
+  if(WITH_MPI4PY)
+    set(SWIG_DEFS "${SWIG_DEFS};-I${python_MPI4PY}/include;-DWITH_MPI4PY")
+  endif()
   
   if(WITH_FCLIB)
     set(SWIG_DEFS "${SWIG_DEFS};-DWITH_FCLIB")
@@ -51,7 +53,7 @@ if(WITH_PYTHON_WRAPPER)
     CACHE INTERNAL "Root path for swig outputs.")
 
   # -- include dir --
-  set(SICONOS_SWIG_INCLUDE_DIRS ${SICONOS_SWIG_SRC_DIRS} ${SICONOS_SWIG_ROOT_DIR} ${PYTHON_INCLUDE_DIRS}
+  set(SICONOS_SWIG_INCLUDE_DIRS ${SICONOS_SWIG_SRC_DIRS} ${SICONOS_SWIG_ROOT_DIR} ${Python3_INCLUDE_DIRS}
     CACHE INTERNAL "Directories required for swig includes.")
 
   foreach(_dir ${SICONOS_SWIG_INCLUDE_DIRS})

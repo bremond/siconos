@@ -8,8 +8,6 @@
 include(FindPythonModule)
 include(FindSphinxModule)
 
-find_package(PythonFull REQUIRED)
-
 # Devel option : generate pure doxygen doc (no sphinx), extracting all and with graphs.
 option(USE_DEVEL_DOXYGEN "Build doxygen (html, latex ...) doc, extracting all. Devel purpose. Default = OFF" OFF)
 
@@ -116,7 +114,7 @@ if(WITH_DOCUMENTATION)
   # List and copy all rst files from source dir to binary dir
   file(GLOB_RECURSE files_rst RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}/sphinx
     ${CMAKE_CURRENT_SOURCE_DIR}/sphinx/*.rst)
-  foreach(filepath ${files_rst})
+  foreach(filepath IN LISTS files_rst)
     #get_filename_component(filename ${filepath} NAME)
     
     configure_file (
@@ -189,8 +187,6 @@ if(WITH_DOCUMENTATION)
 
   add_custom_target(doc DEPENDS html)
 
-  # Some outdated, unstable, on test ... options.
-  include(doc_devel)
   message("------ End global setup for documentation ------\n")
 
 

@@ -15,12 +15,17 @@ if(WITH_${COMPONENT}_TESTING)
   if(HAS_LAPACK_DGESVD)
     NEW_TEST(tools_test_pinv test_pinv.c)
   endif()
-
+  NEW_TEST(tools_projection test_projection.c)
   NEW_TEST(tools_test_NumericsArrays NumericsArrays.c)
 
   #  tests for NumericsMatrix
   NEW_TEST(tools_test_NumericsMatrix NM_test.c)
 
+  # MUMPS interface tests
+  if(WITH_MUMPS)
+    NEW_TEST(tools_test_MUMPS NM_MUMPS_test.c)
+  endif()
+  
   # Specific tests for SBM matrices
   NEW_TEST(tools_test_SBM SBM_test.c)
   NEW_TEST(tools_test_SBCM_to_SBM SBCM_to_SBM.c)
@@ -364,6 +369,11 @@ if(WITH_${COMPONENT}_TESTING)
     
     NEW_GFC_3D_TEST_COLLECTION(TEST_NSN_COLLECTION_2)
     
+  # ---------------------------------------------------
+  # --- Rolling friction contact problem formulation ---
+  # ---------------------------------------------------
+  
+  NEW_RFC_3D_TEST_COLLECTION(TEST_NSGS_COLLECTION_1)
   endif()
 
   #===========================================
