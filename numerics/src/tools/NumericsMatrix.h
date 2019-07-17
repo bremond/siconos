@@ -31,7 +31,7 @@
 #include "SiconosConfig.h"
 #include "CSparseMatrix.h" // for CS_INT
 #include "NM_MPI.h"
-
+#include "numerics_malloc.h"
 /** \struct NumericsMatrixInternalData NumericsMatrix.h
  * Structure for simple workspaces
  */
