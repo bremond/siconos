@@ -2681,6 +2681,19 @@ int NM_gesv_expert(NumericsMatrix* A, double *b, unsigned keep)
       if (keep != NM_KEEP_FACTORS|| mumps_id->job == -1)
       {
         NM_MUMPS(A, 6); /* analyzis,factorization,solve*/
+        if (mumps_id->infog[0] == -9 && mumps_id->infog[0] > 0)
+        {
+          if (verbose > 0)
+          {
+            printf("NM_gesv: attempting another MUMPS factorization with icntl(14)*2");
+          }
+          while (mumps_id->infog[0] == -9 && mumps_id->infog[0] > 0)
+          {
+            NM_MUMPS_set_icntl(A, 14, NM_MUMP_icntl(A, 14) * 2);
+            NM_MUMPS(A, 2);
+          }
+          NM_MUMPS(A, 3);
+        }
       }
       else
       {
