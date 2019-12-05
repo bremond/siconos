@@ -42,6 +42,7 @@ int main(int argc, char *argv[])
 
   if(rank == 0)
   {
+
     assert (rank == 0);
     NM_MUMPS_set_verbosity(M, 1);
 
@@ -138,6 +139,7 @@ int main(int argc, char *argv[])
 #ifdef SICONOS_HAS_MPI
   MPI_Finalize();
 #endif
+  NM_clear(M);
 
   return(rval);
 }
