@@ -30,6 +30,7 @@
 #include "NumericsVector.h"
 #include "float.h"
 #include "NumericsSparseMatrix.h"
+#include "timers_interf.h"
 //#define DEBUG_NOCOLOR
 /* #define DEBUG_STDOUT */
 /* #define DEBUG_MESSAGES */
@@ -238,6 +239,7 @@ void gfc3d_ADMM(GlobalFrictionContactProblem* restrict problem, double* restrict
                 double* restrict velocity, double* restrict globalVelocity,
                 int* restrict info, SolverOptions* restrict options)
 {
+
   /* verbose=1; */
   /* int and double parameters */
   int* iparam = options->iparam;
@@ -496,7 +498,6 @@ void gfc3d_ADMM(GlobalFrictionContactProblem* restrict problem, double* restrict
       /*  0 - Compute b   */
       /********************/
       gfc3d_ADMM_compute_full_b(nc, u, mu, b, b_full, options, update_b);
-
       /********************/
       /*  1 - Compute v */
       /********************/
@@ -809,7 +810,7 @@ void gfc3d_ADMM(GlobalFrictionContactProblem* restrict problem, double* restrict
       numerics_printf_verbose(1,"---- GFC3D - ADMM  -                            primal residual = %14.7e, epsilon_primal = %14.7e", r,  epsilon_primal);
       numerics_printf_verbose(1,"---- GFC3D - ADMM  -                            dual residual = %14.7e, epsilon_dual = %14.7e", s,  epsilon_dual);
 
-      if (stopping_criterion)
+      if (1)
       {
         /* check the full criterion */
         cblas_dscal(m, rho, reaction, 1);
@@ -958,7 +959,7 @@ int gfc3d_ADMM_setDefaultSolverOptions(SolverOptions* options)
   options->dparam[SICONOS_FRICTION_3D_ADMM_RHO] = 0.1;
   options->dparam[SICONOS_FRICTION_3D_ADMM_RESTART_ETA] = 0.999;
   options->dparam[SICONOS_FRICTION_3D_ADMM_BALANCING_RESIDUAL_TAU]=2.0;
-  options->dparam[SICONOS_FRICTION_3D_ADMM_BALANCING_RESIDUAL_PHI]=10.0;
+  options->dparam[SICONOS_FRICTION_3D_ADMM_BALANCING_RESIDUAL_PHI]=200.0;
 
 
   options->iparam[SICONOS_FRICTION_3D_IPARAM_RESCALING]=SICONOS_FRICTION_3D_RESCALING_NO;

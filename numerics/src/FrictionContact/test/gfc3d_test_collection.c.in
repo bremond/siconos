@@ -41,12 +41,15 @@ static inline char* strdup(char* src)
 #include "GAMSlink.h"
 #include "globalFrictionContact_test_function.h"
 #include "SolverOptions.h"
+#include "numerics_verbose.h"
 #include "@PROBLEM_FORMULATION@_Solvers.h"
 
 #define @PROBLEM_COLLECTION@ 1
 
 static int gfc_test(char ** test)
 {
+  verbose=1;
+
   int info =0 ;
 
   char * filename = test[0];
@@ -319,10 +322,6 @@ static int gfc_test(char ** test)
     free(succeeded_tests);
     free(_data_collection);
     free(_test_collection);
-
-#ifdef SICONOS_HAS_MPI
-    MPI_Finalize();
-#endif
 
     return out;
   }

@@ -49,6 +49,8 @@ static inline char* strdup(char* src)
 #include "numerics_verbose.h"
 #include "NumericsVector.h"
 #include "SiconosCompat.h"
+#include "NM_MUMPS.h"
+#include "NumericsSparseMatrix.h"
 
 #include <string.h>
 #if defined(WITH_FCLIB)
@@ -65,9 +67,44 @@ int globalFrictionContact_test_function(FILE * f, SolverOptions * options)
 
   int k, info = -1 ;
   /* numerics_set_verbose(1); */
+
+#ifdef WITH_MUMPS
+
+  /* prepare mpi processes */
+  NumericsMatrix* M = NM_create(NM_SPARSE, 1, 1);
+  int rank;
+#ifdef SICONOS_HAS_MPI
+  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+#else
+  rank=0;
+#endif
+
+  NM_MPI_set_comm(M, MPI_COMM_WORLD);
+
+  NM_MUMPS_set_control_params(M);
+  NM_triplet_alloc(M, 0);
+  M->matrix2->origin = NSM_TRIPLET;
+  NM_MUMPS_set_sym(M, 1);
+  NM_MUMPS(M, -1);
+
+  if (rank > 0)
+  {
+#ifdef SICONOS_HAS_MPI
+    MPI_Finalize(); /*just one test */
+#endif
+    NM_clear(M);
+    free(M);
+    return 0;
+  }
+#endif
+
   GlobalFrictionContactProblem* problem = globalFrictionContact_newFromFile(f);
   /* globalFrictionContact_display(problem); */
 
+#ifdef WITH_MUMPS
+  NM_MUMPS_copy(M, problem->M);
+  NM_MUMPS_set_sym(problem->M, 1);
+#endif
 
   FILE * foutput  =  fopen("checkinput.dat", "w");
   info = globalFrictionContact_printInFile(problem, foutput);
@@ -75,6 +112,7 @@ int globalFrictionContact_test_function(FILE * f, SolverOptions * options)
   int NC = problem->numberOfContacts;
   int dim = problem->dimension;
   int n = problem->M->size1;
+
 
 
   double *reaction = (double*)malloc(dim * NC * sizeof(double));
@@ -147,6 +185,14 @@ int globalFrictionContact_test_function(FILE * f, SolverOptions * options)
     printf("test unsuccessful with %i iterations and residual = %e\n", options->iparam[SICONOS_IPARAM_ITER_DONE], options->dparam[SICONOS_DPARAM_RESIDU]);
     //getchar();
   }
+
+#ifdef WITH_MUMPS
+  NM_MUMPS(M, 0);
+#ifdef SICONOS_HAS_MPI
+  MPI_Finalize();
+#endif
+#endif
+
   free(reaction);
   free(velocity);
   free(globalvelocity);
@@ -164,8 +210,43 @@ int globalFrictionContact_test_function(FILE * f, SolverOptions * options)
 int gfc3d_test_function_hdf5(const char* path, SolverOptions* options)
 {
 
+  #ifdef WITH_MUMPS
+
+  /* prepare mpi processes */
+  NumericsMatrix* M = NM_create(NM_SPARSE, 1, 1);
+  int rank;
+#ifdef SICONOS_HAS_MPI
+  MPI_Comm_rank(MPI_COMM_WORLD,&rank);
+#else
+  rank=0;
+#endif
+
+  NM_MPI_set_comm(M, MPI_COMM_WORLD);
+
+  NM_MUMPS_set_control_params(M);
+  NM_triplet_alloc(M, 0);
+  M->matrix2->origin = NSM_TRIPLET;
+  NM_MUMPS_set_sym(M, 1);
+  NM_MUMPS(M, -1);
+
+  if (rank > 0)
+  {
+#ifdef SICONOS_HAS_MPI
+    MPI_Finalize(); /*just one test */
+#endif
+    NM_clear(M);
+    free(M);
+    return 0;
+  }
+#endif
+  
   int k, info = -1 ;
   GlobalFrictionContactProblem* problem = globalFrictionContact_fclib_read(path);
+
+#ifdef WITH_MUMPS
+  NM_MUMPS_copy(M, problem->M);
+  NM_MUMPS_set_sym(problem->M, 1);
+#endif
 
   int check_input=1;
   if(check_input)
@@ -267,6 +348,13 @@ int gfc3d_test_function_hdf5(const char* path, SolverOptions* options)
     printf("test unsuccessful with %i iterations and residual = %e\n", options->iparam[SICONOS_IPARAM_ITER_DONE], options->dparam[SICONOS_DPARAM_RESIDU]);
     //getchar();
   }
+
+#ifdef WITH_MUMPS
+  NM_MUMPS(M, 0);
+#ifdef SICONOS_HAS_MPI
+  MPI_Finalize();
+#endif
+#endif
   free(reaction);
   free(velocity);
   free(global_velocity);
