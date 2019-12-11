@@ -77,7 +77,8 @@ int main(int argc, char *argv[])
 
   }
 
-  NM_free(M);
+  NM_clear(M);
+  free(M);
 
   /* symmetric test */
   M = NM_create(NM_SPARSE, 3, 3);
@@ -135,11 +136,11 @@ int main(int argc, char *argv[])
   }
 
 
-/*   NM_free(M); */
 #ifdef SICONOS_HAS_MPI
   MPI_Finalize();
 #endif
   NM_clear(M);
+  free(M);
 
   return(rval);
 }
