@@ -90,24 +90,24 @@ struct Poly : Shape<Poly<N>, std::array<scal, N> >
 
 std::random_device dev;
 std::mt19937 rng(dev());
-std::uniform_int_distribution<std::mt19937::result_type> random_pick(0,3);
+std::uniform_int_distribution<std::mt19937::result_type> random_type(0,3);
 std::uniform_int_distribution<std::mt19937::result_type> random_indice(0,SIZE-1);
 
 template <typename T, size_t N>
-std::array<T, N> random_vector_stack(std::function<T(decltype(random_pick(rng)))> func) {
+std::array<T, N> random_vector_stack(std::function<T(decltype(random_type(rng)))> fun) {
   std::array<T, N> a;
   std::generate(a.begin(), a.end(), [&] {
-    return func(random_pick(rng));
+    return fun(random_type(rng));
   });
   return a;
 }
 
 template <typename T, size_t N>
-auto random_vector_heap(std::function<T(decltype(random_pick(rng)))> func) {
+auto random_vector_heap(std::function<T(decltype(random_type(rng)))> fun) {
   std::shared_ptr<std::vector<T> > a(new std::vector<T>());
   a->resize(N);
   std::generate(a->begin(), a->end(), [&] {
-    return func(random_pick(rng));
+    return fun(random_type(rng));
   });
   return a;
 }
