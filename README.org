@@ -8,3 +8,15 @@
          siconos -- siconos -lbenchmark tshapes.cpp
   sudo cpupower frequency-set --governor powersave
 #+end_src
+
+
+#+name: tgraph
+#+begin_src sh :compile :results output silent
+  sudo cpupower frequency-set --governor performance
+  wget -N https://raw.githubusercontent.com/siconos/guix-siconos/channels/siconos-2021-06-08.scm && \
+    guix time-machine -C siconos-2021-06-08.scm -- \
+         environment --pure --ad-hoc benchmark gcc-toolchain boost cmake make \
+         coreutils grep dash \
+         siconos -- siconos -lbenchmark tgraph.cpp
+  sudo cpupower frequency-set --governor powersave
+#+end_src
