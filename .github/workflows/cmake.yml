@@ -76,7 +76,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: LastTest.log
-        path: Testing/Temporary/LastTest.log
+        path: ${{runner.workspace}}/build/Testing/Temporary/LastTest.log
     - name: Archive code coverage results
       uses: actions/upload-artifact@v2
       with:
