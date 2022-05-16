@@ -13,6 +13,7 @@
 #include <boost/random/linear_congruential.hpp>
 
 #include "XSiconosGraph.hpp"
+#include "SiconosGraph.hpp"
 #include "SiconosKernel.hpp"
 
 
@@ -44,12 +45,15 @@ template<typename G>
 struct SiconosGraphBench : public benchmark::Fixture
 {
   G graph;
+  std::vector<typename G::vertex_t> systems;
 
   void SetUp(const ::benchmark::State& state)
   {
     for(unsigned int i=0; i<SIZE; ++i)
     {
-      graph.add_vertex(new_vertex(graph, i));
+      auto nv = new_vertex(graph, i);
+      graph.add_vertex(nv);
+      systems.push_back(nv);
     }
   }
 
@@ -109,7 +113,8 @@ struct SiconosGraphBench : public benchmark::Fixture
 template<>
 DynamicalSystemsGraph::vertex_t new_vertex(const DynamicalSystemsGraph& g, size_t i)
 {
-  return newBall();
+  SP::DynamicalSystem nb = newBall();
+  return nb;
 }
 
 BENCHMARK_TEMPLATE_F(SiconosGraphBench, DynamicalSystemAccess, DynamicalSystemsGraph)(benchmark::State& state)
@@ -127,6 +132,39 @@ BENCHMARK_TEMPLATE_F(SiconosGraphBench, DynamicalSystemAccess, DynamicalSystemsG
     }
   }
 }
+
+class XDynamicalSystemsGraph :
+  public XSiconosGraph < std::shared_ptr<DynamicalSystem>,
+                         std::shared_ptr<Interaction>,
+                         DynamicalSystemProperties, InteractionProperties,
+                         GraphProperties >
+{
+};
+
+template<>
+XDynamicalSystemsGraph::vertex_t new_vertex(const XDynamicalSystemsGraph& g, size_t i)
+{
+  SP::DynamicalSystem nb = newBall();
+  return nb;
+}
+
+
+BENCHMARK_TEMPLATE_F(SiconosGraphBench, XDynamicalSystemAccess, XDynamicalSystemsGraph)(benchmark::State& state)
+{
+  XDynamicalSystemsGraph::VIterator vi,vend;
+
+  for (auto _ : state)
+  {
+    for(std::tie(vi,vend) = graph.vertices(); vi!=vend; ++vi)
+    {
+      SP::DynamicalSystem ds = graph.bundle(*vi);
+      SP::SiconosVector velocity = std::static_pointer_cast<LagrangianLinearTIDS>(ds)->velocity();
+      benchmark::DoNotOptimize(ds);
+      benchmark::DoNotOptimize(velocity);
+    }
+  }
+}
+
 
 typedef SiconosGraph < std::shared_ptr<FlatDS>, int,
                        boost::no_property, boost::no_property,
@@ -353,5 +391,79 @@ BENCHMARK_TEMPLATE_F(SiconosGraphBench, XIntAddRemove, XIntGraph)(benchmark::Sta
     // }
   }
 }
+
+BENCHMARK_TEMPLATE_F(SiconosGraphBench, DynamicalSystemAddRemove, DynamicalSystemsGraph)(benchmark::State& state)
+{
+  std::random_device dev;
+  std::mt19937 rng(dev());
+
+  DynamicalSystemsGraph::VIterator vi,vend;
+
+  for (auto _ : state)
+  {
+
+//    for(size_t i=0; i<graph.size()/10; ++i)
+    {
+      std::uniform_int_distribution<std::mt19937::result_type> random_indice(0,graph.size()-1);
+      graph.update_vertices_indices();
+
+      SP::DynamicalSystem ds = graph.bundle(boost::vertex(random_indice(rng), graph.g));
+
+//      std::cout << "remove? " << ds->number() <<std::endl;
+      if (graph.is_vertex(ds))
+      {
+
+        graph.remove_vertex(ds);
+        graph.add_vertex(ds);
+      }
+    }
+
+    // for(std::tie(vi,vend) = graph.vertices(); vi!=vend; ++vi)
+    // {
+    //   auto ds = graph.properties(*vi);
+    //   auto velocity = ds.velocity;
+    //   benchmark::DoNotOptimize(ds);
+    //   benchmark::DoNotOptimize(velocity);
+    // }
+  }
+}
+
+
+
+BENCHMARK_TEMPLATE_F(SiconosGraphBench, XDynamicalSystemAddRemove, XDynamicalSystemsGraph)(benchmark::State& state)
+{
+  std::random_device dev;
+  std::mt19937 rng(dev());
+
+  XDynamicalSystemsGraph::VIterator vi,vend;
+
+  for (auto _ : state)
+  {
+
+//    for(size_t i=0; i<graph.size()/10; ++i)
+    {
+      std::uniform_int_distribution<std::mt19937::result_type> random_indice(0,graph.size()-1);
+      //graph.update_vertices_indices();
+      SP::DynamicalSystem ds = graph.bundle(boost::vertex(random_indice(rng), graph.g));
+
+//      std::cout << "xremove? " << ds->number() <<std::endl;
+
+//      if (graph.is_vertex(ds))
+      {
+        graph.remove_vertex(ds);
+        graph.add_vertex(ds);
+      }
+    }
+
+    // for(std::tie(vi,vend) = graph.vertices(); vi!=vend; ++vi)
+    // {
+    //   auto ds = graph.properties(*vi);
+    //   auto velocity = ds.velocity;
+    //   benchmark::DoNotOptimize(ds);
+    //   benchmark::DoNotOptimize(velocity);
+    // }
+  }
+}
+
 
 BENCHMARK_MAIN();
