@@ -936,7 +936,7 @@ public:
         assert(is_vertex(bundle(target(*ei))));
         assert(source(*ei) == *vi);
       }
-      AVIterator avi, aviend
+      AVIterator avi, aviend;
       for (std::tie(avi, aviend) = adjacent_vertices(*vi);
            avi != aviend; ++avi)
       {

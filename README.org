@@ -1,3 +1,58 @@
+* [#B] internal
+#+name: src-dir
+#+begin_src elisp
+  (progn
+    (mkdir "build-gcc" t)
+    (mkdir "build-gcc-debug" t)
+    (mkdir "build-clang" t)
+    default-directory)
+#+end_src
+
+#+name: xsiconos-cmake-gcc
+#+header: :var src_dir=src-dir
+#+header: :dir build-gcc
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2022-04-06.scm -- \
+       environment --pure --ad-hoc siconos benchmark gcc-toolchain boost fmt cmake make dash -- \
+       dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Release" 
+#+end_src
+
+#+name: xsiconos-make-gcc
+#+header: :var src_dir=src-dir
+#+header: :dir build-gcc
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2022-04-06.scm -- \
+       environment --pure --ad-hoc siconos benchmark gcc-toolchain boost fmt cmake make -- \
+       make VERBOSE=1
+#+end_src
+
+#+name: xsiconos-make-gcc-debug
+#+header: :var src_dir=src-dir
+#+header: :dir build-gcc-debug
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2022-04-06.scm -- \
+       environment --pure --ad-hoc siconos benchmark gcc-toolchain boost fmt cmake make -- \
+       make VERBOSE=1
+#+end_src
+
+
+#+name: xsiconos-gcc
+#+header: :dir build-gcc
+#+begin_src sh :compile :results output silent
+  sudo cpupower frequency-set --governor performance
+  ./tgraph
+  sudo cpupower frequency-set --governor powersave
+#+end_src
+
+
+#+name: xsiconos-gcc-debug
+#+header: :dir build-gcc-debug
+#+begin_src sh :compile :results output silent
+  ./tgraph
+#+end_src
+
+
+
 #+name: tshapes
 #+begin_src sh :compile :results output silent
   sudo cpupower frequency-set --governor performance
@@ -17,6 +72,29 @@
     guix time-machine -C siconos-2021-06-08.scm -- \
          environment --pure --ad-hoc benchmark gcc-toolchain boost cmake make \
          coreutils grep dash \
-         siconos -- siconos -lbenchmark tgraph.cpp
+         siconos -- siconos -lbenchmark --compiler-options=-fconcepts-ts tgraph.cpp
   sudo cpupower frequency-set --governor powersave
+#+end_src
+
+#+name: tgg
+#+begin_src sh :compile :results output silent
+#  sudo cpupower frequency-set --governor performance
+  wget -N https://raw.githubusercontent.com/siconos/guix-siconos/channels/siconos-2021-06-08.scm && \
+    guix time-machine -C siconos-2021-06-08.scm -- \
+         environment --pure --ad-hoc benchmark boost gcc-toolchain boost cmake make \
+         coreutils grep dash \
+         siconos -- siconos -lboost_chrono tgg.cpp
+#  sudo cpupower frequency-set --governor powersave
+#+end_src
+
+
+#+name: t
+#+begin_src sh :compile :results output silent
+#  sudo cpupower frequency-set --governor performance
+#  wget -N https://raw.githubusercontent.com/siconos/guix-siconos/channels/siconos-2021-06-08.scm && \
+    guix time-machine -C siconos-2021-06-08.scm -- \
+         environment --pure --ad-hoc benchmark boost gcc-toolchain boost cmake make \
+         coreutils grep dash \
+         siconos -- siconos -lboost_chrono t.cpp
+#  sudo cpupower frequency-set --governor powersave
 #+end_src

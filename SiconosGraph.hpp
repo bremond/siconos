@@ -47,6 +47,7 @@
 #include <boost/graph/directed_graph.hpp>
 #include <boost/property_map/property_map.hpp>
 #include <boost/static_assert.hpp>
+
 #include "SiconosSerialization.hpp"
 
 enum vertex_properties_t { vertex_properties };
@@ -566,6 +567,13 @@ public:
         assert(bundle(edescr) == og.bundle(*ogoei));
       }
     }
+  }
+
+  void remove_vertex(const VDescriptor& vd)
+  {
+    boost::clear_vertex(vd, g);
+    boost::remove_vertex(vd, g);
+    vertex_descriptor.erase(bundle(vd));
   }
 
   void remove_vertex(const V& vertex_bundle)
