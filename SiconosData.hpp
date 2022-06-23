@@ -8,8 +8,6 @@
 #include <boost/hana.hpp>
 #include <boost/hana/ext/std/tuple.hpp>
 
-
-
 template<typename U, typename... T>
 constexpr bool contains(std::tuple<T...>)
 {
@@ -18,21 +16,20 @@ constexpr bool contains(std::tuple<T...>)
 
 namespace siconos
 {
-
   template<typename OSI, typename ...Ds>
   struct data
   {
     using osi = OSI;
     using env = osi::env;
-    using indice = env::indice::type;
-    using scalar = env::scalar::type;
-    using graph_t = env::graph::type;
+    using indice = env::indice;
+    using scalar = env::scalar;
+    using graph_t = env::graph;
 
     template<typename T>
     using collection =
       std::conditional<contains<T>(typename osi::keep::type{}),
-                       std::array<typename env::collection<T>::type, osi::keep::value>,
-                       std::array<typename env::collection<T>::type, 1>>::type;
+                       std::array<typename env::collection<T>, osi::keep::value>,
+                       std::array<typename env::collection<T>, 1>>::type;
 
     using types = std::variant<Ds...>;
     std::tuple<collection<typename Ds::type>...> collections;
@@ -40,7 +37,7 @@ namespace siconos
     indice counter = 0;
     graph_t graph;
 
-    collection<typename env::vdescriptor::type> vdescriptors;
+    collection<typename env::vdescriptor> vdescriptors;
 
   };
 
@@ -56,8 +53,8 @@ namespace siconos
   }
 
   template<typename T, typename D>
-  typename D::collection<typename T::type>::value_type::value_type&
-  get(const typename D::env::indice::type step, D& data)
+  auto&
+  get(const typename D::env::indice step, D& data)
   {
     constexpr typename D::types t = T{};
     auto& array = std::get<t.index()>(data.collections);

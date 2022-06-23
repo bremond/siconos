@@ -8,48 +8,34 @@
 
 using fmt::print;
 
+template<typename T>
+struct member
+{
+  using type = T;
+  T value;
+};
+
+
 struct env
 {
-  struct scalar
-  {
-    using type = double;
-  };
+  using scalar = double;
+  using indice = std::size_t;
 
-  struct indice
-  {
-    using type = size_t;
-  };
+  using graph = SiconosGraph < indice, indice,
+                               boost::no_property,
+                               boost::no_property,
+                               boost::no_property >;
 
-  struct graph
-  {
-    using type = SiconosGraph < indice::type, indice::type,
-                                boost::no_property,
-                                boost::no_property,
-                                boost::no_property >;
-  };
-
-  struct vdescriptor
-  {
-    using type = graph::type::VDescriptor;
-  };
+  using vdescriptor = graph::VDescriptor;
 
   template<typename T>
-  struct collection
-  {
-    using type = std::vector<T>;
-  };
+  using collection = std::vector<T>;
 
-  template<indice::type N>
-  struct vector
-  {
-    using type = std::array<scalar::type, N>;
-  };
+  template<indice N>
+  using vector = std::array<scalar, N>;
 
-  template<indice::type N, indice::type M>
-  struct matrix
-  {
-    using type = std::array<scalar::type, N*M>;
-  };
+  template<indice N, indice M>
+  using matrix = std::array<scalar, N*M>;
 
 };
 
@@ -76,14 +62,12 @@ namespace siconos
     {
       using env = Env;
 
-      struct mass_matrix
-      {
-        using type = typename env::matrix<dof,dof>::type;
-      };
+      struct mass_matrix : member<typename env::matrix<dof,dof>> {}
+        _mass_matrix;
 
-      struct q { using type = typename env::vector<dof>::type; };
+      struct q : member<typename env::vector<dof>>{} _q;
 
-      struct velocity { using type = typename env::vector<dof>::type; };
+      struct velocity : member<typename env::vector<dof>>{} _velocity;
 
       using attributes =
         std::tuple<mass_matrix, q, velocity>;
@@ -104,15 +88,15 @@ namespace siconos
 
     struct newton_impact_friction
     {
-      struct e : scalar{ scalar::type value; } _e;
-      struct mu : scalar{} _mu;
+      struct e : member<scalar>{} _e;
+      struct mu : member<scalar>{} _mu;
 
       using attributes = std::tuple<e, mu>;
     };
 
     struct newton_impact
     {
-      struct e : scalar{};
+      struct e : member<scalar>{} _e;
 
       using attributes = std::tuple<e>;
     };
@@ -134,10 +118,10 @@ namespace siconos
       using system = typename formulation::dynamical_system<env>;
 
 
-      template<env::indice::type N, typename ...As>
+      template<env::indice N, typename ...As>
       struct keeper
       {
-        static constexpr env::indice::type value = N;
+        static constexpr env::indice value = N;
         using type = std::tuple<As...>;
       };
 
@@ -155,7 +139,7 @@ namespace siconos
 template<typename Env>
 struct moreau_jean_param
 {
-  static constexpr typename Env::scalar::type theta=0.5;
+  static constexpr typename Env::scalar theta=0.5;
 };
 
 using namespace siconos;
