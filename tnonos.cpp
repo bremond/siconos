@@ -8,11 +8,12 @@
 
 using fmt::print;
 
-template<typename T>
-struct member
+template<typename X, typename T >
+struct attribute
 {
   using type = T;
-  T value;
+  static constexpr T& get(const auto vd, const auto step, auto& data)
+  { return siconos::get<X>(vd, step, data); };
 };
 
 
@@ -62,15 +63,15 @@ namespace siconos
     {
       using env = Env;
 
-      struct mass_matrix : member<typename env::matrix<dof,dof>> {}
-        _mass_matrix;
+      struct mass_matrix :
+        attribute<mass_matrix,
+                  typename env::matrix<dof,dof>> {};
 
-      struct q : member<typename env::vector<dof>>{} _q;
+      struct q : attribute<q, typename env::vector<dof>>{};
 
-      struct velocity : member<typename env::vector<dof>>{} _velocity;
+      struct velocity : attribute<velocity, typename env::vector<dof>>{};
 
-      using attributes =
-        std::tuple<mass_matrix, q, velocity>;
+      using attributes = std::tuple<mass_matrix, q, velocity>;
 
     };
 
@@ -88,15 +89,15 @@ namespace siconos
 
     struct newton_impact_friction
     {
-      struct e : member<scalar>{} _e;
-      struct mu : member<scalar>{} _mu;
+      struct e : attribute<e, scalar>{} _e;
+      struct mu : attribute<mu, scalar>{} _mu;
 
       using attributes = std::tuple<e, mu>;
     };
 
     struct newton_impact
     {
-      struct e : member<scalar>{} _e;
+      struct e : attribute<e, scalar>{} _e;
 
       using attributes = std::tuple<e>;
     };
@@ -148,30 +149,42 @@ int main()
 {
   using formulation = lagrangian<param>;
   using osi = one_step_integrator<env>::moreau_jean<formulation, moreau_jean_param<env>>;
+  using dynamical_system = formulation::dynamical_system<env>;
+  using velocity_t = dynamical_system::velocity;
 
-  using velocity_t = formulation::dynamical_system<env>::velocity;
+  auto data = make_data<osi>();
 
-  auto data_ds = make_data<osi>();
+  print("---\n");
+  for_each([](auto& a) { print("{:d}\n", std::size(a)); }, data.collections);
+  print("{}", data.collections);
+  print("---\n");
 
-  for_each([](auto& a) { print("{:d}\n", std::size(a)); }, data_ds.collections);
-
-  add_item(0, data_ds);
-
-  auto& velocity = get<velocity_t>(0, data_ds);
+  auto ds0 = add_item(0, data);
+  auto& velocity = get<velocity_t>(ds0, 0, data);
   velocity[0] = 1.0;
   velocity[1] = 2.0;
+  for_each([](auto& a) { print("{:d}\n", std::size(a)); }, data.collections);
+  print("{0}\n", data.collections);
 
-  print("{0}", data_ds.collections);
+  for_each([](auto& a) { print("{0}\n", a); }, data.collections);
 
-  for_each([](auto& a) { print("{0}\n", a); }, data_ds.collections);
-
-  add_item(0, data_ds);
-  add_item(0, data_ds);
+  auto ds1 = add_item(0, data);
+  dynamical_system::q::get(ds1, 0, data) = std::array{ 1.,1., 1.};
+  auto ds2 = add_item(0, data);
+  dynamical_system::q::get(ds2, 0, data) = std::array{ 9.,9., 9.};
   print("---\n");
-  for_each([](auto& a) { print("{0}\n", a); }, data_ds.collections);
+  for_each([](auto& a) { print("{0}\n", a); }, data.collections);
 
-  remove_item(0, 1, data_ds);
+  remove_item(1, 1, data);
   print("---\n");
-  for_each([](auto& a) { print("{0}\n", a); }, data_ds.collections);
+  for_each([](auto& a) { print("{0}\n", a); }, data.collections);
+
+  print("{}", get<dynamical_system::mass_matrix>(ds0, 0, data));
+
+  auto m = dynamical_system::mass_matrix::get(ds0, 0, data);
+
+  print("---\n");
+
+  print("{}", m);
 }
 

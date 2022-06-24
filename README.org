@@ -26,6 +26,17 @@
        make VERBOSE=1
 #+end_src
 
+
+#+name: xsiconos-cmake-gcc-debug
+#+header: :var src_dir=src-dir
+#+header: :dir build-gcc-debug
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2022-04-06.scm -- \
+       environment --pure --ad-hoc siconos benchmark gcc-toolchain boost fmt cmake make dash -- \
+       dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Debug" 
+#+end_src
+
+
 #+name: xsiconos-make-gcc-debug
 #+header: :var src_dir=src-dir
 #+header: :dir build-gcc-debug

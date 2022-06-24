@@ -54,11 +54,14 @@ namespace siconos
 
   template<typename T, typename D>
   auto&
-  get(const typename D::env::indice step, D& data)
+  get(const typename D::env::vdescriptor vd,
+      const typename D::env::indice step,
+      D& data)
   {
     constexpr typename D::types t = T{};
+    auto indx = data.graph.index(vd);
     auto& array = std::get<t.index()>(data.collections);
-    return array[step % std::size(array)].back();
+    return array[step % std::size(array)][indx];
   };
 
   void for_each(auto&& fun, auto& collections)
@@ -70,13 +73,14 @@ namespace siconos
   {
     auto vd = data.graph.add_vertex(data.counter++);
     data.vdescriptors[step%std::size(data.vdescriptors)].push_back(vd);
+    data.graph.index(vd) = std::size(data.vdescriptors[step%std::size(data.vdescriptors)])-1;
 
     for_each(
       [&step](auto& a)
       { a[step%std::size(a)].push_back(typename std::decay_t<decltype(a)>::value_type::value_type{}); },
       data.collections);
 
-    return std::size(data.vdescriptors);
+    return vd;
   }
 
   void move_back(const auto i, auto& a)
@@ -92,6 +96,8 @@ namespace siconos
     data.graph.remove_vertex(vd);
 
     move_back(i, data.vdescriptors[step%std::size(data.vdescriptors)]);
+    data.graph.index(data.vdescriptors[step%std::size(data.vdescriptors)][i]) = i;
+
     for_each([&i,&step](auto &a) { move_back(i, a[step%std::size(a)]);}, data.collections);
   }
 };
