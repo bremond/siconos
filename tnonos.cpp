@@ -8,14 +8,32 @@
 
 using fmt::print;
 
-template<typename X, typename T >
-struct attribute
+namespace siconos
 {
-  using type = T;
-  static constexpr T& get(const auto vd, const auto step, auto& data)
-  { return siconos::get<X>(vd, step, data); };
-};
+  template<typename X>
+  struct item
+  {
+    using type = X;
 
+    static constexpr auto add(const auto step, auto& data)
+    {
+      return siconos::add_item(step, data);
+    };
+  };
+
+
+  template<typename T>
+  struct attribute
+  {
+    using type = T;
+
+    static constexpr auto get = [](const auto vd, const auto step, auto& data) -> typename T::type&
+    {
+//      return siconos::get<T>(vd, step, data);
+    };
+  };
+
+}
 
 struct env
 {
@@ -42,87 +60,95 @@ struct env
 
 struct param
 {
-  struct dof
-  {
-    static constexpr auto value = 3;
-  };
+  static constexpr auto dof = 3;
 };
 
 namespace siconos
 {
-
   template<typename Param>
   struct lagrangian
   {
-    using param = Param;
-
-    static constexpr auto dof = param::dof::value;
-
-    template<typename Env>
+    static constexpr auto dof = Param::dof;
     struct dynamical_system
     {
-      using env = Env;
+      struct mass_matrix
+      {
+        using type = types::matrix<dof, dof>;
+      };
 
-      struct mass_matrix :
-        attribute<mass_matrix,
-                  typename env::matrix<dof,dof>> {};
+      struct q
+      {
+        using type = types::vector<dof>;
+      };
 
-      struct q : attribute<q, typename env::vector<dof>>{};
+      struct velocity
+      {
+        using type = types::vector<dof>;
+      };
 
-      struct velocity : attribute<velocity, typename env::vector<dof>>{};
+      struct fext
+      {
+        using type = types::vector<dof>;
+      };
 
-      using attributes = std::tuple<mass_matrix, q, velocity>;
+      using attributes = std::tuple<mass_matrix, q, velocity, fext>;
 
     };
 
-    template<typename Env>
     struct relation
     {
     };
+
+    using items = std::tuple<dynamical_system, relation>;
   };
 
-  template<typename Env, typename Param>
+  template<typename Param>
   struct nonsmooth_law
   {
-    using env = Env;
-    using scalar = env::scalar;
 
     struct newton_impact_friction
     {
-      struct e : attribute<e, scalar>{} _e;
-      struct mu : attribute<mu, scalar>{} _mu;
+      struct e
+      {
+        using type = types::scalar;
+      };
+
+      struct mu
+      {
+        using type = types::scalar;
+      };
 
       using attributes = std::tuple<e, mu>;
     };
 
     struct newton_impact
     {
-      struct e : attribute<e, scalar>{} _e;
+      struct e
+      {
+        using type = types::scalar;
+      };
 
       using attributes = std::tuple<e>;
     };
   };
 
 
-  template<typename Env>
   struct one_step_integrator
   {
     template<typename Form, typename Param>
     struct moreau_jean
     {
-      using env = Env;
-
 
       static constexpr auto theta = Param::theta;
 
       using formulation = Form;
-      using system = typename formulation::dynamical_system<env>;
+      using system = typename formulation::dynamical_system;
 
 
-      template<env::indice N, typename ...As>
+      template<std::size_t N, typename ...As>
       struct keeper
       {
-        static constexpr env::indice value = N;
+        static constexpr std::size_t value = N;
         using type = std::tuple<As...>;
       };
 
@@ -131,16 +157,15 @@ namespace siconos
     };
   };
 
-  template<typename Env>
+  template<typename Param>
   struct time_discretization
   {
   };
 }
 
-template<typename Env>
 struct moreau_jean_param
 {
-  static constexpr typename Env::scalar theta=0.5;
+  static constexpr auto theta = 0.5;
 };
 
 using namespace siconos;
@@ -148,43 +173,62 @@ using namespace siconos;
 int main()
 {
   using formulation = lagrangian<param>;
-  using osi = one_step_integrator<env>::moreau_jean<formulation, moreau_jean_param<env>>;
-  using dynamical_system = formulation::dynamical_system<env>;
+  using osi = one_step_integrator::moreau_jean<formulation, moreau_jean_param>;
+  using dynamical_system = formulation::dynamical_system;
   using velocity_t = dynamical_system::velocity;
-
-  auto data = make_data<osi>();
+  using siconos::get;
+  auto data = siconos::make_data<env, osi, dynamical_system>();
 
   print("---\n");
-  for_each([](auto& a) { print("{:d}\n", std::size(a)); }, data.collections);
-  print("{}", data.collections);
+  for_each(
+    [](auto& a)
+    {
+      print("{}", std::size(a));
+    },
+    data._collections);
+
   print("---\n");
 
   auto ds0 = add_item(0, data);
-  auto& velocity = get<velocity_t>(ds0, 0, data);
-  velocity[0] = 1.0;
-  velocity[1] = 2.0;
-  for_each([](auto& a) { print("{:d}\n", std::size(a)); }, data.collections);
-  print("{0}\n", data.collections);
+  auto& v0 = get<velocity_t>(ds0, 0, data);
 
-  for_each([](auto& a) { print("{0}\n", a); }, data.collections);
+  v0 = { 1., 2., 3.};
+
+  auto& velocityp = get<dynamical_system::velocity>(ds0, 0, data);
+  print("--->{}\n", velocityp);
+
+  for_each([](auto& a) { print("{:d}\n", std::size(a)); }, data._collections);
+  print("{0}\n", data._collections);
+
+  for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
   auto ds1 = add_item(0, data);
-  dynamical_system::q::get(ds1, 0, data) = std::array{ 1.,1., 1.};
-  auto ds2 = add_item(0, data);
-  dynamical_system::q::get(ds2, 0, data) = std::array{ 9.,9., 9.};
-  print("---\n");
-  for_each([](auto& a) { print("{0}\n", a); }, data.collections);
 
-  remove_item(1, 1, data);
+  get<dynamical_system::q>(ds1, 0, data) = { 1.,1., 1.};
+  auto ds2 = add_item(0, data);
+  get<dynamical_system::q>(ds2, 0, data) = { 9.,9., 9.};
   print("---\n");
-  for_each([](auto& a) { print("{0}\n", a); }, data.collections);
+  for_each([](auto& a) { print("{0}\n", a); }, data._collections);
+
+  remove_item(1, 0, data);
+  print("---\n");
+  for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
   print("{}", get<dynamical_system::mass_matrix>(ds0, 0, data));
 
-  auto m = dynamical_system::mass_matrix::get(ds0, 0, data);
+  auto m = get<dynamical_system::mass_matrix>(ds0, 0, data);
 
   print("---\n");
 
   print("{}", m);
+
+  print("---\n");
+
+  get<dynamical_system::fext>(ds0, 0, data) = { 10., 0., 0.};
+  print("{}\n", data._collections);
+
+  data(get<dynamical_system::fext>)(ds0, 0) = { 2.,1.,0.};
+  print("{}\n", data(get<dynamical_system::fext>)(ds0, 0));
+
 }
 

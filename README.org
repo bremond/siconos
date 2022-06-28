@@ -8,6 +8,10 @@
     default-directory)
 #+end_src
 
+* gcc
+
+** Release
+
 #+name: xsiconos-cmake-gcc
 #+header: :var src_dir=src-dir
 #+header: :dir build-gcc
@@ -27,6 +31,8 @@
 #+end_src
 
 
+** Debug
+
 #+name: xsiconos-cmake-gcc-debug
 #+header: :var src_dir=src-dir
 #+header: :dir build-gcc-debug
@@ -35,7 +41,6 @@
        environment --pure --ad-hoc siconos benchmark gcc-toolchain boost fmt cmake make dash -- \
        dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Debug" 
 #+end_src
-
 
 #+name: xsiconos-make-gcc-debug
 #+header: :var src_dir=src-dir
@@ -46,6 +51,51 @@
        make VERBOSE=1
 #+end_src
 
+* clang
+
+** Release
+
+#+name: xsiconos-cmake-clang
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2022-04-06.scm -- \
+       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt cmake make dash -- \
+       dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Release" 
+#+end_src
+
+#+name: xsiconos-make-clang
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2022-04-06.scm -- \
+       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt cmake make -- \
+       make VERBOSE=1
+#+end_src
+
+
+** Debug
+
+#+name: xsiconos-cmake-clang-debug
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2022-04-06.scm -- \
+       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt cmake make dash -- \
+       dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Debug" 
+#+end_src
+
+#+name: xsiconos-make-clang-debug
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2022-04-06.scm -- \
+       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt cmake make -- \
+       make VERBOSE=1
+#+end_src
+
+
+* Run
 
 #+name: xsiconos-gcc
 #+header: :dir build-gcc
