@@ -4,15 +4,14 @@
 #include <type_traits>
 #include <variant>
 #include <tuple>
+#include <fmt/core.h>
+#include <fmt/ranges.h>
 #include <boost/pfr.hpp>
 #include <boost/hana.hpp>
 #include <boost/hana/ext/std/tuple.hpp>
 
-template<typename U, typename... T>
-constexpr bool contains(std::tuple<T...>)
-{
-  return (std::is_same_v<U, T> || ...);
-}
+using fmt::print;
+
 
 namespace siconos
 {
@@ -71,6 +70,12 @@ namespace siconos
     };
   };
 
+  template<typename U, typename... T>
+  constexpr bool contains(std::tuple<T...>)
+  {
+    return (std::is_same_v<U, T> || ...);
+  }
+
   auto proj = [] (auto& data)
   {
     return
@@ -84,13 +89,28 @@ namespace siconos
       });
   };
 
+  auto compose = [](auto&& f, auto&& g) -> decltype(auto)
+  {
+    return [&f,&g]<typename ...As>(As&& ...args) -> decltype(auto)
+      {
+      return f(g(std::forward<As>(args)...));
+      };
+  };
+
   template<typename T>
-  auto get = [](const auto vd, const auto step, auto& data) -> decltype(auto)
+  constexpr auto get_array = [](auto& data) -> decltype(auto)
   {
     using data_t = std::decay_t<decltype(data)>;
     constexpr typename data_t::data_types t = T{};
-    auto indx = data._graph.index(vd);
     auto& array = std::get<t.index()>(data._collections);
+    return array;
+  };
+
+  template<typename T>
+  constexpr auto get = [](const auto vd, const auto step, auto& data) -> decltype(auto)
+  {
+    auto indx = data._graph.index(vd);
+    auto& array = get_array<T>(data);
     return array[step % std::size(array)][indx];
   };
 
@@ -158,7 +178,6 @@ namespace siconos
     };
     collection<vdescriptor> vdescriptors;
 
-
     template<typename Fun>
     decltype (auto) operator () (Fun&& fun)
     {
@@ -173,22 +192,35 @@ namespace siconos
     return data<Env,OSI, Items...>{};
   }
 
-
-  void for_each(auto&& fun, auto& collections)
+  static constexpr void for_each(auto&& fun, auto&& tpl)
   {
-    std::apply([&fun](auto&&... args) { ((fun(args)), ...);}, collections);
+    std::apply([&fun](auto&&... args) { ((fun(args)), ...);}, tpl);
   };
 
+  template<typename T>
+  static constexpr void for_each_attribute(auto&& fun, auto& data)
+  {
+    for_each(
+      [&fun,&data]<typename ...Attrs>(Attrs&...)
+      {
+        (fun(siconos::get_array<Attrs>(data)), ...);
+      },
+      typename T::attributes{});
+  };
+
+  template<typename T>
   auto add_item(const auto step, auto& data)
   {
     auto vd = data._graph.add_vertex(data._counter++);
     data.vdescriptors[step%std::size(data.vdescriptors)].push_back(vd);
     data._graph.index(vd) = std::size(data.vdescriptors[step%std::size(data.vdescriptors)])-1;
 
-    for_each(
+    for_each_attribute<T>(
       [&step](auto& a)
-      { a[step%std::size(a)].push_back(typename std::decay_t<decltype(a)>::value_type::value_type{}); },
-      data._collections);
+      {
+        a[step%std::size(a)].push_back(typename std::decay_t<decltype(a)>::value_type::value_type{});
+      },
+      data);
 
     return vd;
   }
@@ -199,9 +231,9 @@ namespace siconos
     a.pop_back();
   }
 
-  void remove_item(const auto i, const auto step, auto& data)
+  void remove_item(const auto vd, const auto step, auto& data)
   {
-    auto& vd = data.vdescriptors[step%std::size(data.vdescriptors)][i];
+    auto i = data._graph.index(vd);
 
     data._graph.remove_vertex(vd);
 

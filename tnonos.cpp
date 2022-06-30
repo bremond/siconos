@@ -189,7 +189,7 @@ int main()
 
   print("---\n");
 
-  auto ds0 = add_item(0, data);
+  auto ds0 = add_item<dynamical_system>(0, data);
   auto& v0 = get<velocity_t>(ds0, 0, data);
 
   v0 = { 1., 2., 3.};
@@ -202,15 +202,15 @@ int main()
 
   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
-  auto ds1 = add_item(0, data);
+  auto ds1 = add_item<dynamical_system>(0, data);
 
   get<dynamical_system::q>(ds1, 0, data) = { 1.,1., 1.};
-  auto ds2 = add_item(0, data);
+  auto ds2 = add_item<dynamical_system>(0, data);
   get<dynamical_system::q>(ds2, 0, data) = { 9.,9., 9.};
   print("---\n");
   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
-  remove_item(1, 0, data);
+  remove_item(ds1, 0, data);
   print("---\n");
   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
