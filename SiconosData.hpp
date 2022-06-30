@@ -15,7 +15,7 @@ using fmt::print;
 
 namespace siconos
 {
-  struct types
+  struct any
   {
     struct scalar{};
     struct indice{};
@@ -40,31 +40,31 @@ namespace siconos
     };
 
     template<typename E>
-    struct config<E, types::scalar>
+    struct config<E, any::scalar>
     {
       using type = typename E::scalar;
     };
 
     template<typename E>
-    struct config<E, types::indice>
+    struct config<E, any::indice>
     {
       using type = typename E::indice;
     };
 
     template<typename E>
-    struct config<E, types::vdescriptor>
+    struct config<E, any::vdescriptor>
     {
       using type = typename E::vdescriptor;
     };
 
     template<std::size_t N, typename E>
-    struct config<E, types::vector<N>>
+    struct config<E, any::vector<N>>
     {
       using type = typename E::template vector<N>;
     };
 
     template<std::size_t N, std::size_t M, typename E>
-    struct config<E, types::matrix<N, M>>
+    struct config<E, any::matrix<N, M>>
     {
       using type = typename E::template matrix<N, M>;
     };
@@ -91,9 +91,10 @@ namespace siconos
 
   auto compose = [](auto&& f, auto&& g) -> decltype(auto)
   {
-    return [&f,&g]<typename ...As>(As&& ...args) -> decltype(auto)
+    return
+      [&f,&g]<typename ...As>(As&& ...args) -> decltype(auto)
       {
-      return f(g(std::forward<As>(args)...));
+        return f(g(std::forward<As>(args)...));
       };
   };
 
@@ -113,6 +114,12 @@ namespace siconos
     auto& array = get_array<T>(data);
     return array[step % std::size(array)][indx];
   };
+
+  void move_back(const auto i, auto& a)
+  {
+    a[i] = std::move(a.back());
+    a.pop_back();
+  }
 
   template<typename Env, typename OSI, typename Item>
   static constexpr auto make_item_data();
@@ -167,17 +174,22 @@ namespace siconos
 
     using collections_t = decltype(std::tuple_cat<typename item_access<Items>::collections_t...>
                                    (typename item_access<Items>::collections_t{}...));
-    collections_t _collections;
 
+    /* stored data */
     indice _counter = 0;
     graph_t _graph;
+    collections_t _collections;
+
 
     struct vdescriptor
     {
-      using type = siconos::types::vdescriptor;
+      using type = siconos::any::vdescriptor;
     };
-    collection<vdescriptor> vdescriptors;
+    collection<vdescriptor> _vdescriptors;
 
+    std::array<typename env::template collection<item_types>, 1> _items;
+
+    /* methods & operators */
     template<typename Fun>
     decltype (auto) operator () (Fun&& fun)
     {
@@ -209,11 +221,14 @@ namespace siconos
   };
 
   template<typename T>
-  auto add_item(const auto step, auto& data)
+  auto add_vertex_item(const auto step, auto& data)
   {
     auto vd = data._graph.add_vertex(data._counter++);
-    data.vdescriptors[step%std::size(data.vdescriptors)].push_back(vd);
-    data._graph.index(vd) = std::size(data.vdescriptors[step%std::size(data.vdescriptors)])-1;
+
+    data._vdescriptors[step%std::size(data._vdescriptors)].push_back(vd);
+    data._items[step%std::size(data._items)].push_back(T{});
+
+    data._graph.index(vd) = std::size(data._vdescriptors[step%std::size(data._vdescriptors)])-1;
 
     for_each_attribute<T>(
       [&step](auto& a)
@@ -225,22 +240,41 @@ namespace siconos
     return vd;
   }
 
-  void move_back(const auto i, auto& a)
-  {
-    a[i] = std::move(a.back());
-    a.pop_back();
-  }
-
-  void remove_item(const auto vd, const auto step, auto& data)
+  void remove_vertex_item(const auto vd,
+                          const auto step,
+                          auto& data)
   {
     auto i = data._graph.index(vd);
 
     data._graph.remove_vertex(vd);
 
-    move_back(i, data.vdescriptors[step%std::size(data.vdescriptors)]);
-    data._graph.index(data.vdescriptors[step%std::size(data.vdescriptors)][i]) = i;
+    typename std::decay_t<decltype(data)>::item_types item =
+      data._items[step%std::size(data._items)][i];
 
-    for_each([&i,&step](auto &a) { move_back(i, a[step%std::size(a)]);}, data._collections);
+    move_back(i, data._vdescriptors[step%std::size(data._vdescriptors)]);
+    move_back(i, data._items[step%std::size(data._items)]);
+    data._graph.index(data._vdescriptors[step%std::size(data._vdescriptors)][i]) = i;
+
+    std::visit([&i,&step,&data]<typename Item>(Item)
+    {
+      for_each_attribute<Item>(
+        [&i,&step](auto &a)
+        {
+          move_back(i, a[step%std::size(a)]);
+        },
+        data);
+    }, item);
+  }
+
+  template<typename T>
+  void add_item(const auto step, auto& data)
+  {
+    for_each_attribute<T>(
+      [&step](auto& a)
+      {
+        a[step%std::size(a)].push_back(typename std::decay_t<decltype(a)>::value_type::value_type{});
+      },
+      data);
   }
 };
 

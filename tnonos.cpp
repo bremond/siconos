@@ -17,7 +17,7 @@ namespace siconos
 
     static constexpr auto add(const auto step, auto& data)
     {
-      return siconos::add_item(step, data);
+      return siconos::add_vertex_item(step, data);
     };
   };
 
@@ -65,6 +65,9 @@ struct param
 
 namespace siconos
 {
+  template<typename ...Args>
+  using tuple = std::tuple<Args...>;
+
   template<typename Param>
   struct lagrangian
   {
@@ -73,25 +76,25 @@ namespace siconos
     {
       struct mass_matrix
       {
-        using type = types::matrix<dof, dof>;
+        using type = any::matrix<dof, dof>;
       };
 
       struct q
       {
-        using type = types::vector<dof>;
+        using type = any::vector<dof>;
       };
 
       struct velocity
       {
-        using type = types::vector<dof>;
+        using type = any::vector<dof>;
       };
 
       struct fext
       {
-        using type = types::vector<dof>;
+        using type = any::vector<dof>;
       };
 
-      using attributes = std::tuple<mass_matrix, q, velocity, fext>;
+      using attributes = tuple<mass_matrix, q, velocity, fext>;
 
     };
 
@@ -99,10 +102,10 @@ namespace siconos
     {
     };
 
-    using items = std::tuple<dynamical_system, relation>;
+    using vertex_items = tuple<dynamical_system>;
+    using edge_items = tuple<relation>;
   };
 
-  template<typename Param>
   struct nonsmooth_law
   {
 
@@ -110,51 +113,56 @@ namespace siconos
     {
       struct e
       {
-        using type = types::scalar;
+        using type = any::scalar;
       };
 
       struct mu
       {
-        using type = types::scalar;
+        using type = any::scalar;
       };
 
-      using attributes = std::tuple<e, mu>;
+      using attributes = tuple<e, mu>;
     };
 
     struct newton_impact
     {
       struct e
       {
-        using type = types::scalar;
+        using type = any::scalar;
       };
 
-      using attributes = std::tuple<e>;
+      using attributes = tuple<e>;
     };
+
+    using items = tuple<newton_impact_friction, newton_impact>;
   };
 
-
+  template<typename Form>
   struct one_step_integrator
   {
-    template<typename Form, typename Param>
     struct moreau_jean
     {
-
-      static constexpr auto theta = Param::theta;
-
       using formulation = Form;
       using system = typename formulation::dynamical_system;
-
 
       template<std::size_t N, typename ...As>
       struct keeper
       {
         static constexpr std::size_t value = N;
-        using type = std::tuple<As...>;
+        using type = tuple<As...>;
       };
 
       using keep = keeper<2, typename system::q, typename system::velocity>;
 
+      struct theta
+      {
+        using type = any::scalar;
+      };
+
+      using attributes = tuple<theta>;
     };
+
+    using items = tuple<moreau_jean>;
   };
 
   template<typename Param>
@@ -163,21 +171,16 @@ namespace siconos
   };
 }
 
-struct moreau_jean_param
-{
-  static constexpr auto theta = 0.5;
-};
-
 using namespace siconos;
 
 int main()
 {
   using formulation = lagrangian<param>;
-  using osi = one_step_integrator::moreau_jean<formulation, moreau_jean_param>;
-  using dynamical_system = formulation::dynamical_system;
-  using velocity_t = dynamical_system::velocity;
+  using ball = formulation::dynamical_system;
+  using osi = one_step_integrator<formulation>::moreau_jean;
+  using nslaw = nonsmooth_law::newton_impact;
   using siconos::get;
-  auto data = siconos::make_data<env, osi, dynamical_system>();
+  auto data = siconos::make_data<env, osi, ball, nslaw>();
 
   print("---\n");
   for_each(
@@ -189,12 +192,12 @@ int main()
 
   print("---\n");
 
-  auto ds0 = add_item<dynamical_system>(0, data);
-  auto& v0 = get<velocity_t>(ds0, 0, data);
+  auto ds0 = add_vertex_item<ball>(0, data);
+  auto& v0 = get<ball::velocity>(ds0, 0, data);
 
   v0 = { 1., 2., 3.};
 
-  auto& velocityp = get<dynamical_system::velocity>(ds0, 0, data);
+  auto& velocityp = get<ball::velocity>(ds0, 0, data);
   print("--->{}\n", velocityp);
 
   for_each([](auto& a) { print("{:d}\n", std::size(a)); }, data._collections);
@@ -202,21 +205,21 @@ int main()
 
   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
-  auto ds1 = add_item<dynamical_system>(0, data);
+  auto ds1 = add_vertex_item<ball>(0, data);
 
-  get<dynamical_system::q>(ds1, 0, data) = { 1.,1., 1.};
-  auto ds2 = add_item<dynamical_system>(0, data);
-  get<dynamical_system::q>(ds2, 0, data) = { 9.,9., 9.};
+  get<ball::q>(ds1, 0, data) = { 1.,1., 1.};
+  auto ds2 = add_vertex_item<ball>(0, data);
+  get<ball::q>(ds2, 0, data) = { 9.,9., 9.};
   print("---\n");
   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
-  remove_item(ds1, 0, data);
+  remove_vertex_item(ds1, 0, data);
   print("---\n");
   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
-  print("{}", get<dynamical_system::mass_matrix>(ds0, 0, data));
+  print("{}", get<ball::mass_matrix>(ds0, 0, data));
 
-  auto m = get<dynamical_system::mass_matrix>(ds0, 0, data);
+  auto m = get<ball::mass_matrix>(ds0, 0, data);
 
   print("---\n");
 
@@ -224,11 +227,17 @@ int main()
 
   print("---\n");
 
-  get<dynamical_system::fext>(ds0, 0, data) = { 10., 0., 0.};
+  get<ball::fext>(ds0, 0, data) = { 10., 0., 0.};
   print("{}\n", data._collections);
 
-  data(get<dynamical_system::fext>)(ds0, 0) = { 2.,1.,0.};
-  print("{}\n", data(get<dynamical_system::fext>)(ds0, 0));
+  data(get<ball::fext>)(ds0, 0) = { 2.,1.,0.};
+  print("{}\n", data(get<ball::fext>)(ds0, 0));
 
+  add_item<nslaw>(0, data);
+
+  auto& e = siconos::get_array<nslaw::e>(data);
+  e[0][0] = 0.7;
+
+  print("{}\n", siconos::get_array<nslaw::e>(data));
 }
 
