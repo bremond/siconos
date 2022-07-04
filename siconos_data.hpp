@@ -12,7 +12,6 @@
 
 using fmt::print;
 
-
 namespace siconos
 {
   struct any
@@ -115,20 +114,30 @@ namespace siconos
     return array[step % std::size(array)][indx];
   };
 
+  template<typename T>
+  constexpr auto xget = [](const auto vd, auto& data) -> decltype(auto)
+  {
+    using data_t = std::decay_t<decltype(data)>;
+    using time_discretization = typename data_t::time_discretization;
+    auto step = get_array<typename time_discretization::current_time_step>(data)[0][0];
+    auto indx = data._graph.index(vd);
+    auto& array = get_array<T>(data);
+    return array[step % std::size(array)][indx];
+  };
+
   void move_back(const auto i, auto& a)
   {
     a[i] = std::move(a.back());
     a.pop_back();
   }
 
-  template<typename Env, typename OSI, typename Item>
-  static constexpr auto make_item_data();
-
-  template<typename Env, typename OSI, typename ...Items>
+  template<typename Env, typename Sim, typename ...Items>
   struct data
   {
-    using osi = OSI;
     using env = Env;
+    using osi = typename Sim::one_step_integrator;
+    using time_discretization = typename Sim::time_discretization;
+
     using indice = typename env::indice;
     using scalar = typename env::scalar;
     using graph_t = typename env::graph;
@@ -198,10 +207,13 @@ namespace siconos
 
   };
 
-  template<typename Env, typename OSI, typename ...Items>
+  template<typename Env, typename Sim, typename Inter>
   static constexpr auto make_data()
   {
-    return data<Env,OSI, Items...>{};
+    using system = typename Sim::one_step_integrator::system;
+    using nslaw = typename Inter::nonsmooth_law;
+    using time_discretization = typename Sim::time_discretization;
+    return data<Env, Sim, system, nslaw, time_discretization>{};
   }
 
   static constexpr void for_each(auto&& fun, auto&& tpl)
