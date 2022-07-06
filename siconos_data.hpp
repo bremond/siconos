@@ -4,13 +4,6 @@
 #include <type_traits>
 #include <variant>
 #include <tuple>
-#include <fmt/core.h>
-#include <fmt/ranges.h>
-#include <boost/pfr.hpp>
-#include <boost/hana.hpp>
-#include <boost/hana/ext/std/tuple.hpp>
-
-using fmt::print;
 
 namespace siconos
 {
@@ -20,9 +13,9 @@ namespace siconos
     struct indice{};
     struct vdescriptor{};
 
-    template<size_t N, size_t M>
+    template<std::size_t N, std::size_t M>
     struct matrix{};
-    template<size_t N>
+    template<std::size_t N>
     struct vector{};
   };
 
@@ -97,21 +90,30 @@ namespace siconos
       };
   };
 
+  template<typename T, std::size_t N>
+  using memory_t = std::array<T, N>;
+
   template<typename T>
-  constexpr auto get_array = [](auto& data) -> decltype(auto)
+  typename T::value_type& memory(auto step, T& mem)
+  {
+    return mem[step%std::size(mem)];
+  };
+
+  template<typename T>
+  constexpr auto get_memory = [](auto& data) -> decltype(auto)
   {
     using data_t = std::decay_t<decltype(data)>;
     constexpr typename data_t::data_types t = T{};
-    auto& array = std::get<t.index()>(data._collections);
-    return array;
+    auto& mem = std::get<t.index()>(data._collections);
+    return mem;
   };
 
   template<typename T>
   constexpr auto get = [](const auto vd, const auto step, auto& data) -> decltype(auto)
   {
     auto indx = data._graph.index(vd);
-    auto& array = get_array<T>(data);
-    return array[step % std::size(array)][indx];
+    auto& mem = get_memory<T>(data);
+    return memory(step, mem)[indx];
   };
 
   template<typename T>
@@ -119,10 +121,10 @@ namespace siconos
   {
     using data_t = std::decay_t<decltype(data)>;
     using time_discretization = typename data_t::time_discretization;
-    auto step = get_array<typename time_discretization::current_time_step>(data)[0][0];
+    auto step = get_memory<typename time_discretization::current_time_step>(data)[0][0];
     auto indx = data._graph.index(vd);
-    auto& array = get_array<T>(data);
-    return array[step % std::size(array)][indx];
+    auto& mem = get_memory<T>(data);
+    return memory(step, mem)[indx];
   };
 
   void move_back(const auto i, auto& a)
@@ -145,8 +147,8 @@ namespace siconos
     template<typename C>
     using collection =
       typename std::conditional<contains<C>(typename osi::keep::type{}),
-                                std::array<typename env::template collection<typename traits::config<env, typename C::type>::type>, osi::keep::value>,
-                                std::array<typename env::template collection<typename traits::config<env, typename C::type>::type>, 1>>::type;
+                                memory_t<typename env::template collection<typename traits::config<env, typename C::type>::type>, osi::keep::value>,
+                                memory_t<typename env::template collection<typename traits::config<env, typename C::type>::type>, 1>>::type;
 
     template<typename T>
     struct item_access
@@ -196,7 +198,7 @@ namespace siconos
     };
     collection<vdescriptor> _vdescriptors;
 
-    std::array<typename env::template collection<item_types>, 1> _items;
+    memory_t<typename env::template collection<item_types>, 1> _items;
 
     /* methods & operators */
     template<typename Fun>
@@ -227,7 +229,7 @@ namespace siconos
     for_each(
       [&fun,&data]<typename ...Attrs>(Attrs&...)
       {
-        (fun(siconos::get_array<Attrs>(data)), ...);
+        (fun(siconos::get_memory<Attrs>(data)), ...);
       },
       typename T::attributes{});
   };
@@ -237,15 +239,15 @@ namespace siconos
   {
     auto vd = data._graph.add_vertex(data._counter++);
 
-    data._vdescriptors[step%std::size(data._vdescriptors)].push_back(vd);
-    data._items[step%std::size(data._items)].push_back(T{});
+    memory(step, data._vdescriptors).push_back(vd);
+    memory(step, data._items).push_back(T{});
 
-    data._graph.index(vd) = std::size(data._vdescriptors[step%std::size(data._vdescriptors)])-1;
+    data._graph.index(vd) = std::size(memory(step, data._vdescriptors))-1;
 
     for_each_attribute<T>(
       [&step](auto& a)
       {
-        a[step%std::size(a)].push_back(typename std::decay_t<decltype(a)>::value_type::value_type{});
+        memory(step, a).push_back(typename std::decay_t<decltype(a)>::value_type::value_type{});
       },
       data);
 
@@ -261,18 +263,18 @@ namespace siconos
     data._graph.remove_vertex(vd);
 
     typename std::decay_t<decltype(data)>::item_types item =
-      data._items[step%std::size(data._items)][i];
+      memory(step, data._items)[i];
 
-    move_back(i, data._vdescriptors[step%std::size(data._vdescriptors)]);
-    move_back(i, data._items[step%std::size(data._items)]);
-    data._graph.index(data._vdescriptors[step%std::size(data._vdescriptors)][i]) = i;
+    move_back(i, memory(step, data._vdescriptors));
+    move_back(i, memory(step, data._items));
+    data._graph.index(memory(step, data._vdescriptors)[i]) = i;
 
     std::visit([&i,&step,&data]<typename Item>(Item)
     {
       for_each_attribute<Item>(
         [&i,&step](auto &a)
         {
-          move_back(i, a[step%std::size(a)]);
+          move_back(i, memory(step, a));
         },
         data);
     }, item);
@@ -284,11 +286,10 @@ namespace siconos
     for_each_attribute<T>(
       [&step](auto& a)
       {
-        a[step%std::size(a)].push_back(typename std::decay_t<decltype(a)>::value_type::value_type{});
+        memory(step, a).push_back(typename std::decay_t<decltype(a)>::value_type::value_type{});
       },
       data);
   }
 };
-
 
 #endif

@@ -1,6 +1,7 @@
 #include "siconos_data.hpp"
 #include "siconos.hpp"
 
+#include <tuple>
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 using fmt::print;
@@ -23,12 +24,12 @@ int main()
   auto data = siconos::make_data<env, simulation, interaction>();
 
   add_item<simulation>(0, data);
-  get_array<simulation::time_discretization::current_time_step>(data)[0][0] = 0;
+  get_memory<simulation::time_discretization::current_time_step>(data)[0][0] = 0;
   print("---\n");
   for_each(
     [](auto& a)
     {
-      print("->{}\n", std::size(a));
+      print("->{}\n", a.size());
     },
     data._collections);
 
@@ -42,7 +43,7 @@ int main()
   auto& velocityp = get<ball::velocity>(ds0, 0, data);
   print("--->{}\n", velocityp);
 
-  for_each([](auto& a) { print("{:d}\n", std::size(a)); }, data._collections);
+  for_each([](auto& a) { print("{:d}\n", a.size()); }, data._collections);
   print("{0}\n", data._collections);
 
   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
@@ -72,14 +73,14 @@ int main()
   xget<ball::fext>(ds0, data) = { 10., 0., 0.};
   print("{}\n", data._collections);
 
-  data(get<ball::fext>)(ds0, 0) = { 2.,1.,0.};
-  print("{}\n", data(get<ball::fext>)(ds0, 0));
+  data(xget<ball::fext>)(ds0) = { 2.,1.,0.};
+  print("{}\n", data(xget<ball::fext>)(ds0));
 
   add_item<nslaw>(0, data);
 
-  auto& e = siconos::get_array<nslaw::e>(data);
+  auto& e = siconos::get_memory<nslaw::e>(data);
   e[0][0] = 0.7;
 
-  print("{}\n", siconos::get_array<nslaw::e>(data));
+  print("{}\n", siconos::get_memory<nslaw::e>(data));
 }
 
