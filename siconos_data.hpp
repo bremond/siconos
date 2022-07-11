@@ -144,63 +144,80 @@ namespace siconos
     using scalar = typename env::scalar;
     using graph_t = typename env::graph;
 
+    // wrap collection type in a memory container according to
+    // osi::keep specification
     template<typename C>
-    using collection =
-      typename std::conditional<contains<C>(typename osi::keep::type{}),
-                                memory_t<typename env::template collection<typename traits::config<env, typename C::type>::type>, osi::keep::value>,
-                                memory_t<typename env::template collection<typename traits::config<env, typename C::type>::type>, 1>>::type;
+    using collection = typename std::conditional<
+      contains<C>(typename osi::keep::type{}),
+      // memory of size osi::keep::value
+      memory_t<typename env::template collection<
+                 typename traits::config<
+                   env, typename C::type>::type>, osi::keep::value>,
+      // else no memory (size 1)
+      memory_t<typename env::template collection<
+                 typename traits::config<
+                   env, typename C::type>::type>, 1>>::type;
 
+    // definition of data collections types for each item
     template<typename T>
     struct item_access
     {
-      template<typename ...Ds>
+      template<typename ...Attrs>
       struct item_data
       {
-        using types = std::variant<Ds...>;
-        using collections_t = std::tuple<collection<Ds>...>;
-
+        using types = std::variant<Attrs...>;
+        using collections_t = std::tuple<collection<Attrs>...>;
       };
 
       using attributes = typename T::attributes;
 
-      using collections_t = decltype(std::apply([]<typename ...Ts>(Ts&&...)
-                                                {
-                                                  return typename item_data<Ts...>::collections_t{};
-                                                },
-                                                attributes{}));
+      using collections_t = decltype(
+        std::apply([]<typename ...Attrs>(Attrs&&...)
+                   {
+                     return typename item_data<Attrs...>::collections_t{};
+                   },
+                   attributes{}));
     };
 
-    using item_types = std::variant<Items...>;
-//    std::tuple<item_access<Items>...> _items;
+    // flatten all attributes
+    using all_attributes = decltype(std::tuple_cat<typename Items::attributes...>
+                                    (typename Items::attributes{}...));
 
-    using tpl_cat = decltype(std::tuple_cat<typename Items::attributes...>
-                             (typename Items::attributes{}...));
-
+    // global variant for all attributes
     using data_types = decltype(std::apply(
                                   []<typename ...Ts>(Ts&&...)
                                   {
                                     return std::variant<Ts...>{};
                                   },
-                                  std::declval<tpl_cat>()));
+                                  std::declval<all_attributes>()));
 
-    using collections_t = decltype(std::tuple_cat<typename item_access<Items>::collections_t...>
-                                   (typename item_access<Items>::collections_t{}...));
+    // global storage type for all defined collections
+    using collections_t = decltype(
+      std::tuple_cat<typename item_access<Items>::collections_t...>
+      (typename item_access<Items>::collections_t{}...));
 
-    /* stored data */
-    indice _counter = 0;
-    graph_t _graph;
+    // global storage
     collections_t _collections;
 
+    // administrative counter
+    indice _counter = 0;
 
+    // graph
+    graph_t _graph;
+
+    // vertices descriptors
     struct vdescriptor
     {
       using type = siconos::any::vdescriptor;
     };
     collection<vdescriptor> _vdescriptors;
 
+    // item types
+    using item_types = std::variant<Items...>;
     memory_t<typename env::template collection<item_types>, 1> _items;
 
-    /* methods & operators */
+    ///////////////////////
+    // methods & operators
     template<typename Fun>
     decltype (auto) operator () (Fun&& fun)
     {
@@ -214,8 +231,9 @@ namespace siconos
   {
     using system = typename Sim::one_step_integrator::system;
     using nslaw = typename Inter::nonsmooth_law;
+    using relation = typename Inter::relation;
     using time_discretization = typename Sim::time_discretization;
-    return data<Env, Sim, system, nslaw, time_discretization>{};
+    return data<Env, Sim, system, relation, nslaw, time_discretization>{};
   }
 
   static constexpr void for_each(auto&& fun, auto&& tpl)
@@ -235,14 +253,27 @@ namespace siconos
   };
 
   template<typename T>
-  auto add_vertex_item(const auto step, auto& data)
+  constexpr auto attributes = [](auto& data) -> decltype(auto)
   {
-    auto vd = data._graph.add_vertex(data._counter++);
+    return std::apply([]<typename ...Attrs>(Attrs&... attrs)
+                      {
+                        (std::make_tuple(attrs), ...);
+                      },
+                      typename T::attributes{});
+  };
 
-    memory(step, data._vdescriptors).push_back(vd);
-    memory(step, data._items).push_back(T{});
+  auto get_step = [](auto& data) -> decltype(auto)
+  {
+    using data_t = std::decay_t<decltype(data)>;
+    using time_discretization = typename data_t::time_discretization;
+    // one time_discretization / data
+    return get_memory<typename time_discretization::current_time_step>(data)[0][0];
+  };
 
-    data._graph.index(vd) = std::size(memory(step, data._vdescriptors))-1;
+  template<typename T>
+  auto add_attributes = [](auto& data) -> decltype(auto)
+  {
+    auto step = get_step(data);
 
     for_each_attribute<T>(
       [&step](auto& a)
@@ -251,8 +282,23 @@ namespace siconos
       },
       data);
 
+  };
+
+  template<typename T>
+  auto add_vertex_item = [](auto& data) -> decltype(auto)
+  {
+    auto step = get_step(data);
+
+    auto vd = data._graph.add_vertex(data._counter++);
+
+    memory(step, data._vdescriptors).push_back(vd);
+    memory(step, data._items).push_back(T{});
+
+    data._graph.index(vd) = std::size(memory(step, data._vdescriptors))-1;
+
+    add_attributes<T>(data);
     return vd;
-  }
+  };
 
   void remove_vertex_item(const auto vd,
                           const auto step,
@@ -281,15 +327,13 @@ namespace siconos
   }
 
   template<typename T>
-  void add_item(const auto step, auto& data)
+  constexpr auto build_a_value = [](auto& data) -> decltype(auto)
   {
-    for_each_attribute<T>(
-      [&step](auto& a)
-      {
-        memory(step, a).push_back(typename std::decay_t<decltype(a)>::value_type::value_type{});
-      },
-      data);
-  }
+    using data_t = std::decay_t<decltype(data)>;
+    constexpr typename data_t::data_types t = T{};
+    return t;
+  };
+
 };
 
 #endif

@@ -9,61 +9,6 @@
 
 namespace siconos
 {
-  template<typename X>
-  struct item
-  {
-    using type = X;
-
-    static constexpr auto add(const auto step, auto& data)
-    {
-      return siconos::add_vertex_item(step, data);
-    };
-  };
-
-
-  template<typename T>
-  struct attribute
-  {
-    using type = T;
-
-    static constexpr auto get = [](const auto vd, const auto step, auto& data) -> typename T::type&
-    {
-//      return siconos::get<T>(vd, step, data);
-    };
-  };
-
-}
-
-struct env
-{
-  using scalar = double;
-  using indice = std::size_t;
-
-  using graph = SiconosGraph < indice, indice,
-                               boost::no_property,
-                               boost::no_property,
-                               boost::no_property >;
-
-  using vdescriptor = graph::VDescriptor;
-
-  template<typename T>
-  using collection = std::vector<T>;
-
-  template<indice N>
-  using vector = std::array<scalar, N>;
-
-  template<indice N, indice M>
-  using matrix = std::array<scalar, N*M>;
-
-};
-
-struct param
-{
-  static constexpr auto dof = 3;
-};
-
-namespace siconos
-{
   template<typename ...Args>
   using tuple = std::tuple<Args...>;
 
@@ -101,17 +46,24 @@ namespace siconos
 
     struct relation
     {
+      struct h_matrix
+      {
+        using type = any::matrix<1, dof>;
+      };
+
+      using attributes = tuple<h_matrix>;
     };
 
     using vertex_items = tuple<dynamical_system>;
-    using edge_items = tuple<relation>;
   };
 
-  template<typename NSLAW, typename RELATION>
+  template<typename Nslaw, typename Relation>
   struct interaction
   {
-    using nonsmooth_law = NSLAW;
-    using relation = RELATION;
+    using nonsmooth_law = Nslaw;
+    using relation = Relation;
+
+    using edge_items = tuple<nonsmooth_law, relation>;
   };
 
   struct nonsmooth_law

@@ -12,7 +12,7 @@
 
 ** Release
 
-#+name: xsiconos-cmake-gcc
+#+name: mybenchmarks-cmake-gcc
 #+header: :var src_dir=src-dir
 #+header: :dir build-gcc
 #+begin_src sh :compile :results output silent
@@ -21,7 +21,7 @@
        dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Release" 
 #+end_src
 
-#+name: xsiconos-make-gcc
+#+name: mybenchmarks-make-gcc
 #+header: :var src_dir=src-dir
 #+header: :dir build-gcc
 #+begin_src sh :compile :results output silent
@@ -33,7 +33,7 @@
 
 ** Debug
 
-#+name: xsiconos-cmake-gcc-debug
+#+name: mybenchmarks-cmake-gcc-debug
 #+header: :var src_dir=src-dir
 #+header: :dir build-gcc-debug
 #+begin_src sh :compile :results output silent
@@ -42,7 +42,7 @@
        dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Debug" 
 #+end_src
 
-#+name: xsiconos-make-gcc-debug
+#+name: mybenchmarks-make-gcc-debug
 #+header: :var src_dir=src-dir
 #+header: :dir build-gcc-debug
 #+begin_src sh :compile :results output silent
@@ -55,7 +55,7 @@
 
 ** Release
 
-#+name: xsiconos-cmake-clang
+#+name: mybenchmarks-cmake-clang
 #+header: :var src_dir=src-dir
 #+header: :dir build-clang
 #+begin_src sh :compile :results output silent
@@ -64,7 +64,7 @@
        dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Release" 
 #+end_src
 
-#+name: xsiconos-make-clang
+#+name: mybenchmarks-make-clang
 #+header: :var src_dir=src-dir
 #+header: :dir build-clang
 #+begin_src sh :compile :results output silent
@@ -76,7 +76,7 @@
 
 ** Debug
 
-#+name: xsiconos-cmake-clang-debug
+#+name: mybenchmarks-cmake-clang-debug
 #+header: :var src_dir=src-dir
 #+header: :dir build-clang-debug
 #+begin_src sh :compile :results output silent
@@ -85,7 +85,7 @@
        dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Debug" 
 #+end_src
 
-#+name: xsiconos-make-clang-debug
+#+name: mybenchmarks-make-clang-debug
 #+header: :var src_dir=src-dir
 #+header: :dir build-clang-debug
 #+begin_src sh :compile :results output silent
@@ -97,7 +97,7 @@
 
 * Run
 
-#+name: xsiconos-gcc
+#+name: mybenchmarks-gcc
 #+header: :dir build-gcc
 #+begin_src sh :compile :results output silent
   sudo cpupower frequency-set --governor performance
@@ -106,7 +106,7 @@
 #+end_src
 
 
-#+name: xsiconos-gcc-debug
+#+name: mybenchmarks-gcc-debug
 #+header: :dir build-gcc-debug
 #+begin_src sh :compile :results output silent
   ./tgraph

@@ -6,6 +6,33 @@
 #include <fmt/ranges.h>
 using fmt::print;
 
+struct env
+{
+  using scalar = double;
+  using indice = std::size_t;
+
+  using graph = SiconosGraph < indice, indice,
+                               boost::no_property,
+                               boost::no_property,
+                               boost::no_property >;
+
+  using vdescriptor = graph::VDescriptor;
+
+  template<typename T>
+  using collection = std::vector<T>;
+
+  template<indice N>
+  using vector = std::array<scalar, N>;
+
+  template<indice N, indice M>
+  using matrix = std::array<scalar, N*M>;
+
+};
+
+struct param
+{
+  static constexpr auto dof = 3;
+};
 
 using namespace siconos;
 
@@ -23,7 +50,7 @@ int main()
   using siconos::get;
   auto data = siconos::make_data<env, simulation, interaction>();
 
-  add_item<simulation>(0, data);
+  add_attributes<simulation>(data);
   get_memory<simulation::time_discretization::current_time_step>(data)[0][0] = 0;
   print("---\n");
   for_each(
@@ -35,7 +62,7 @@ int main()
 
   print("---\n");
 
-  auto ds0 = add_vertex_item<ball>(0, data);
+  auto ds0 = add_vertex_item<ball>(data);
   auto& v0 = get<ball::velocity>(ds0, 0, data);
 
   v0 = { 1., 2., 3.};
@@ -48,10 +75,10 @@ int main()
 
   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
-  auto ds1 = add_vertex_item<ball>(0, data);
+  auto ds1 = add_vertex_item<ball>(data);
 
   get<ball::q>(ds1, 0, data) = { 1.,1., 1.};
-  auto ds2 = add_vertex_item<ball>(0, data);
+  auto ds2 = add_vertex_item<ball>(data);
   get<ball::q>(ds2, 0, data) = { 9.,9., 9.};
   print("---\n");
   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
@@ -76,11 +103,15 @@ int main()
   data(xget<ball::fext>)(ds0) = { 2.,1.,0.};
   print("{}\n", data(xget<ball::fext>)(ds0));
 
-  add_item<nslaw>(0, data);
+  add_attributes<interaction::relation>(data);
+  add_attributes<interaction::nonsmooth_law>(data);
+//  add_attributes<nslaw>(data);
 
   auto& e = siconos::get_memory<nslaw::e>(data);
   e[0][0] = 0.7;
 
   print("{}\n", siconos::get_memory<nslaw::e>(data));
+
+
 }
 
