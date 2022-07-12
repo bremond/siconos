@@ -50,7 +50,7 @@ int main()
   using siconos::get;
   auto data = siconos::make_data<env, simulation, interaction>();
 
-  add_attributes<simulation>(data);
+  add<simulation>(data);
   get_memory<simulation::time_discretization::current_time_step>(data)[0][0] = 0;
   print("---\n");
   for_each(
@@ -62,12 +62,12 @@ int main()
 
   print("---\n");
 
-  auto ds0 = add_vertex_item<ball>(data);
-  auto& v0 = get<ball::velocity>(ds0, 0, data);
+  auto ds0 = add<ball>(data);
+  auto& v0 = get<ball::velocity>(ds0, data);
 
   v0 = { 1., 2., 3.};
 
-  auto& velocityp = get<ball::velocity>(ds0, 0, data);
+  auto& velocityp = get<ball::velocity>(ds0, data);
   print("--->{}\n", velocityp);
 
   for_each([](auto& a) { print("{:d}\n", a.size()); }, data._collections);
@@ -75,11 +75,11 @@ int main()
 
   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
-  auto ds1 = add_vertex_item<ball>(data);
+  auto ds1 = add<ball>(data);
 
-  get<ball::q>(ds1, 0, data) = { 1.,1., 1.};
-  auto ds2 = add_vertex_item<ball>(data);
-  get<ball::q>(ds2, 0, data) = { 9.,9., 9.};
+  get<ball::q>(ds1, data) = { 1.,1., 1.};
+  auto ds2 = add<ball>(data);
+  get<ball::q>(ds2, data) = { 9.,9., 9.};
   print("---\n");
   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
@@ -87,9 +87,9 @@ int main()
   print("---\n");
   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
-  print("{}", get<ball::mass_matrix>(ds0, 0, data));
+  print("{}", get<ball::mass_matrix>(ds0, data));
 
-  auto m = get<ball::mass_matrix>(ds0, 0, data);
+  auto m = get<ball::mass_matrix>(ds0, data);
 
   print("---\n");
 
@@ -97,21 +97,19 @@ int main()
 
   print("---\n");
 
-  xget<ball::fext>(ds0, data) = { 10., 0., 0.};
+  get<ball::fext>(ds0, data) = { 10., 0., 0.};
   print("{}\n", data._collections);
 
-  data(xget<ball::fext>)(ds0) = { 2.,1.,0.};
-  print("{}\n", data(xget<ball::fext>)(ds0));
+  data(get<ball::fext>)(ds0) = { 2.,1.,0.};
+  print("{}\n", data(get<ball::fext>)(ds0));
 
-  add_attributes<interaction::relation>(data);
-  add_attributes<interaction::nonsmooth_law>(data);
+  add<interaction>(data);
 //  add_attributes<nslaw>(data);
 
   auto& e = siconos::get_memory<nslaw::e>(data);
   e[0][0] = 0.7;
 
   print("{}\n", siconos::get_memory<nslaw::e>(data));
-
 
 }
 

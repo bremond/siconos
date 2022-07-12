@@ -17,7 +17,7 @@ namespace siconos
   {
     static constexpr auto dof = Param::dof;
 
-    struct dynamical_system
+    struct dynamical_system : vertex_item
     {
       struct mass_matrix
       {
@@ -54,7 +54,6 @@ namespace siconos
       using attributes = tuple<h_matrix>;
     };
 
-    using vertex_items = tuple<dynamical_system>;
   };
 
   template<typename Nslaw, typename Relation>
@@ -63,7 +62,7 @@ namespace siconos
     using nonsmooth_law = Nslaw;
     using relation = Relation;
 
-    using edge_items = tuple<nonsmooth_law, relation>;
+    using items = tuple<nonsmooth_law, relation>;
   };
 
   struct nonsmooth_law
@@ -104,6 +103,14 @@ namespace siconos
   struct one_step_nonsmooth_problem
   {
     using type = Type;
+
+    struct index_set_level
+    {
+      using type = any::indice;
+    };
+
+    using attributes = tuple<index_set_level>;
+
   };
 
   template<typename Form>
@@ -113,6 +120,7 @@ namespace siconos
     {
       using formulation = Form;
       using system = typename formulation::dynamical_system;
+
 
       template<std::size_t N, typename ...As>
       struct keeper
@@ -139,10 +147,10 @@ namespace siconos
   {
 //    struct event_manager
 //    {
-      struct current_time_step
-      {
-        using type = any::indice;
-      };
+    struct current_time_step
+    {
+      using type = any::indice;
+    };
 //    };
 
     using attributes = tuple<current_time_step>;
@@ -155,7 +163,9 @@ namespace siconos
     using one_step_integrator = OSI;
     using one_step_nonsmooth_problem = OSNSPB;
 
-    using attributes = tuple<typename time_discretization::current_time_step>;
+    using items = tuple<time_discretization,
+                        one_step_integrator,
+                        one_step_nonsmooth_problem>;
   };
 }
 
