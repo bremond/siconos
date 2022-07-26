@@ -6,54 +6,108 @@
 #include "SiconosGraph.hpp"
 
 #include "siconos_data.hpp"
+#include "siconos_pattern.hpp"
 
 namespace siconos
 {
-  template<typename ...Args>
-  using tuple = std::tuple<Args...>;
-
   template<typename Param>
   struct lagrangian
   {
     static constexpr auto dof = Param::dof;
 
-    struct dynamical_system : vertex_item
+    struct dynamical_system
     {
-      struct mass_matrix
-      {
-        using type = any::matrix<dof, dof>;
-      };
+      struct mass_matrix : some::tag {};
+      struct q : some::tag {};
+      struct velocity : some::tag {};
+      struct fext : some::tag {};
 
-      struct q
-      {
-        using type = any::vector<dof>;
-      };
+      using definition = vertex_item<
+        description
+        <"the dynamical system">,
 
-      struct velocity
-      {
-        using type = any::vector<dof>;
-      };
+        attribute<
+          tag<mass_matrix>,
+          symbol<"M">,
+          description<"the mass matrix">,
+          structure<some::matrix<dof, dof>>>,
 
-      struct fext
-      {
-        using type = any::vector<dof>;
-      };
+        attribute<
+          tag<q>,
+          symbol<"q">,
+          description<"state">,
+          structure<some::vector<dof>>>,
 
-      using attributes =
-        tuple<mass_matrix, q, velocity, fext>;
+        attribute<
+          tag<velocity>,
+          symbol<"v">,
+          description<"the velocity">,
+          structure<some::vector<dof>>>,
 
+        attribute<
+          tag<fext>,
+          symbol<"fext">,
+          description<"external force">,
+          structure<some::vector<dof>>>>;
     };
 
     struct relation
     {
-      struct h_matrix
-      {
-        using type = any::matrix<1, dof>;
-      };
+      struct h_matrix : some::tag {};
 
-      using attributes = tuple<h_matrix>;
+      using definition = item<
+
+        description
+        <"the relation">,
+
+        attribute<
+          tag<h_matrix>,
+          symbol<"H">,
+          description<"the H matrix">,
+          structure<some::matrix<1, dof>>>>;
+    };
+  };
+
+  struct nonsmooth_law
+  {
+    struct newton_impact_friction
+    {
+      struct e : some::tag {};
+      struct mu : some::tag {};
+
+      using definition = item<
+
+        description
+        <"the Newton impact friction law">,
+
+        attribute<
+          tag<e>,
+          symbol<"e">,
+          description<"restitution coefficient">,
+          structure<some::scalar>>,
+
+        attribute<
+          tag<mu>,
+          symbol<"mu">,
+          description<"Coulomb friction coefficient">,
+          structure<some::scalar>>>;
     };
 
+    struct newton_impact
+    {
+      struct e : some::tag {};
+
+      using definition = item<
+
+        description
+        <"The Newton impact law">,
+
+        attribute<
+          tag<e>,
+          symbol<"e">,
+          description<"restitution coefficient">,
+          structure<some::scalar>>>;
+    };
   };
 
   template<typename Nslaw, typename Relation>
@@ -62,38 +116,12 @@ namespace siconos
     using nonsmooth_law = Nslaw;
     using relation = Relation;
 
-    using items = tuple<nonsmooth_law, relation>;
-  };
+    using definition = item<
+      description
+      <"The interaction">,
 
-  struct nonsmooth_law
-  {
-
-    struct newton_impact_friction
-    {
-      struct e
-      {
-        using type = any::scalar;
-      };
-
-      struct mu
-      {
-        using type = any::scalar;
-      };
-
-      using attributes = tuple<e, mu>;
-    };
-
-    struct newton_impact
-    {
-      struct e
-      {
-        using type = any::scalar;
-      };
-
-      using attributes = tuple<e>;
-    };
-
-    using items = tuple<newton_impact_friction, newton_impact>;
+      use<nonsmooth_law>,
+      use<relation>>;
   };
 
   struct lcp
@@ -102,70 +130,80 @@ namespace siconos
   template<typename Type>
   struct one_step_nonsmooth_problem
   {
-    using type = Type;
+    using problem_type = Type;
 
-    struct index_set_level
-    {
-      using type = any::indice;
-    };
+    struct level : some::tag {};
 
-    using attributes = tuple<index_set_level>;
+    using definition = item<
 
+      description
+      <"The one step nonsmooth problem">,
+      attribute<
+        tag<level>,
+        symbol<"level">,
+        description<"Index set level">,
+        structure<some::indice>>>;
   };
 
   template<typename Form>
   struct one_step_integrator
   {
+    using formulation = Form;
+    using system = typename formulation::dynamical_system;
+
     struct moreau_jean
     {
-      using formulation = Form;
-      using system = typename formulation::dynamical_system;
+      struct theta : some::tag {};
 
+      using definition = item<
 
-      template<std::size_t N, typename ...As>
-      struct keeper
-      {
-        static constexpr std::size_t value = N;
-        using type = tuple<As...>;
-      };
+        description
+        <"The Moreau-Jean integrator">,
 
-      using keep = keeper<2, typename system::q, typename system::velocity>;
+        use<system>,
+        attribute<
+          tag<theta>,
+          symbol<"theta">,
+          description<"theta method parameter">,
+          structure<some::scalar>>,
 
-      struct theta
-      {
-        using type = any::scalar;
-      };
-
-      using attributes = tuple<theta>;
+        keep<typename system::q, 2>,
+        keep<typename system::velocity, 2>>;
     };
-
-    using items = tuple<moreau_jean>;
   };
 
   template<typename Param>
   struct time_discretization
   {
-//    struct event_manager
-//    {
-    struct current_time_step
-    {
-      using type = any::indice;
-    };
-//    };
+    struct step : some::tag {};
+    using definition = item<
 
-    using attributes = tuple<current_time_step>;
+      description
+      <"the time discretization">,
+
+        attribute<
+          tag<step>,
+          symbol<"step">,
+          description<"">,
+          structure<some::indice>>>;
+
   };
 
-  template<typename TD, typename OSI, typename OSNSPB>
+  template<typename TD, typename OSI, typename OSNSPB, typename ...Inters>
   struct time_stepping
   {
     using time_discretization = TD;
     using one_step_integrator = OSI;
     using one_step_nonsmooth_problem = OSNSPB;
+    using interactions = std::tuple<Inters...>;
 
-    using items = tuple<time_discretization,
-                        one_step_integrator,
-                        one_step_nonsmooth_problem>;
+    using definition = item<
+      description
+      <"The time stepping">,
+      use<time_discretization>,
+      use<one_step_integrator>,
+      use<one_step_nonsmooth_problem>,
+      use<Inters...>>;
   };
 }
 

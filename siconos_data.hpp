@@ -3,133 +3,56 @@
 
 #include <type_traits>
 #include <variant>
-#include <tuple>
 #include <concepts>
-#include <functional>
 
+#include "siconos_util.hpp"
+#include "siconos_traits.hpp"
 namespace siconos
 {
-  struct any
-  {
-    struct scalar{};
-    struct indice{};
-    struct vdescriptor{};
-
-    template<std::size_t N, std::size_t M>
-    struct matrix{};
-    template<std::size_t N>
-    struct vector{};
-  };
-
-  struct vertex_item{};
-
-  namespace traits
-  {
-    template<typename T>
-    struct missing_conversion_for{};
-
-    template<typename E, typename T>
-    struct config
-    {
-      using type = missing_conversion_for<T>;
-    };
-
-    template<typename E>
-    struct config<E, any::scalar>
-    {
-      using type = typename E::scalar;
-    };
-
-    template<typename E>
-    struct config<E, any::indice>
-    {
-      using type = typename E::indice;
-    };
-
-    template<typename E>
-    struct config<E, any::vdescriptor>
-    {
-      using type = typename E::vdescriptor;
-    };
-
-    template<std::size_t N, typename E>
-    struct config<E, any::vector<N>>
-    {
-      using type = typename E::template vector<N>;
-    };
-
-    template<std::size_t N, std::size_t M, typename E>
-    struct config<E, any::matrix<N, M>>
-    {
-      using type = typename E::template matrix<N, M>;
-    };
-  };
-
-  template<typename U, typename... T>
-  constexpr bool contains(std::tuple<T...>)
-  {
-    return (std::is_same_v<U, T> || ...);
-  }
-
-  // let rec
-  // https://stackoverflow.com/questions/2067988/recursive-lambda-functions-in-c11
-  template <class F>
-  struct recursive
-  {
-    F f;
-    template <class... Ts>
-    decltype(auto) operator()(Ts&&... ts)  const
-    {
-      return f(std::ref(*this), std::forward<Ts>(ts)...);
-    }
-
-    template <class... Ts>
-    decltype(auto) operator()(Ts&&... ts)
-    {
-      return f(std::ref(*this), std::forward<Ts>(ts)...);
-    }
-  };
-
-  template <class F> recursive(F) -> recursive<F>;
-
-  static constexpr auto const rec = [](auto f)
-  {
-    return recursive{std::move(f)};
-  };
-
-  static constexpr auto proj = [] (auto& data)
-  {
-    return
-      ([&data](auto&& fun) -> decltype(auto)
-      {
-        return
-          ([&data,&fun]<typename ...As>(As&&...args) -> decltype(auto)
-          {
-            return fun(std::forward<As>(args)..., data);
-          });
-      });
-  };
-
-  static constexpr auto compose = [](auto&& f, auto&& g) -> decltype(auto)
-  {
-    return
-      [&f,&g]<typename ...As>(As&& ...args) -> decltype(auto)
-      {
-        return f(g(std::forward<As>(args)...));
-      };
-  };
-
   template<typename T, std::size_t N>
   using memory_t = std::array<T, N>;
 
-  static constexpr auto memory = []<typename T>(auto step, T& mem)
-    -> typename T::value_type&
+  template<typename Tag>
+  static constexpr auto memory_size = [](concepts::tuple_like auto&& keeps)
+    constexpr -> decltype(auto)
+  {
+    // let rec loop(...) = ...
+    constexpr auto rec_loop = []<typename Tpl>(auto&& loop, Tpl) constexpr
+    {
+      constexpr auto keep = car(Tpl{});
+      using keep_t = std::decay_t<decltype(keep)>;
+
+      if constexpr (std::is_same_v<Tag, typename keep_t::tag>)
+      {
+        return keep_t::size;
+      }
+      else if constexpr (std::tuple_size_v<Tpl> > 1)
+      {
+        return loop(loop, cdr(Tpl{}));
+      }
+      else
+      {
+        // memory size not specified
+        return 1;
+      }
+    };
+
+    // at least one element remaining
+    static_assert(std::tuple_size_v<std::decay_t<decltype(keeps)>> > 0);
+
+    return rec_loop(rec_loop, keeps);
+  };
+
+  static constexpr auto memory =
+    []<typename T>(typename T::size_type step, T& mem)
+    constexpr -> typename T::value_type&
   {
     return mem[step%std::size(mem)];
   };
 
-  template<typename T>
-  static constexpr auto get_memory = [](auto& data) -> decltype(auto)
+  template<concepts::tag T>
+  static constexpr auto get_memory = [](auto& data) constexpr
+    -> decltype(auto)
   {
     using data_t = std::decay_t<decltype(data)>;
     constexpr typename data_t::data_types t = T{};
@@ -137,12 +60,12 @@ namespace siconos
     return mem;
   };
 
-  static constexpr auto get_step = [](auto& data) -> decltype(auto)
+  static constexpr auto get_step = [](auto& data) constexpr -> decltype(auto)
   {
     using data_t = std::decay_t<decltype(data)>;
     using time_discretization = typename data_t::time_discretization;
     // one time_discretization / data
-    return get_memory<typename time_discretization::current_time_step>(data)[0][0];
+    return get_memory<typename time_discretization::step>(data)[0][0];
   };
 
   template<typename T>
@@ -168,7 +91,7 @@ namespace siconos
     a.pop_back();
   };
 
-  template<typename Env, typename Sim, typename ...Items>
+  template<typename Env, typename Sim, typename ...Attributes>
   struct data
   {
     using env = Env;
@@ -180,56 +103,19 @@ namespace siconos
     using graph_t = typename env::graph;
 
     // wrap collection type in a memory container according to
-    // osi::keep specification
+    // osi::keeps specification
     template<typename C>
-    using collection = typename std::conditional<
-      contains<C>(typename osi::keep::type{}),
-      // memory of size osi::keep::value
+    using collection =
       memory_t<typename env::template collection<
                  typename traits::config<
-                   env, typename C::type>::type>, osi::keep::value>,
-      // else no memory (size 1)
-      memory_t<typename env::template collection<
-                 typename traits::config<
-                   env, typename C::type>::type>, 1>>::type;
-
-    // definition of data collections types for each item
-    template<typename T>
-    struct item_access
-    {
-      template<typename ...Attrs>
-      struct item_data
-      {
-        using types = std::variant<Attrs...>;
-        using collections_t = std::tuple<collection<Attrs>...>;
-      };
-
-      using attributes = typename T::attributes;
-
-      using collections_t = decltype(
-        std::apply([]<typename ...Attrs>(Attrs&&...)
-                   {
-                     return typename item_data<Attrs...>::collections_t{};
-                   },
-                   attributes{}));
-    };
-
-    // flatten all attributes
-    using all_attributes = decltype(std::tuple_cat<typename Items::attributes...>
-                                    (typename Items::attributes{}...));
+                   env, typename C::structure::type>::type>,
+               memory_size<typename C::tag>(typename osi::definition::keeps{})>;
 
     // global variant for all attributes
-    using data_types = decltype(std::apply(
-                                  []<typename ...Ts>(Ts&&...)
-                                  {
-                                    return std::variant<Ts...>{};
-                                  },
-                                  std::declval<all_attributes>()));
+    using data_types = std::variant<typename Attributes::tag ...>;
 
     // global storage type for all defined collections
-    using collections_t = decltype(
-      std::tuple_cat<typename item_access<Items>::collections_t...>
-      (typename item_access<Items>::collections_t{}...));
+    using collections_t = std::tuple<collection<Attributes>...>;
 
     // global storage
     collections_t _collections;
@@ -240,16 +126,24 @@ namespace siconos
     // graph
     graph_t _graph;
 
-    // vertices descriptors
-    struct vdescriptor
-    {
-      using type = siconos::any::vdescriptor;
-    };
-    collection<vdescriptor> _vdescriptors;
+    using vertex_items =
+      decltype(
+        std::apply(
+          []<typename ...Vertex_items>(Vertex_items...)
+          {
+            return std::variant<Vertex_items ...>{};
+          }, all_vertex_items(Sim{})));
 
-    // item types
-    using item_types = std::variant<Items...>;
-    memory_t<typename env::template collection<item_types>, 1> _items;
+    // vertices descriptors
+    struct vdescriptor : some::tag {};
+    struct vdescriptor_attr :
+      attribute<
+      tag<vdescriptor>,
+      symbol<"vd">,
+      description<"vertex descriptor">,
+      structure<some::vdescriptor<vertex_items>>> {};
+
+    collection<vdescriptor_attr> _vdescriptors;
 
     ///////////////////////
     // methods & operators
@@ -261,83 +155,33 @@ namespace siconos
 
   };
 
-  template<typename T>
-  concept has_attributes = requires { typename T::attributes; };
 
-  template<typename T>
-  concept has_items = requires { typename T::items; };
-
-  static constexpr auto all_items_with_attributes =
-    rec([](auto&& all_items_with_attributes, auto&& t)
-    {
-      using type_t = std::decay_t<decltype(t)>;
-      if constexpr (has_attributes<type_t>)
-      {
-        return std::tuple<type_t>(t);
-      }
-      else if constexpr (has_items<type_t>)
-      {
-        return std::apply(
-          [&all_items_with_attributes]<typename ...Items>(Items... its)
-          {
-            return std::tuple_cat<std::tuple<Items>...>(
-              all_items_with_attributes(its)...);
-          }, typename type_t::items{});
-      }
-      else
-      {
-        // cf https://stackoverflow.com/questions/38304847/constexpr-if-and-static-assert
-        []<bool flag = false>()
-          {
-            static_assert(flag, "need items or attributes");
-          }();
-      }
-    });
-
-  template<typename Env, typename Sim, typename Inter>
-  static constexpr auto make_data = []()
+  template<typename Env, typename Sim>
+  static auto make_data = []() constexpr
   {
-    using system = typename Sim::one_step_integrator::system;
-
-    using items_s = decltype(all_items_with_attributes(Sim{}));
-    using items_i = decltype(all_items_with_attributes(Inter{}));
+    using attributes = decltype(all_terminal_attributes(Sim{}));
 
     return std::apply(
-      []<typename ...Items>(Items...)
+      []<typename ...Attributes>(Attributes...)
       {
-        return data<Env, Sim, system, Items...>{};
-      }, std::tuple_cat(items_s{}, items_i{}));
+        return data<Env, Sim, Attributes...>{};
+      }, attributes{});
   };
 
-  static constexpr auto for_each = [](auto&& fun, auto&& tpl)
-  {
-    std::apply([&fun](auto&&... args) { ((fun(args)), ...);}, tpl);
-  };
-
-  template<typename T>
-  static constexpr auto for_each_attribute = [](auto&& fun, auto& data)
+  template<concepts::item T>
+  static auto for_each_attribute = [](auto&& fun, auto& data)
+    constexpr
   {
     for_each(
-      [&fun,&data]<typename ...Attrs>(Attrs&...)
+      [&fun,&data]<concepts::attribute ...Attrs>(Attrs&...)
       {
-        (fun(siconos::get_memory<Attrs>(data)), ...);
+        (fun(siconos::get_memory<typename Attrs::tag>(data)), ...);
       },
-      typename T::attributes{});
+      all_terminal_attributes(T{}));
   };
 
   template<typename T>
-  static constexpr auto attributes = [](auto& data) -> decltype(auto)
-  {
-    return std::apply([]<typename ...Attrs>(Attrs&... attrs)
-                      {
-                        (std::make_tuple(attrs), ...);
-                      },
-                      typename T::attributes{});
-  };
-
-
-  template<typename T>
-  static constexpr auto add_attributes = [](auto& data) -> decltype(auto)
+  static auto add_attributes = [](auto& data) constexpr -> decltype(auto)
   {
     auto step = get_step(data);
 
@@ -351,14 +195,16 @@ namespace siconos
   };
 
   template<typename T>
-  static constexpr auto add_vertex_item = [](auto& data) -> decltype(auto)
+  static auto add_vertex_item = [](auto& data) constexpr -> decltype(auto)
   {
+    static_assert(concepts::vertex_item_t<T, std::decay_t<decltype(data)>>);
+
     auto step = get_step(data);
 
     auto vd = data._graph.add_vertex(data._counter++);
 
-    memory(step, data._vdescriptors).push_back(vd);
-    memory(step, data._items).push_back(T{});
+    memory(step, data._vdescriptors).push_back({vd, T{}});
+//    memory(step, data._items).push_back(T{});
 
     data._graph.index(vd) = std::size(memory(step, data._vdescriptors))-1;
 
@@ -367,48 +213,29 @@ namespace siconos
   };
 
   template<typename T>
-  static constexpr auto add = rec([](auto&& add, auto& data) -> decltype(auto)
+  static auto add = [](auto& data) constexpr -> decltype(auto)
   {
-    // terminal definitions
-    if constexpr (has_attributes<T>)
+    if constexpr (concepts::vertex_item_t<T, std::decay_t<decltype(data)>>)
     {
-      if constexpr (std::derived_from<T, vertex_item>)
-      {
-        return add_vertex_item<T>(data);
-      }
-      else
-      {
-        add_attributes<T>(data);
-      };
+      return add_vertex_item<T>(data);
     }
     else
     {
-      // follow structures definitions
-      if constexpr (has_items<T>)
-      {
-        for_each([&data]<typename Item>(Item)
-                 {
-                   siconos::add<Item>(data);
-                 },
-                 typename T::items{});
-      }
+      add_attributes<T>(data);
     }
-  });
+  };
 
-  static constexpr auto remove_vertex_item = [](const auto vd,
-                                                const auto step,
-                                                auto& data)
+  static auto remove_vertex_item = [](const auto vd,
+                                      const auto step,
+                                      auto& data) constexpr
   {
+
     auto i = data._graph.index(vd);
 
     data._graph.remove_vertex(vd);
 
-    typename std::decay_t<decltype(data)>::item_types item =
-      memory(step, data._items)[i];
-
     move_back(i, memory(step, data._vdescriptors));
-    move_back(i, memory(step, data._items));
-    data._graph.index(memory(step, data._vdescriptors)[i]) = i;
+    data._graph.index(std::get<0>((memory(step, data._vdescriptors)[i]).value)) = i;
 
     std::visit([&i,&step,&data]<typename Item>(Item)
     {
@@ -418,11 +245,11 @@ namespace siconos
           move_back(i, memory(step, a));
         },
         data);
-    }, item);
+    }, (std::get<1>((memory(step, data._vdescriptors)[i]).value)));
   };
 
   template<typename T>
-  static constexpr auto build_a_value = [](auto& data) -> decltype(auto)
+  static auto build_a_value = [](auto& data) constexpr -> decltype(auto)
   {
     using data_t = std::decay_t<decltype(data)>;
     constexpr typename data_t::data_types t = T{};

@@ -16,7 +16,11 @@ struct env
                                boost::no_property,
                                boost::no_property >;
 
-  using vdescriptor = graph::VDescriptor;
+  template<typename T>
+  using vdescriptor = siconos::handle<graph::VDescriptor, T>;
+
+  template<typename ...Ts>
+  using tuple = std::tuple<Ts...>;
 
   template<typename T>
   using collection = std::vector<T>;
@@ -46,12 +50,13 @@ int main()
   using nslaw = nonsmooth_law::newton_impact;
   using interaction = interaction<nslaw, relation>;
   using td = time_discretization<param>;
-  using simulation = time_stepping<td, osi, osnspb>;
+  using simulation = time_stepping<td, osi, osnspb, interaction>;
   using siconos::get;
-  auto data = siconos::make_data<env, simulation, interaction>();
+  auto data = siconos::make_data<env, simulation>();
 
+  get_memory<simulation::time_discretization::step>(data)[0].resize(1);
   add<simulation>(data);
-  get_memory<simulation::time_discretization::current_time_step>(data)[0][0] = 0;
+  get_memory<simulation::time_discretization::step>(data)[0][0] = 0;
   print("---\n");
   for_each(
     [](auto& a)

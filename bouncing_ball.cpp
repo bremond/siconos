@@ -5,7 +5,7 @@ using namespace siconos;
 int main(int argc, char* argv[])
 {
   using formulation = lagrangian<linear, time_invariant, dof<3>>;
-  using osi = one_step_integrator<formulation>::moreau_jean;
+  using osi = one_step_integrators::moreau_jean<formulation>;
   using osnspb = one_step_nonsmooth_problem<lcp>;
   using ball = formulation::dynamical_system;
   using nslaw = nonsmooth_law::newton_impact;
