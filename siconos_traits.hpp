@@ -6,53 +6,47 @@ namespace siconos
 {
   namespace traits
   {
-    struct null_type {};
 
-    template<some::type T>
-    struct missing_conversion_for
-    {
-      static constexpr auto failure =
-        []<bool flag = false>
-      {
-        static_assert(flag);
-      };
-    };
-
-    template<typename E, some::type T>
+    template<typename E, match::attribute T>
     struct config
     {
-      using type = missing_conversion_for<T>;
-    };
+      using type = decltype(
+        []()
+        {
+          if constexpr (std::derived_from<T, some::scalar>)
+          {
+            return typename E::scalar{};
+          }
+          else if constexpr (std::derived_from<T, some::indice>)
+          {
+            return typename E::indice{};
+          }
+          else if constexpr (match::vdescriptor<T>)
+          {
+            return typename E::template vdescriptor<typename T::type>{};
+          }
+          else if constexpr (std::tuple_size_v<decltype(T::sizes)> == 1)
+          {
+            return typename E::template vector<std::get<0>(T::sizes)>{};
+          }
+          else if constexpr (std::tuple_size_v<decltype(T::sizes)> == 2)
+          {
+            return typename E::template matrix<
+              std::get<0>(T::sizes),
+              std::get<1>(T::sizes)>{};
+          }
+          else
+          {
+            // not found
+            // cf https://stackoverflow.com/questions/38304847/constexpr-if-and-static-assert
+            []<bool flag = false>()
+              {
+                static_assert(T{} == flag, "cannot translate type");
+              }();
+          }
 
-    template<typename E>
-    struct config<E, some::scalar>
-    {
-      using type = typename E::scalar;
+        }());
     };
-
-    template<typename E>
-    struct config<E, some::indice>
-    {
-      using type = typename E::indice;
-    };
-
-    template<typename E, typename T>
-    struct config<E, some::vdescriptor<T>>
-    {
-      using type = typename E::vdescriptor<T>;
-    };
-
-    template<std::size_t N, typename E>
-    struct config<E, some::vector<N>>
-    {
-      using type = typename E::template vector<N>;
-    };
-
-    template<std::size_t N, std::size_t M, typename E>
-    struct config<E, some::matrix<N, M>>
-    {
-      using type = typename E::template matrix<N, M>;
-    };
-  };
+  }
 }
 #endif

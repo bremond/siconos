@@ -1,0 +1,6 @@
+*~
+.siconos
+build-clang
+build-gcc
+build-clang-debug
+build-gcc-debug

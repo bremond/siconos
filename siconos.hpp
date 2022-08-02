@@ -5,7 +5,7 @@
 #include <array>
 #include "SiconosGraph.hpp"
 
-#include "siconos_data.hpp"
+#include "siconos_storage.hpp"
 #include "siconos_pattern.hpp"
 
 namespace siconos
@@ -15,134 +15,71 @@ namespace siconos
   {
     static constexpr auto dof = Param::dof;
 
-    struct dynamical_system
+    struct dynamical_system : vertex_item<
+      description
+      <"the dynamical system">>
     {
-      struct mass_matrix : some::tag {};
-      struct q : some::tag {};
-      struct velocity : some::tag {};
-      struct fext : some::tag {};
+      struct mass_matrix :
+        some::matrix<dof, dof> {};
 
-      using definition = vertex_item<
-        description
-        <"the dynamical system">,
+      struct q : some::vector<dof> {};
 
-        attribute<
-          tag<mass_matrix>,
-          symbol<"M">,
-          description<"the mass matrix">,
-          structure<some::matrix<dof, dof>>>,
+      struct velocity : some::vector<dof> {};
 
-        attribute<
-          tag<q>,
-          symbol<"q">,
-          description<"state">,
-          structure<some::vector<dof>>>,
+      struct fext : some::vector<dof> {};
 
-        attribute<
-          tag<velocity>,
-          symbol<"v">,
-          description<"the velocity">,
-          structure<some::vector<dof>>>,
+      using attributes = gather<mass_matrix, q, velocity, fext>;
 
-        attribute<
-          tag<fext>,
-          symbol<"fext">,
-          description<"external force">,
-          structure<some::vector<dof>>>>;
     };
 
-    struct relation
+    struct relation : item<>
     {
-      struct h_matrix : some::tag {};
+      struct h_matrix : some::matrix<1, dof> {};
 
-      using definition = item<
-
-        description
-        <"the relation">,
-
-        attribute<
-          tag<h_matrix>,
-          symbol<"H">,
-          description<"the H matrix">,
-          structure<some::matrix<1, dof>>>>;
+      using attributes = gather<h_matrix>;
     };
   };
 
   struct nonsmooth_law
   {
-    struct newton_impact_friction
+    struct newton_impact_friction : item<>
     {
-      struct e : some::tag {};
-      struct mu : some::tag {};
+      struct e : some::scalar {};
+      struct mu : some::scalar {};
 
-      using definition = item<
-
-        description
-        <"the Newton impact friction law">,
-
-        attribute<
-          tag<e>,
-          symbol<"e">,
-          description<"restitution coefficient">,
-          structure<some::scalar>>,
-
-        attribute<
-          tag<mu>,
-          symbol<"mu">,
-          description<"Coulomb friction coefficient">,
-          structure<some::scalar>>>;
+      using attributes = gather<e, mu>;
     };
 
-    struct newton_impact
+    struct newton_impact : item<>
     {
-      struct e : some::tag {};
+      struct e : some::scalar {};
 
-      using definition = item<
+      using attributes = gather<e>;
 
-        description
-        <"The Newton impact law">,
-
-        attribute<
-          tag<e>,
-          symbol<"e">,
-          description<"restitution coefficient">,
-          structure<some::scalar>>>;
     };
   };
 
   template<typename Nslaw, typename Relation>
-  struct interaction
+  struct interaction : edge_item<>
   {
     using nonsmooth_law = Nslaw;
     using relation = Relation;
 
-    using definition = item<
-      description
-      <"The interaction">,
-
-      use<nonsmooth_law>,
-      use<relation>>;
+    using uses = gather<nonsmooth_law,
+                        relation>;
   };
 
   struct lcp
   {};
 
   template<typename Type>
-  struct one_step_nonsmooth_problem
+  struct one_step_nonsmooth_problem : item<>
   {
     using problem_type = Type;
 
-    struct level : some::tag {};
+    struct level : some::indice {};
 
-    using definition = item<
-
-      description
-      <"The one step nonsmooth problem">,
-      attribute<
-        tag<level>,
-        symbol<"level">,
-        description<"Index set level">,
-        structure<some::indice>>>;
+    using attributes = gather<level>;
   };
 
   template<typename Form>
@@ -151,60 +88,39 @@ namespace siconos
     using formulation = Form;
     using system = typename formulation::dynamical_system;
 
-    struct moreau_jean
+    struct moreau_jean : item<>
     {
-      struct theta : some::tag {};
+      struct theta : some::scalar {};
 
-      using definition = item<
+      using attributes = gather<theta>;
 
-        description
-        <"The Moreau-Jean integrator">,
-
-        use<system>,
-        attribute<
-          tag<theta>,
-          symbol<"theta">,
-          description<"theta method parameter">,
-          structure<some::scalar>>,
-
+      using keeps = gather<
         keep<typename system::q, 2>,
         keep<typename system::velocity, 2>>;
     };
   };
 
   template<typename Param>
-  struct time_discretization
+  struct time_discretization : item<>
   {
-    struct step : some::tag {};
-    using definition = item<
-
-      description
-      <"the time discretization">,
-
-        attribute<
-          tag<step>,
-          symbol<"step">,
-          description<"">,
-          structure<some::indice>>>;
-
+    struct step : some::indice {};
+    using attributes = tuple<step>;
   };
 
-  template<typename TD, typename OSI, typename OSNSPB, typename ...Inters>
-  struct time_stepping
+  template<typename TD, typename OSI, typename OSNSPB, typename ...GraphItems>
+  struct time_stepping : item<>
   {
     using time_discretization = TD;
     using one_step_integrator = OSI;
     using one_step_nonsmooth_problem = OSNSPB;
-    using interactions = std::tuple<Inters...>;
+    using graph_items = gather<GraphItems...>;
 
-    using definition = item<
-      description
-      <"The time stepping">,
-      use<time_discretization>,
-      use<one_step_integrator>,
-      use<one_step_nonsmooth_problem>,
-      use<Inters...>>;
+    using uses = gather<time_discretization,
+                        one_step_integrator,
+                        one_step_nonsmooth_problem,
+                        GraphItems...>;
   };
+
 }
 
 #endif
