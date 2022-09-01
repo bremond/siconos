@@ -31,7 +31,8 @@ int main(int argc, char* argv[])
   // -- The dynamical_system --
   auto the_ball = add<ball>(data);
 
-  get<ball::q>(the_ball, data) = {position_init, 0, 0};
+  ball::q::get(the_ball) = {position_init, 0, 0};
+//  get<ball::q>(the_ball, data) = {position_init, 0, 0};
   // set<ball::q>(the_ball, data, {position_init, 0, 0});
   // data(get<ball::q>) = {position_init, 0, 0};
   get<ball::velocity>(the_ball, data) = {position_init, 0, 0};

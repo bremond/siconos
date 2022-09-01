@@ -54,12 +54,12 @@ namespace siconos
       }
     }();
 
-    if constexpr (match::uses<Item>)
+    if constexpr (match::items<Item>)
     {
       return flatten(append(
                        ckeeps,
                        transform(all_keeps,
-                                 typename Item::uses{})));
+                                 typename Item::items{})));
     }
     else
     {
@@ -132,6 +132,7 @@ namespace siconos
       a[i] = std::move(a.back());
       a.pop_back();
     }
+    // else...
   };
 
   template<typename Env, match::attribute T, typename Items>
@@ -224,7 +225,7 @@ namespace siconos
       struct descriptor : some::vdescriptor<vertex_items> {};
 
       using attributes = gather<descriptor>;
-      using uses = gather<Sim>;
+      using items = gather<Sim>;
     };
 
   };
@@ -266,10 +267,12 @@ namespace siconos
         using storage_t = std::decay_t<decltype(storage)>;
         if constexpr (match::push_back<storage_t>)
         {
+          // append new value
           storage.push_back(typename storage_t::value_type{});
         }
         else
         {
+          // replace
           storage[0] = typename storage_t::value_type{};
         }
       },
@@ -309,7 +312,7 @@ namespace siconos
 
   static auto remove_vertex_item = [](const auto vd,
                                       const auto step,
-                                      auto& data) constexpr
+                                      auto& data) constexpr ->decltype(auto)
   {
     using data_t = std::decay_t<decltype(data)>;
     using vdescriptor = typename data_t::machine::vertex::descriptor;
@@ -321,7 +324,7 @@ namespace siconos
     data._graph.remove_vertex(vd);
 
     move_back(i, vd_store);
-    data._graph.index(std::get<0>(vd_store[i].value)) = i;
+    data._graph.index(std::get<0>(vd_store[i])) = i;
 
     std::visit([&i,&data]<typename Item>(Item)
     {
@@ -335,7 +338,17 @@ namespace siconos
           move_back(i, storage);
         },
         data);
-    }, (std::get<1>(vd_store[i].value)));
+    }, (std::get<1>(vd_store[i])));
+    return 0;
+  };
+
+  template<typename T>
+  struct access
+  {
+    static constexpr decltype(auto) get(auto& h)
+    {
+      return fix_map(siconos::get<T>)(h);
+    }
   };
 }
 #endif

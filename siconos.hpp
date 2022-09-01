@@ -22,11 +22,14 @@ namespace siconos
       struct mass_matrix :
         some::matrix<dof, dof> {};
 
-      struct q : some::vector<dof> {};
+      struct q : some::vector<dof>,
+                 access<q> {};
 
-      struct velocity : some::vector<dof> {};
+      struct velocity : some::vector<dof>,
+                        access<velocity> {};
 
-      struct fext : some::vector<dof> {};
+      struct fext : some::vector<dof>,
+                    access<fext> {};
 
       using attributes = gather<mass_matrix, q, velocity, fext>;
 
@@ -62,11 +65,11 @@ namespace siconos
   template<typename Nslaw, typename Relation>
   struct interaction : edge_item<>
   {
-    using nonsmooth_law = Nslaw;
-    using relation = Relation;
+    struct nonsmooth_law : some::item_ref<Nslaw>, access<nonsmooth_law> {};
+    struct relation : some::item_ref<Relation>, access<relation> {};
 
-    using uses = gather<nonsmooth_law,
-                        relation>;
+    using attributes = gather<nonsmooth_law,
+                              relation>;
   };
 
   struct lcp
@@ -104,7 +107,7 @@ namespace siconos
   struct time_discretization : item<>
   {
     struct step : some::indice {};
-    using attributes = tuple<step>;
+    using attributes = gather<step>;
   };
 
   template<typename TD, typename OSI, typename OSNSPB, typename ...GraphItems>
@@ -115,10 +118,10 @@ namespace siconos
     using one_step_nonsmooth_problem = OSNSPB;
     using graph_items = gather<GraphItems...>;
 
-    using uses = gather<time_discretization,
-                        one_step_integrator,
-                        one_step_nonsmooth_problem,
-                        GraphItems...>;
+    using items = gather<time_discretization,
+                         one_step_integrator,
+                         one_step_nonsmooth_problem,
+                         GraphItems...>;
   };
 
 }

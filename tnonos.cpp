@@ -18,11 +18,11 @@ struct env
                                boost::no_property,
                                boost::no_property >;
 
-  template<typename T>
-  using vdescriptor = siconos::handle<graph::VDescriptor, T>;
-
   template<typename ...Ts>
   using tuple = std::tuple<Ts...>;
+
+  template<typename T>
+  using vdescriptor = tuple<graph::VDescriptor, T>;
 
   template<typename T>
   using collection = std::vector<T>;
@@ -33,6 +33,8 @@ struct env
   template<indice N, indice M>
   using matrix = std::array<scalar, N*M>;
 
+  template<typename T>
+  using item_ref = std::tuple<T,indice>;
 };
 
 struct param
@@ -41,15 +43,6 @@ struct param
 };
 
 using namespace siconos;
-
-template <typename T> struct which_type
-{
-  which_type()
-  {
-    T unused;
-  };
-};
-
 
 int main()
 {
@@ -77,10 +70,15 @@ int main()
 
   static_assert(transform([]<typename T>(T) { return int{}; }, std::tuple<char,float,double>{}) == std::tuple<int,int,int>{});
   static_assert(std::is_same_v<decltype(all_items(nslaw{})), gather<siconos::nonsmooth_law::newton_impact>>);
+  static_assert(
+    std::is_same_v<decltype([]()
+    {
+      return transform([]<typename T>(T) { return typename T::type{}; },
+                       filter<hold<decltype([]<typename T>(T) { return match::item_ref<T>; })>>(typename interaction::attributes{}));
+    }()), gather<nslaw, relation>>);
+
   static_assert(std::is_same_v<decltype(all_items(interaction{})),
-                std::tuple<siconos::interaction<siconos::nonsmooth_law::newton_impact, siconos::lagrangian<param>::relation>,
-                siconos::nonsmooth_law::newton_impact,
-                siconos::lagrangian<param>::relation>>);
+                std::tuple<siconos::interaction<siconos::nonsmooth_law::newton_impact, siconos::lagrangian<param>::relation>, siconos::nonsmooth_law::newton_impact, siconos::lagrangian<param>::relation>>);
 
   static_assert(must::contains<osnspb, decltype(all_items(simulation{}))>);
 
@@ -132,12 +130,15 @@ int main()
 
    print("---\n");
 
-   auto ds0 = add<ball>(data);
-   auto& v0 = get<ball::velocity>(ds0, data);
+   auto ds0 = fix(add<ball>)(data);
+
+   ball::q::get(ds0) = { 0., 0., 1.};
+
+   auto& v0 = ball::velocity::get(ds0);
 
    v0 = { 1., 2., 3.};
 
-   auto& velocityp = get<ball::velocity>(ds0, data);
+   auto& velocityp = get<ball::velocity>(ds0.first, data);
    print("--->{}\n", velocityp);
 
    for_each([](auto& a) { print("{:d}\n", a.size()); }, data._collections);
@@ -145,19 +146,20 @@ int main()
 
 //   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
-   auto ds1 = add<ball>(data);
+   auto ds1 = fix(add<ball>)(data);
 
-   get<ball::q>(ds1, data) = { 1.,1., 1.};
-   auto ds2 = add<ball>(data);
-   get<ball::q>(ds2, data) = { 9.,9., 9.};
+   ball::q::get(ds1) = { 1.,1., 1.};
+
+   auto ds2 = fix(add<ball>)(data);
+   ball::q::get(ds2) = { 9.,9., 9.};
 //   print("---\n");
 //   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
-   remove_vertex_item(ds1, 0, data);
+   fix_map(remove_vertex_item)(ds1, 0);
 //   print("---\n");
 //   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
-   print("{}", get<ball::mass_matrix>(ds0, data));
+   print("{}", get<ball::mass_matrix>(ds0.first, data));
 
 //   auto m = get<ball::mass_matrix>(ds0, data);
 
@@ -167,13 +169,14 @@ int main()
 
 //   print("---\n");
 
-   get<ball::fext>(ds0, data) = { 10., 0., 0.};
+   ball::fext::get(ds0) = { 10., 0., 0.};
 //   print("{}\n", data._collections);
 
-   data(get<ball::fext>)(ds0) = { 2.,1.,0.};
+   ball::fext::get(ds0) = { 2.,1.,0.};
 //   print("{}\n", data(get<ball::fext>)(ds0));
 
-//   add<interaction>(data);
+   add<interaction>(data);
+   add<nslaw>(data);
 // //  add_attributes<nslaw>(data);
 
    auto& e = siconos::get_memory<nslaw::e>(data);

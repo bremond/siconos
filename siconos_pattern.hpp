@@ -4,6 +4,7 @@
 #include "siconos_util.hpp"
 
 #include <tuple>
+#include <utility>
 #include <functional>
 #include <type_traits>
 #include <initializer_list>
@@ -49,6 +50,31 @@ namespace siconos
       });
   };
 
+  static auto fix = [](auto&& fun)
+    constexpr -> decltype(auto)
+  {
+    return
+      [&fun]<typename ...As, typename Ae>(As&& ...args, Ae&& argend) constexpr -> decltype(auto)
+      {
+        return std::pair
+        {fun(std::forward<As>(args)..., std::forward<Ae>(argend)),
+         [&argend]() -> Ae& { return argend; }};
+      };
+  };
+
+  static auto fix_map = [](auto&& fun)
+    constexpr -> decltype(auto)
+  {
+    return
+      [&fun]<typename A1, typename ...As>(A1&& arg1, As&& ...args) constexpr -> decltype(auto)
+      {
+        return
+        fun(std::forward<std::decay_t<decltype(arg1.first)>&>(arg1.first),
+            std::forward<As>(args)...,
+            std::forward<std::decay_t<decltype(arg1.second())>&>(arg1.second()));
+      };
+  };
+
   static auto compose = [](auto&& f, auto&& g) constexpr -> decltype(auto)
   {
     return
@@ -69,6 +95,7 @@ namespace siconos
   static auto car = []<typename Tpl>(Tpl tpl)
     constexpr
   {
+    static_assert (std::tuple_size_v<Tpl> > 0);
     return std::get<0>(tpl);
   };
 
@@ -105,9 +132,16 @@ namespace siconos
   static auto flatten = []<concepts::tuple_like Tpl>(Tpl tpl)
       constexpr
   {
-    if constexpr (concepts::tuple_like<decltype(car(tpl))>)
+    if constexpr (std::tuple_size_v<Tpl> > 0)
     {
-      return std::apply(append, tpl);
+      if constexpr (concepts::tuple_like<decltype(car(tpl))>)
+      {
+        return std::apply(append, tpl);
+      }
+      else
+      {
+        return tpl;
+      }
     }
     else
     {
@@ -219,9 +253,14 @@ namespace siconos
       must::contains<T, typename I::attributes>;
 
     template<typename T>
-    concept uses =
+    concept items =
       item<T> &&
-      requires { typename T::uses; };
+      requires { typename T::items; };
+
+    template<typename T>
+    concept item_ref =
+      attribute<T> &&
+      item<typename T::type>;
 
     template<typename T>
     concept keeps =
@@ -265,6 +304,12 @@ namespace siconos
     template<std::size_t N>
     struct vector : attribute<N> {};
 
+    template<match::item T>
+    struct item_ref : attribute<>
+    {
+      using type = T;
+    };
+
   }
 
   template<string_literal Text>
@@ -292,7 +337,6 @@ namespace siconos
     using use_t = void;
     using type = T;
   };
-
 
   template<typename T>
   struct attribute_p
@@ -331,7 +375,6 @@ namespace siconos
   {
     using edge_item_t = void;
   };
-
 
   template<typename... Ts>
   struct handle
@@ -392,8 +435,20 @@ namespace siconos
     {
       using type_t = std::decay_t<decltype(t)>;
 
+      auto items_ref = []()
+      {
+        if constexpr (match::attributes<type_t>)
+        {
+          return transform([]<typename T>(T) { return typename T::type{}; },
+                           filter<hold<decltype([]<typename T>(T) { return match::item_ref<T>; })>>(typename type_t::attributes{}));
+        }
+        else
+        {
+          return gather<>{};
+        }
+      };
       // sub items
-      if constexpr (match::uses<type_t>)
+      if constexpr (match::items<type_t>)
       {
         if constexpr (match::attributes<type_t>)
         {
@@ -402,18 +457,22 @@ namespace siconos
             flatten(
               append(
                 instance<typename type_t::attributes>,
-                transform(all_attributes, instance<typename type_t::uses>)));
+                transform(all_attributes, append(items_ref(),
+                                                 instance<typename type_t::items>))));
         }
         else
         {
           return
-            flatten(transform(all_attributes, instance<typename type_t::uses>));
+            flatten(transform(all_attributes,
+                              append(items_ref(),
+                                     instance<typename type_t::items>)));
         }
       }
       // item
       else
       {
-        return instance<typename type_t::attributes>;
+        return flatten(append(instance<gather<typename type_t::attributes>>,
+                              transform(all_attributes, items_ref())));
       }
 
     });
@@ -424,15 +483,28 @@ namespace siconos
       {
         using type_t = std::decay_t<decltype(root_item)>;
 
-        if constexpr (match::uses<type_t>)
+        auto items_ref = []()
+        {
+          if constexpr (match::attributes<type_t>)
+          {
+            return transform([]<typename T>(T) { return typename T::type{}; },
+                             filter<hold<decltype([]<typename T>(T) { return match::item_ref<T>; })>>(typename type_t::attributes{}));
+          }
+          else
+          {
+            return gather<>{};
+          }
+        };
+        if constexpr (match::items<type_t>)
         {
           return cons(root_item,
                       flatten(transform(all_items,
-                                        typename type_t::uses{})));
+                                        append(items_ref(), typename type_t::items{}))));
         }
         else
         {
-          return gather<type_t>{};
+          return cons(root_item, flatten(transform(all_items,
+                                                   items_ref())));;
         }
       });
 

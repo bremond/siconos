@@ -134,19 +134,6 @@ namespace siconos
 
 
 
-  template<typename U>
-  struct contains_p
-  {
-    template<typename T>
-    struct make
-    {
-      static constexpr auto value = contains<U>(T{});
-    };
-  };
-
-
-
-
   // https://ctrpeach.io/posts/cpp20-string-literal-template-parameters/
   // https://stackoverflow.com/questions/62266052/c20-string-literal-template-argument-working-example
   // https://www.cppstories.com/2021/constexpr-vecstr-cpp20/
