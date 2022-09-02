@@ -6,7 +6,6 @@ namespace siconos
 {
   namespace traits
   {
-
     template<typename E, match::attribute T>
     struct config
     {
@@ -35,9 +34,10 @@ namespace siconos
               std::get<0>(T::sizes),
               std::get<1>(T::sizes)>{};
           }
-          else if constexpr (std::derived_from<T, some::item_ref<typename T::type>>)
+          else if constexpr (std::derived_from<T,
+                             some::item_ref<typename T::type>>)
           {
-            return typename E::item_ref<typename T::type>{};
+            return typename E::template item_ref<typename T::type>{};
           }
           else
           {

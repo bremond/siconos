@@ -4,9 +4,13 @@
 #include <type_traits>
 #include <variant>
 #include <concepts>
+#include <cassert>
 
+#include "siconos_ground.hpp"
 #include "siconos_util.hpp"
 #include "siconos_traits.hpp"
+#include "siconos_pattern.hpp"
+
 namespace siconos
 {
   template<typename T, std::size_t N>
@@ -112,28 +116,27 @@ namespace siconos
   };
 
   template<match::attribute T>
-  static auto get = [](const auto vd, auto& data)
+  static auto get =
+    [](match::internal_handle auto ihandle, auto& data)
     constexpr -> decltype(auto)
-  {
-    using data_t = std::decay_t<decltype(data)>;
-    using indice = typename data_t::indice;
-
-    auto& mem = get_memory<T>(data);
-    auto indx = data._graph.index(vd);
-
-    indice step = get_step<T>(data);
-    return memory(step, mem)[indx];
-  };
-
-  static auto move_back = [](const auto i, auto& a) constexpr
-  {
-    if constexpr (match::push_back<std::decay_t<decltype(a)>>)
     {
-      a[i] = std::move(a.back());
-      a.pop_back();
-    }
-    // else...
-  };
+      using data_t = std::decay_t<decltype(data)>;
+      using item_t = decltype(item_attribute<T>(typename data_t::all_items_t{}));
+      using indice = typename data_t::indice;
+
+      auto& mem = get_memory<T>(data);
+      indice step = get_step<T>(data);
+
+      if constexpr (match::vertex_item<item_t>)
+      {
+        auto indx = data._graph.index(ihandle.get());
+        return memory(step, mem)[indx];
+      }
+      else
+      {
+        return memory(step, mem)[ihandle.get()];
+      }
+    };
 
   template<typename Env, match::attribute T, typename Items>
   static auto attribute_storage =
@@ -159,6 +162,70 @@ namespace siconos
 
   template<typename Env, match::attribute T, typename Items>
   using attribute_storage_t = decltype(attribute_storage<Env, T, Items>());
+
+
+/*  template<match::attribute T>
+  static auto set =
+    []<typename H>(H handle)
+    constexpr -> decltype(auto)
+    {
+      auto& data = handle.data();
+      using data_t = std::decay_t<decltype(data)>;
+
+      return overload {
+        [handle, &data](typename attribute_storage_t<typename data_t::env, T,
+                        typename data_t::all_items_t>::value_type&& value)
+      {
+        using value_t = std::decay_t<decltype(value)>;
+        using item_t = decltype(item_attribute<T>(typename data_t::all_items_t{}));
+        using indice = typename data_t::indice;
+
+        auto& mem = get_memory<T>(data);
+        indice step = get_step<T>(data);
+
+        if constexpr (match::vertex_item<item_t>)
+        {
+          auto indx = data._graph.index(handle.get());
+          return memory(step, mem)[indx] = std::forward<value_t>(value);
+        }
+        else
+        {
+          return memory(step, mem)[handle.get()] = std::forward<value_t>(value);
+        }
+      },
+      [handle, &data](typename attribute_storage_t<typename data_t::env, T,
+                      typename data_t::all_items_t>::value_type& value)
+      {
+        using item_t = decltype(item_attribute<T>(typename data_t::all_items_t{}));
+        using indice = typename data_t::indice;
+
+        auto& mem = get_memory<T>(data);
+        indice step = get_step<T>(data);
+
+        if constexpr (match::vertex_item<item_t>)
+        {
+          auto indx = data._graph.index(handle.get());
+          return memory(step, mem)[indx] = std::move(value);
+        }
+        else
+        {
+          return memory(step, mem)[handle.get()] = std::move(value);
+        }
+      },
+      []<bool flag = false, typename X>(X) { static_assert(flag, "set: unknown type");}
+      };
+    };
+*/
+  static auto move_back = [](const auto i, auto& a) constexpr
+  {
+    if constexpr (match::push_back<std::decay_t<decltype(a)>>)
+    {
+      a[i] = std::move(a.back());
+      a.pop_back();
+    }
+    // else...
+  };
+
 
   template<typename Env, typename Mach, typename ...Attributes>
   struct storage
@@ -257,27 +324,32 @@ namespace siconos
   template<match::item T>
   static auto add_attributes = [](auto& data) constexpr -> decltype(auto)
   {
-    for_each_attribute<T>(
-      [&data]<match::attribute A>(A& a)
-      {
-        auto step = get_step<A>(data);
-        auto& mem = get_memory<A>(data);
-        auto& storage = memory(step, mem);
+    using data_t = std::decay_t<decltype(data)>;
+    using env = typename data_t::env;
+    using indice = typename env::indice;
 
-        using storage_t = std::decay_t<decltype(storage)>;
-        if constexpr (match::push_back<storage_t>)
-        {
-          // append new value
-          storage.push_back(typename storage_t::value_type{});
-        }
-        else
-        {
-          // replace
-          storage[0] = typename storage_t::value_type{};
-        }
-      },
-      data);
+    return
+    ground::fold_left(all_attributes(T{}), indice{0},
+                      [&data]<match::attribute A>(indice n, A)
+                      {
+                        auto step = get_step<A>(data);
+                        auto& mem = get_memory<A>(data);
+                        auto& storage = memory(step, mem);
 
+                        using storage_t = std::decay_t<decltype(storage)>;
+                        if constexpr (match::push_back<storage_t>)
+                        {
+                          // append new place
+                          storage.push_back(typename storage_t::value_type{});
+                          return n + std::size(storage) - 1;
+                        }
+                        else
+                        {
+                          // same place
+                          storage[0] = typename storage_t::value_type{};
+                          return n;
+                        }
+                      }) / std::tuple_size_v<decltype(all_attributes(T{}))>;
   };
 
   template<match::vertex_item T>
@@ -293,8 +365,11 @@ namespace siconos
 
     data._graph.index(vd) = std::size(get_memory<vdescriptor>(data)[0])-1;
 
-    add_attributes<T>(data);
-    return vd;
+    [[maybe_unused]] auto idx = add_attributes<T>(data);
+
+    assert(idx == data._graph.index(vd));
+
+    return make_internal_handle<T>(vd);
   };
 
   template<match::item T>
@@ -306,22 +381,22 @@ namespace siconos
     }
     else
     {
-      add_attributes<T>(data);
+      return make_internal_handle<T>(add_attributes<T>(data));
     }
   };
 
-  static auto remove_vertex_item = [](const auto vd,
-                                      const auto step,
-                                      auto& data) constexpr ->decltype(auto)
+  static auto remove_vertex_item = [](auto handle,
+                                      const auto step) constexpr ->decltype(auto)
   {
+    auto& data = handle.data();
     using data_t = std::decay_t<decltype(data)>;
     using vdescriptor = typename data_t::machine::vertex::descriptor;
     auto& vd_store = get_memory<vdescriptor>(data)[0];
 
 
-    auto i = data._graph.index(vd);
+    auto i = data._graph.index(handle.get());
 
-    data._graph.remove_vertex(vd);
+    data._graph.remove_vertex(handle.get());
 
     move_back(i, vd_store);
     data._graph.index(std::get<0>(vd_store[i])) = i;
@@ -345,10 +420,22 @@ namespace siconos
   template<typename T>
   struct access
   {
-    static constexpr decltype(auto) get(auto& h)
+    using attribute_t = void;
+
+    static constexpr auto internal_get =
+      []<typename U = T>(match::internal_handle auto h, auto& data) ->decltype(auto)
     {
-      return fix_map(siconos::get<T>)(h);
-    }
+      return siconos::get<U>(h, data);
+    };
+
+    static constexpr auto get = []<typename U = T>(match::handle auto h) -> decltype(auto)
+    {
+      return fix_map(siconos::get<U>)(h);
+    };
+
   };
+
+  template<typename T>
+  static constexpr auto fixed_add = fix(add<T>);
 }
 #endif

@@ -1,4 +1,3 @@
-#include "siconos_storage.hpp"
 #include "siconos.hpp"
 
 #include <tuple>
@@ -34,7 +33,7 @@ struct env
   using matrix = std::array<scalar, N*M>;
 
   template<typename T>
-  using item_ref = std::tuple<T,indice>;
+  using item_ref = siconos::internal_handle<T, indice>;
 };
 
 struct param
@@ -130,7 +129,8 @@ int main()
 
    print("---\n");
 
-   auto ds0 = fix(add<ball>)(data);
+
+   auto ds0 = fixed_add<ball>(data);
 
    ball::q::get(ds0) = { 0., 0., 1.};
 
@@ -138,7 +138,7 @@ int main()
 
    v0 = { 1., 2., 3.};
 
-   auto& velocityp = get<ball::velocity>(ds0.first, data);
+   auto& velocityp = fix_map(get<ball::velocity>)(ds0);
    print("--->{}\n", velocityp);
 
    for_each([](auto& a) { print("{:d}\n", a.size()); }, data._collections);
@@ -155,11 +155,11 @@ int main()
 //   print("---\n");
 //   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
-   fix_map(remove_vertex_item)(ds1, 0);
+   remove_vertex_item(ds1, 0);
 //   print("---\n");
 //   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
-   print("{}", get<ball::mass_matrix>(ds0.first, data));
+   print("{}", fix_map(get<ball::mass_matrix>)(ds0));
 
 //   auto m = get<ball::mass_matrix>(ds0, data);
 
@@ -175,13 +175,25 @@ int main()
    ball::fext::get(ds0) = { 2.,1.,0.};
 //   print("{}\n", data(get<ball::fext>)(ds0));
 
-   add<interaction>(data);
-   add<nslaw>(data);
-// //  add_attributes<nslaw>(data);
+   auto inter1 = fix(add<interaction>)(data);
+   auto nslaw1 = add<nslaw>(data);
+
+   // siconos::set<interaction::nonsmooth_law>(inter1);
+   interaction::nonsmooth_law::get(inter1) = nslaw1;
+   fix_map(get<interaction::nonsmooth_law>)(inter1) = nslaw1;
 
    auto& e = siconos::get_memory<nslaw::e>(data);
-   e[0][0] = 0.7;
+   e[0][nslaw1.get()] = 0.7;
 
    print("{}\n", siconos::get_memory<nslaw::e>(data));
 
+   auto inter2 = fix(add<interaction>)(data);
+   auto nslaw2 = fix(add<nslaw>)(data);
+
+   interaction::nonsmooth_law::get(inter2) = nslaw2;
+
+   nslaw::e::internal_get(interaction::nonsmooth_law::get(inter2), data) = 0.3;
+
+   interaction::nonsmooth_law::get(inter2);
+   print("e={}", nslaw::e::get(nslaw2));
 }

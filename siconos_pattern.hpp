@@ -10,6 +10,66 @@
 #include <initializer_list>
 namespace siconos
 {
+
+  template<typename T, typename R>
+  struct handle
+  {
+    using handle_t = void;
+    using type = T;
+    using value_t = R;
+
+    value_t value = {};
+
+    auto get() const { return value.first; };
+    decltype(auto) data() { return value.second(); };
+
+    explicit handle(R ref) : value{ref} {};
+    handle() : value{} {}; // needed for types associations
+  };
+
+  template<typename T, typename I, typename D>
+  static decltype(auto) make_handle(I indx, D& data)
+  {
+    auto p = std::pair { indx, [&data]() -> D& { return data; } };
+    return handle<T, decltype(p)>{p};
+  }
+
+
+  template<typename T, typename R>
+  struct internal_handle
+  {
+    using internal_handle_t = void;
+    using type = T;
+    using value_t = R;
+
+    value_t value = {};
+
+    auto get() const { return value; };
+
+    explicit internal_handle(R ref) : value{ref} {}
+
+    internal_handle() : value{} {};
+
+    template<typename P>
+    void operator = (handle<T, P>& h)
+    {
+      value = h.value.first;
+    }
+  };
+
+  template<typename T, typename I>
+  static decltype(auto) make_internal_handle(I indx)
+  {
+    return internal_handle<T, I>{indx};
+  }
+
+  template<typename T, typename I, typename D>
+  static decltype(auto) handle_from_internal(internal_handle<T,I> ihandle, D& data)
+  {
+    auto p = std::pair { ihandle.value, [&data]() -> D& { return data; } };
+    return handle<T, decltype(p)>{p};
+  }
+
   // let rec
   // https://stackoverflow.com/questions/2067988/recursive-lambda-functions-in-c11
   template <typename F>
@@ -56,9 +116,8 @@ namespace siconos
     return
       [&fun]<typename ...As, typename Ae>(As&& ...args, Ae&& argend) constexpr -> decltype(auto)
       {
-        return std::pair
-        {fun(std::forward<As>(args)..., std::forward<Ae>(argend)),
-         [&argend]() -> Ae& { return argend; }};
+        return handle_from_internal(fun(std::forward<As>(args)..., std::forward<Ae>(argend)),
+                                    std::forward<Ae>(argend));
       };
   };
 
@@ -68,10 +127,11 @@ namespace siconos
     return
       [&fun]<typename A1, typename ...As>(A1&& arg1, As&& ...args) constexpr -> decltype(auto)
       {
+        using ih_t = internal_handle<typename std::decay_t<A1>::type, decltype(arg1.get())>;
         return
-        fun(std::forward<std::decay_t<decltype(arg1.first)>&>(arg1.first),
+        fun(std::forward<ih_t>(ih_t{arg1.get()}),
             std::forward<As>(args)...,
-            std::forward<std::decay_t<decltype(arg1.second())>&>(arg1.second()));
+            std::forward<std::decay_t<decltype(arg1.data())>&>(arg1.data()));
       };
   };
 
@@ -220,7 +280,11 @@ namespace siconos
   namespace match
   {
     template<typename T>
-    concept attribute = requires { typename T::attribute_t; };
+    concept handle = requires { typename T::handle_t; };
+
+    template<typename T>
+    concept internal_handle = requires { typename T::internal_handle_t; };
+
 
     template<typename T>
     concept attributes = requires { typename T::attributes; };
@@ -246,21 +310,10 @@ namespace siconos
       graph_item<typename T::graph_item> &&
       requires { typename T::edge_item_t; };
 
-    template<typename T, typename I>
-    concept attribute_of =
-      attribute<T> &&
-      item<I> &&
-      must::contains<T, typename I::attributes>;
-
     template<typename T>
     concept items =
       item<T> &&
       requires { typename T::items; };
-
-    template<typename T>
-    concept item_ref =
-      attribute<T> &&
-      item<typename T::type>;
 
     template<typename T>
     concept keeps =
@@ -312,6 +365,22 @@ namespace siconos
 
   }
 
+  namespace match
+  {
+    template<typename T>
+    concept attribute = requires { typename T::attribute_t; };
+
+    template<typename T, typename I>
+    concept attribute_of =
+      attribute<T> &&
+      item<I> &&
+      must::contains<T, typename I::attributes>;
+
+    template<typename T>
+    concept item_ref =
+      attribute<T> &&
+      item<typename T::type>;
+  }
   template<string_literal Text>
   struct text
   {
@@ -374,15 +443,6 @@ namespace siconos
   struct edge_item : graph_item<Args...>
   {
     using edge_item_t = void;
-  };
-
-  template<typename... Ts>
-  struct handle
-  {
-    using type = std::tuple<Ts...>;
-    type value = {};
-    handle(Ts... ts) : value{std::forward<Ts>(ts)...} {};
-    handle() : value{} {};
   };
 
   template<typename T>
@@ -521,7 +581,6 @@ namespace siconos
     return filter<hold<decltype([]<typename T>(T) constexpr { return match::vertex_item<T>; })>>
       (all_items(t));
   };
-
 
 
 }

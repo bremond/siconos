@@ -17,7 +17,7 @@ namespace siconos
 
     struct dynamical_system : vertex_item<
       description
-      <"the dynamical system">>
+      <"A lagrangian dynamical system [...]">>
     {
       struct mass_matrix :
         some::matrix<dof, dof> {};
@@ -37,7 +37,7 @@ namespace siconos
 
     struct relation : item<>
     {
-      struct h_matrix : some::matrix<1, dof> {};
+      struct h_matrix : some::matrix<1, dof>, access<h_matrix> {};
 
       using attributes = gather<h_matrix>;
     };
@@ -47,15 +47,15 @@ namespace siconos
   {
     struct newton_impact_friction : item<>
     {
-      struct e : some::scalar {};
-      struct mu : some::scalar {};
+      struct e : access<e>, some::scalar {};
+      struct mu : some::scalar, access<mu> {};
 
       using attributes = gather<e, mu>;
     };
 
     struct newton_impact : item<>
     {
-      struct e : some::scalar {};
+      struct e : some::scalar, access<e> {};
 
       using attributes = gather<e>;
 
