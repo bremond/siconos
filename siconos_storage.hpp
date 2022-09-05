@@ -420,15 +420,15 @@ namespace siconos
   template<typename T>
   struct access
   {
-    using attribute_t = void;
-
     static constexpr auto internal_get =
-      []<typename U = T>(match::internal_handle auto h, auto& data) ->decltype(auto)
+      []<typename U = T>(match::internal_handle auto h, auto& data)
+      -> decltype(auto)
     {
       return siconos::get<U>(h, data);
     };
 
-    static constexpr auto get = []<typename U = T>(match::handle auto h) -> decltype(auto)
+    static constexpr auto get = []<typename U = T>(match::handle auto h)
+      -> decltype(auto)
     {
       return fix_map(siconos::get<U>)(h);
     };

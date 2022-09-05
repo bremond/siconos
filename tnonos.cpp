@@ -1,3 +1,4 @@
+#include "siconos_environment.hpp"
 #include "siconos.hpp"
 
 #include <tuple>
@@ -7,52 +8,19 @@
 using fmt::print;
 
 
-struct env
-{
-  using scalar = double;
-  using indice = std::size_t;
-
-  using graph = SiconosGraph < indice, indice,
-                               boost::no_property,
-                               boost::no_property,
-                               boost::no_property >;
-
-  template<typename ...Ts>
-  using tuple = std::tuple<Ts...>;
-
-  template<typename T>
-  using vdescriptor = tuple<graph::VDescriptor, T>;
-
-  template<typename T>
-  using collection = std::vector<T>;
-
-  template<indice N>
-  using vector = std::array<scalar, N>;
-
-  template<indice N, indice M>
-  using matrix = std::array<scalar, N*M>;
-
-  template<typename T>
-  using item_ref = siconos::internal_handle<T, indice>;
-};
-
-struct param
-{
-  static constexpr auto dof = 3;
-};
-
 using namespace siconos;
+using env = siconos::standard_environment;
 
 int main()
 {
-  using formulation = lagrangian<param>;
+  using formulation = lagrangian<linear, time_invariant, degrees_of_freedom<3>>;
   using ball = formulation::dynamical_system;
   using osnspb = one_step_nonsmooth_problem<lcp>;
   using osi = one_step_integrator<formulation>::moreau_jean;
   using relation = formulation::relation;
   using nslaw = nonsmooth_law::newton_impact;
   using interaction = interaction<nslaw, relation>;
-  using td = time_discretization<param>;
+  using td = time_discretization<>;
   using simulation = time_stepping<td, osi, osnspb, ball, interaction>;
   using siconos::get;
 
@@ -77,7 +45,7 @@ int main()
     }()), gather<nslaw, relation>>);
 
   static_assert(std::is_same_v<decltype(all_items(interaction{})),
-                std::tuple<siconos::interaction<siconos::nonsmooth_law::newton_impact, siconos::lagrangian<param>::relation>, siconos::nonsmooth_law::newton_impact, siconos::lagrangian<param>::relation>>);
+                std::tuple<siconos::interaction<siconos::nonsmooth_law::newton_impact, siconos::lagrangian<linear, time_invariant, degrees_of_freedom<3>>::relation>, siconos::nonsmooth_law::newton_impact, siconos::lagrangian<linear, time_invariant, degrees_of_freedom<3>>::relation>>);
 
   static_assert(must::contains<osnspb, decltype(all_items(simulation{}))>);
 
@@ -91,7 +59,7 @@ int main()
 
   static_assert(std::is_same_v<td, decltype(item_attribute<td::step>(all_items(simulation{})))>);
 
-  static_assert(std::is_same_v<typename siconos::traits::config<env, typename siconos::time_discretization<param>::step>::type,
+  static_assert(std::is_same_v<typename siconos::traits::config<env, typename siconos::time_discretization<>::step>::type,
                 typename env::indice>);
   static_assert(attribute_storage_t<
                 env,
@@ -113,9 +81,7 @@ int main()
                 decltype(all_keeps(simulation{})),
                 gather<keep<ball::q,2>, keep<ball::velocity,2>>>);
 
-//  static_assert(flatten(std::tuple<siconos::time_stepping<siconos::time_discretization<param>, siconos::one_step_integrator<siconos::lagrangian<param>>::moreau_jean, siconos::one_step_nonsmooth_problem<siconos::lcp>, siconos::lagrangian<param>::dynamical_system, siconos::interaction<siconos::nonsmooth_law::newton_impact, siconos::lagrangian<param>::relation>>, siconos::time_discretization<param>, siconos::one_step_integrator<siconos::lagrangian<param>>::moreau_jean, siconos::one_step_nonsmooth_problem<siconos::lcp>, siconos::lagrangian<param>::dynamical_system, siconos::interaction<siconos::nonsmooth_law::newton_impact, siconos::lagrangian<param>::relation>, siconos::nonsmooth_law::newton_impact, siconos::lagrangian<param>::relation>{}) == false);
 
-//  static_assert(all_items(typename machinery<simulation>::vertex{}) == false);
   auto data = siconos::make_storage<env, simulation>();
 //   add<simulation>(data);
 

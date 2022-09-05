@@ -2,6 +2,7 @@
 #define SICONOS_PATTERN_HPP
 
 #include "siconos_util.hpp"
+#include "siconos_ground.hpp"
 
 #include <tuple>
 #include <utility>
@@ -70,6 +71,35 @@ namespace siconos
     return handle<T, decltype(p)>{p};
   }
 
+  static auto fix = [](auto&& fun)
+    constexpr -> decltype(auto)
+  {
+    return
+      [&fun]<typename ...As, typename Ae>(As&& ...args, Ae&& argend)
+      constexpr -> decltype(auto)
+      {
+        return handle_from_internal(fun(std::forward<As>(args)..., std::forward<Ae>(argend)),
+                                    std::forward<Ae>(argend));
+      };
+  };
+
+  static auto fix_map = [](auto&& fun)
+    constexpr -> decltype(auto)
+  {
+    return
+      [&fun]<typename A1, typename ...As>(A1&& arg1, As&& ...args)
+      constexpr -> decltype(auto)
+      {
+        using ih_t = internal_handle<typename std::decay_t<A1>::type,
+        decltype(arg1.get())>;
+        return
+        fun(std::forward<ih_t>(ih_t{arg1.get()}),
+            std::forward<As>(args)...,
+            std::forward<std::decay_t<decltype(arg1.data())>&>(arg1.data()));
+      };
+  };
+
+
   // let rec
   // https://stackoverflow.com/questions/2067988/recursive-lambda-functions-in-c11
   template <typename F>
@@ -108,31 +138,6 @@ namespace siconos
             return fun(std::forward<As>(args)..., data);
           });
       });
-  };
-
-  static auto fix = [](auto&& fun)
-    constexpr -> decltype(auto)
-  {
-    return
-      [&fun]<typename ...As, typename Ae>(As&& ...args, Ae&& argend) constexpr -> decltype(auto)
-      {
-        return handle_from_internal(fun(std::forward<As>(args)..., std::forward<Ae>(argend)),
-                                    std::forward<Ae>(argend));
-      };
-  };
-
-  static auto fix_map = [](auto&& fun)
-    constexpr -> decltype(auto)
-  {
-    return
-      [&fun]<typename A1, typename ...As>(A1&& arg1, As&& ...args) constexpr -> decltype(auto)
-      {
-        using ih_t = internal_handle<typename std::decay_t<A1>::type, decltype(arg1.get())>;
-        return
-        fun(std::forward<ih_t>(ih_t{arg1.get()}),
-            std::forward<As>(args)...,
-            std::forward<std::decay_t<decltype(arg1.data())>&>(arg1.data()));
-      };
   };
 
   static auto compose = [](auto&& f, auto&& g) constexpr -> decltype(auto)
@@ -254,6 +259,16 @@ namespace siconos
       }
     };
 
+  struct linear {};
+  struct time_invariant {};
+
+  template<std::size_t N>
+  struct degrees_of_freedom
+  {
+    using degrees_of_freedom_t = void;
+    static constexpr std::size_t value = N;
+  };
+
   template<typename T>
   static constexpr auto instance = T{};
 
@@ -279,6 +294,9 @@ namespace siconos
 
   namespace match
   {
+    template<typename T>
+    concept degrees_of_freedom = requires { typename T::degrees_of_freedom_t; };
+
     template<typename T>
     concept handle = requires { typename T::handle_t; };
 
@@ -418,6 +436,23 @@ namespace siconos
   {
     using attribute = Attr;
     static constexpr std::size_t size = N;
+  };
+
+  template<typename T>
+  struct degrees_of_freedom_p
+  {
+    static constexpr auto value = match::degrees_of_freedom<T>;
+  };
+
+  template<typename ...Args>
+  struct frame
+  {
+    using args = gather<Args...>;
+
+    static constexpr std::size_t dof =
+      ground::find_if(args{},
+                      []<typename T>(T) { return degrees_of_freedom_p<T>{}; }).
+      value_or([]<bool flag = false>() { static_assert(flag, "need some dof"); }).value;
   };
 
   template<typename ...Args>

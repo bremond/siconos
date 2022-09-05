@@ -1,19 +1,15 @@
 #ifndef SICONOS_HPP
 #define SICONOS_HPP
 
-#include <vector>
-#include <array>
-#include "SiconosGraph.hpp"
-
 #include "siconos_storage.hpp"
 #include "siconos_pattern.hpp"
 
 namespace siconos
 {
-  template<typename Param>
-  struct lagrangian
+  template<typename ...Params>
+  struct lagrangian : frame<Params...>
   {
-    static constexpr auto dof = Param::dof;
+    static constexpr auto dof = frame<Params...>::dof;
 
     struct dynamical_system : vertex_item<
       description
@@ -103,11 +99,13 @@ namespace siconos
     };
   };
 
-  template<typename Param>
+  template<typename ...Params>
   struct time_discretization : item<>
   {
+    struct t0 : some::scalar {};
+    struct h : some::scalar {};
     struct step : some::indice {};
-    using attributes = gather<step>;
+    using attributes = gather<h, t0, step>;
   };
 
   template<typename TD, typename OSI, typename OSNSPB, typename ...GraphItems>

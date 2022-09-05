@@ -5,6 +5,7 @@
 #include <boost/hana.hpp>
 #include <boost/hana/fwd/fold_left.hpp>
 #include <boost/hana/ext/std/tuple.hpp>
+#include <boost/hana/fwd/find_if.hpp>
 
 namespace siconos
 {
@@ -36,6 +37,11 @@ namespace siconos
             static_assert(flag, "cannot fold_left with these parameters");
           }();
       }
+    };
+
+    static auto find_if = []<typename T, typename P>(T&& xs, P&& predicate) constexpr -> decltype(auto)
+    {
+      return boost::hana::find_if(std::forward<T>(xs), std::forward<P>(predicate));
     };
   }
 }
