@@ -17,15 +17,15 @@ int main(int argc, char* argv[])
   using relation = formulation::relation;
   using interaction = interaction<nslaw, relation>;
   using td = time_discretization<>;
-  // XXX ball, interaction into time_stepping ?
-  using simulation = time_stepping<td, osi, osnspb, ball, interaction>;
+  using topo = topology; // topology<ball, interaction>
+  using simulation = time_stepping<td, osi, osnspb, topo, ball, interaction>;
   using siconos::get;
 
   auto data = siconos::make_storage<standard_environment, simulation>();
 
-  //unsigned int nDof = 3;           // degrees of freedom for the ball
+  //unsigned int nDof = 3;         // degrees of freedom for the ball
   double t0 = 0;                   // initial computation time
-  double T = 10;                  // final computation time
+  double T = 10;                   // final computation time
   double h = 0.005;                // time step
   double position_init = 1.0;      // initial position for lowest bead.
   double velocity_init = 0.0;      // initial velocity for lowest bead.
@@ -40,6 +40,7 @@ int main(int argc, char* argv[])
   auto the_ball = add<ball>(data);
 
   //ball::q::get(the_ball) = {position_init, 0, 0};
+
   get<ball::q>(the_ball, data) = {position_init, 0, 0};
   // set<ball::q>(the_ball, data, {position_init, 0, 0});
   // data(get<ball::q>) = {position_init, 0, 0};
@@ -75,9 +76,14 @@ int main(int argc, char* argv[])
   // ------------------
   auto the_osi = add<osi>(data);
   auto the_td = add<td>(data);
+  auto the_osnspb = add<osnspb>(data);
+  auto the_simulation = add<simulation>(data);
+
+  // get<simulation::osi>(the_simulation, data) = the_osi;
+  // get<simulation::td>(the_simulation, data) = the_td;
+  // get<simulation::osnspb>(the_simulation, data) = the_osnspb;
 
   get<osi::theta>(the_osi, data) = theta;
-
   get<td::t0>(the_td, data) = t0;
   get<td::h>(the_td, data) = h;
 

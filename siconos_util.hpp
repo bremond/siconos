@@ -126,14 +126,6 @@ namespace siconos
   template<typename ...Args>
   using tuple = std::tuple<Args...>;
 
-  static auto for_each = []<typename ...Args>(auto&& fun, const tuple<Args...> tpl)
-    constexpr
-  {
-    std::apply([&fun](auto&&... args) { ((fun(args)), ...);}, tpl);
-  };
-
-
-
   // https://ctrpeach.io/posts/cpp20-string-literal-template-parameters/
   // https://stackoverflow.com/questions/62266052/c20-string-literal-template-argument-working-example
   // https://www.cppstories.com/2021/constexpr-vecstr-cpp20/

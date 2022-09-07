@@ -6,6 +6,7 @@
 #include <boost/hana/fwd/fold_left.hpp>
 #include <boost/hana/ext/std/tuple.hpp>
 #include <boost/hana/fwd/find_if.hpp>
+#include <boost/hana/fwd/for_each.hpp>
 
 namespace siconos
 {
@@ -43,7 +44,11 @@ namespace siconos
     {
       return boost::hana::find_if(std::forward<T>(xs), std::forward<P>(predicate));
     };
+
+    static auto for_each = boost::hana::for_each;
   }
+
+
 }
 
 #endif

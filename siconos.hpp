@@ -15,8 +15,7 @@ namespace siconos
       description
       <"A lagrangian dynamical system [...]">>
     {
-      struct mass_matrix :
-        some::matrix<dof, dof> {};
+      using mass_matrix = some::matrix<dof, dof>;
 
       struct q : some::vector<dof>,
                  access<q> {};
@@ -56,6 +55,15 @@ namespace siconos
       using attributes = gather<e>;
 
     };
+  };
+
+  struct topology : item<>
+  {
+    struct dsg0 : some::graph {};
+    struct ig0 : some::graph {};
+    struct ig1 : some::graph {};
+
+    using attributes = gather<dsg0, ig0, ig1>;
   };
 
   template<typename Nslaw, typename Relation>
@@ -108,17 +116,19 @@ namespace siconos
     using attributes = gather<h, t0, step>;
   };
 
-  template<typename TD, typename OSI, typename OSNSPB, typename ...GraphItems>
+  template<typename TD, typename OSI, typename OSNSPB, typename TOPO, typename ...GraphItems>
   struct time_stepping : item<>
   {
     using time_discretization = TD;
     using one_step_integrator = OSI;
     using one_step_nonsmooth_problem = OSNSPB;
+    using topology = TOPO;
     using graph_items = gather<GraphItems...>;
 
     using items = gather<time_discretization,
                          one_step_integrator,
                          one_step_nonsmooth_problem,
+                         topology,
                          GraphItems...>;
   };
 

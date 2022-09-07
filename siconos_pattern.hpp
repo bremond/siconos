@@ -375,6 +375,8 @@ namespace siconos
     template<std::size_t N>
     struct vector : attribute<N> {};
 
+    struct graph : attribute<> {};
+
     template<match::item T>
     struct item_ref : attribute<>
     {
@@ -618,6 +620,13 @@ namespace siconos
   };
 
 
+  namespace type
+  {
+    template<template<typename T> typename Transform, typename ...Args>
+    using transform = decltype(
+      transform([]<typename A>(A){ return Transform<A>{};},
+                gather<Args...>{}));
+  }
 }
 
 #endif

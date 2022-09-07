@@ -34,6 +34,10 @@ namespace siconos
               std::get<0>(T::sizes),
               std::get<1>(T::sizes)>{};
           }
+          else if constexpr (std::derived_from<T, some::graph>)
+          {
+            return typename E::graph{};
+          }
           else if constexpr (std::derived_from<T,
                              some::item_ref<typename T::type>>)
           {
@@ -43,9 +47,9 @@ namespace siconos
           {
             // not found
             // cf https://stackoverflow.com/questions/38304847/constexpr-if-and-static-assert
-            []<bool flag = false>()
+            []<typename U = T, bool flag = false>()
               {
-                static_assert(T{} == flag, "cannot translate type");
+                static_assert(flag, "cannot translate this attribute");
               }();
           }
 

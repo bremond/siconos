@@ -25,7 +25,7 @@ namespace siconos
       constexpr auto keep = car(Tpl{});
       using keep_t = std::decay_t<decltype(keep)>;
 
-      if constexpr (std::is_same_v<Attr, keep_t>)
+      if constexpr (std::is_same_v<Attr, typename keep_t::attribute>)
       {
         return keep_t::size;
       }
@@ -107,20 +107,12 @@ namespace siconos
   };
 
   template<match::attribute T>
-  static auto get_step_data = [](const auto vd, const auto step, auto& data)
-    constexpr -> decltype(auto)
-  {
-    auto indx = data._graph.index(vd);
-    auto& mem = get_memory<T>(data);
-    return memory(step, mem)[indx];
-  };
-
-  template<match::attribute T>
   static auto get =
     [](match::internal_handle auto ihandle, auto& data)
     constexpr -> decltype(auto)
     {
       using data_t = std::decay_t<decltype(data)>;
+      using topology_t = typename data_t::topology_t;
       using item_t = decltype(item_attribute<T>(typename data_t::all_items_t{}));
       using indice = typename data_t::indice;
 
@@ -129,7 +121,8 @@ namespace siconos
 
       if constexpr (match::vertex_item<item_t>)
       {
-        auto indx = data._graph.index(ihandle.get());
+        auto& dsg = get_memory<typename topology_t::dsg0>(data)[0][0];
+        auto indx = dsg.index(ihandle.get());
         return memory(step, mem)[indx];
       }
       else
@@ -232,6 +225,7 @@ namespace siconos
   {
     using env = Env;
     using machine = Mach;
+    using topology_t = typename machine::topology;
     using all_items_t = decltype(all_items(Mach{}));
     using all_keeps_t = decltype(all_keeps(Mach{}));
 
@@ -289,6 +283,7 @@ namespace siconos
     {
       using time_discretization = typename Sim::time_discretization;
       using osi = typename Sim::one_step_integrator;
+      using topology = typename Sim::topology;
       struct descriptor : some::vdescriptor<vertex_items> {};
 
       using attributes = gather<descriptor>;
@@ -313,12 +308,12 @@ namespace siconos
   static auto for_each_attribute = [](auto&& fun, auto& data)
     constexpr
   {
-    for_each(
+    ground::for_each(all_attributes(T{}),
       [&fun]<match::attribute ...Attrs>(Attrs&...)
       {
         (fun(Attrs{}), ...);
-      },
-      all_attributes(T{}));
+      });
+
   };
 
   template<match::item T>
@@ -356,18 +351,24 @@ namespace siconos
   static auto add_vertex_item = [](auto& data) constexpr -> decltype(auto)
   {
     using data_t = std::decay_t<decltype(data)>;
-    using vdescriptor = typename data_t::machine::vertex::descriptor;
-//    auto step = 0 ; //get_step<T>(data);
+    using topology_t = typename data_t::topology_t;
 
-    auto vd = data._graph.add_vertex(data._counter++);
+    using vdescriptor = typename data_t::machine::vertex::descriptor;
+    //    auto step = 0 ; //get_step<T>(data);
+
+    // auto& dsg = get<topology_t::dsg0>(handle?, data);
+    // only one topology
+    auto& dsg = get_memory<typename topology_t::dsg0>(data)[0][0];
+
+    auto vd = dsg.add_vertex(data._counter++);
 
     get_memory<vdescriptor>(data)[0].push_back({vd, T{}});
 
-    data._graph.index(vd) = std::size(get_memory<vdescriptor>(data)[0])-1;
+    dsg.index(vd) = std::size(get_memory<vdescriptor>(data)[0])-1;
 
     [[maybe_unused]] auto idx = add_attributes<T>(data);
 
-    assert(idx == data._graph.index(vd));
+    assert(idx == dsg.index(vd));
 
     return make_internal_handle<T>(vd);
   };
@@ -390,16 +391,19 @@ namespace siconos
   {
     auto& data = handle.data();
     using data_t = std::decay_t<decltype(data)>;
+    using topology_t = typename data_t::topology_t;
     using vdescriptor = typename data_t::machine::vertex::descriptor;
     auto& vd_store = get_memory<vdescriptor>(data)[0];
 
+    //auto& dsg = get<topology_t::dsg0>(data);
+    auto& dsg = get_memory<typename topology_t::dsg0>(data)[0][0];
 
-    auto i = data._graph.index(handle.get());
+    auto i = dsg.index(handle.get());
 
-    data._graph.remove_vertex(handle.get());
+    dsg.remove_vertex(handle.get());
 
     move_back(i, vd_store);
-    data._graph.index(std::get<0>(vd_store[i])) = i;
+    dsg.index(std::get<0>(vd_store[i])) = i;
 
     std::visit([&i,&data]<typename Item>(Item)
     {

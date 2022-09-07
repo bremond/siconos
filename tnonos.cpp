@@ -21,7 +21,8 @@ int main()
   using nslaw = nonsmooth_law::newton_impact;
   using interaction = interaction<nslaw, relation>;
   using td = time_discretization<>;
-  using simulation = time_stepping<td, osi, osnspb, ball, interaction>;
+  using topo = topology;
+  using simulation = time_stepping<td, osi, osnspb, topo, ball, interaction>;
   using siconos::get;
 
   static_assert(must::contains<int,std::tuple<int,float,char>>);
@@ -81,17 +82,17 @@ int main()
                 decltype(all_keeps(simulation{})),
                 gather<keep<ball::q,2>, keep<ball::velocity,2>>>);
 
+  static_assert(memory_size<typename ball::q, typename osi::keeps> == 2);
 
   auto data = siconos::make_storage<env, simulation>();
 //   add<simulation>(data);
 
   print("---\n");
-  for_each(
+  ground::for_each(data._collections,
     [](auto& a)
     {
       print("->{}\n", a.size());
-    },
-    data._collections);
+    });
 
    print("---\n");
 
@@ -107,7 +108,7 @@ int main()
    auto& velocityp = fix_map(get<ball::velocity>)(ds0);
    print("--->{}\n", velocityp);
 
-   for_each([](auto& a) { print("{:d}\n", a.size()); }, data._collections);
+   ground::for_each(data._collections, [](auto& a) { print("{:d}\n", a.size()); });
 //   print("{0}\n", data._collections);
 
 //   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
@@ -121,10 +122,11 @@ int main()
 //   print("---\n");
 //   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
-   remove_vertex_item(ds1, 0);
+//   remove_vertex_item(ds1, 0);
 //   print("---\n");
 //   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
+   print("-----{}------", fix_map(get<ball::mass_matrix>)(ds1));
    print("{}", fix_map(get<ball::mass_matrix>)(ds0));
 
 //   auto m = get<ball::mass_matrix>(ds0, data);
@@ -160,6 +162,15 @@ int main()
 
    nslaw::e::internal_get(interaction::nonsmooth_law::get(inter2), data) = 0.3;
 
+   auto ball1 = add<ball>(data);
+   auto ball2 = add<ball>(data);
    interaction::nonsmooth_law::get(inter2);
-   print("e={}", nslaw::e::get(nslaw2));
+   print("e={}\n", nslaw::e::get(nslaw2));
+
+   using data_t = std::decay_t<decltype(data)>;
+   print("memory_size={}\n", (memory_size<ball::q, typename data_t::machine::osi::keeps> ));
+   print("q={}\n", siconos::get_memory<ball::q>(data));
+   print("v={}\n", siconos::get_memory<ball::velocity>(data));
+
+//   auto m = ball_v.mass_matrix_v;
 }
