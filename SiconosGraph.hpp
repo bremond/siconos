@@ -187,9 +187,9 @@ public:
 
   graph_t g;
 
-private:
+//private:
 
-  SiconosGraph(const SiconosGraph&);
+  // SiconosGraph(const SiconosGraph&);
 
 public:
 

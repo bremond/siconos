@@ -25,6 +25,7 @@ int main()
   using simulation = time_stepping<td, osi, osnspb, topo, ball, interaction>;
   using siconos::get;
 
+  {
   static_assert(must::contains<int,std::tuple<int,float,char>>);
   static_assert(!must::contains<double,std::tuple<int,float,char>>);
   static_assert(std::is_same_v<decltype(
@@ -83,7 +84,7 @@ int main()
                 gather<keep<ball::q,2>, keep<ball::velocity,2>>>);
 
   static_assert(memory_size<typename ball::q, typename osi::keeps> == 2);
-
+  }
   auto data = siconos::make_storage<env, simulation>();
 //   add<simulation>(data);
 
@@ -114,7 +115,6 @@ int main()
 //   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
    auto ds1 = fix(add<ball>)(data);
-
    ball::q::get(ds1) = { 1.,1., 1.};
 
    auto ds2 = fix(add<ball>)(data);
@@ -168,9 +168,35 @@ int main()
    print("e={}\n", nslaw::e::get(nslaw2));
 
    using data_t = std::decay_t<decltype(data)>;
+
    print("memory_size={}\n", (memory_size<ball::q, typename data_t::machine::osi::keeps> ));
    print("q={}\n", siconos::get_memory<ball::q>(data));
    print("v={}\n", siconos::get_memory<ball::velocity>(data));
 
-//   auto m = ball_v.mass_matrix_v;
+   auto ustore1 = unit_storage<env, some::scalar, some::vector<3>, some::graph>::type {};
+
+//   ground::find(ustore1, boost::hana::type_c<some::scalar>) = 1.0;
+//   ground::find(ustore1, boost::hana::type_c<some::vector<3>>).value() = { 1.0, 2.0, 3.0 };
+
+   ground::get<some::scalar>(ustore1) = 2.0;
+   ground::get<some::vector<3>>(ustore1) = std::array {1.0, 2.0, 3.0};
+
+   print("ustore1 scalar={}\n", ground::get<some::scalar>(ustore1));
+
+   print("ustore1 vector={}\n", ground::get<some::vector<3>>(ustore1));
+
+
+   auto ustore2 = std::apply([]<typename ...Args>(Args...)
+                             { return typename unit_storage<env, Args...> ::type {};}, all_attributes(simulation{}));
+
+   ground::get<ball::q>(ustore2) = { 2.0, 3.0, 4.0 };
+
+   print("ustore2 ball::q ={}\n", ground::get<ball::q>(ustore2));
+
+   auto ustore3 = ground::map_vtransform([](auto&&s) { return std::vector {s}; })(ustore2);
+
+   ground::get<ball::q>(ustore3).push_back({4.,5.,6.});
+
+   print("ustore3 ball::q ={}\n", ground::get<ball::q>(ustore3));
+
 }

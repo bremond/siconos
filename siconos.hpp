@@ -15,7 +15,7 @@ namespace siconos
       description
       <"A lagrangian dynamical system [...]">>
     {
-      using mass_matrix = some::matrix<dof, dof>;
+      struct mass_matrix : some::matrix<dof, dof> {};
 
       struct q : some::vector<dof>,
                  access<q> {};

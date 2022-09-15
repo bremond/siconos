@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.2)
 project(mybenchmarks_library)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include_directories(${CMAKE_SOURCE_DIR}/numeric_bindings)
 include_directories(
   ${SICONOS_INSTALL_DIR}/include
@@ -22,3 +23,5 @@ target_link_libraries(tbench xsiconos benchmark pthread fmt)
 target_link_libraries(tgraph xsiconos benchmark pthread fmt)
 target_link_libraries(tnonos xsiconos benchmark pthread fmt)
 target_link_libraries(bouncing_ball xsiconos benchmark pthread fmt)
+
+

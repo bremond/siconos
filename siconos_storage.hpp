@@ -219,6 +219,41 @@ namespace siconos
     // else...
   };
 
+  template<typename Env, typename ...Attributes>
+  struct unit_storage
+  {
+    using env = Env;
+
+    using type = ground::map<
+      ground::pair<Attributes,
+                   typename traits::config<env, Attributes>::type>
+      ...>;
+
+  };
+
+  static constexpr auto storage_transform =
+    []<typename D>(D&&, auto&&f) constexpr -> decltype(auto)
+  {
+    return
+    ground::transform(
+      D{},
+      [&f]<match::attribute A>(A)
+      {
+        return f(item_attribute<A>(typename D::all_items_t{}));
+      });
+  };
+
+  namespace xmemory
+  {
+    template<typename T, std::size_t N>
+    using wrap = std::array<T, N>;
+
+    static constexpr auto get = [](auto&& mem, auto step)
+      constexpr -> decltype(auto)
+    {
+      return mem[step%std::size(mem)];
+    };
+  }
 
   template<typename Env, typename Mach, typename ...Attributes>
   struct storage
@@ -254,9 +289,6 @@ namespace siconos
 
     // administrative counter
     indice _counter = 0;
-
-    // graph
-    graph_t _graph;
 
     ///////////////////////
     // methods & operators
