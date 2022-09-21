@@ -84,7 +84,21 @@ int main()
                 gather<keep<ball::q,2>, keep<ball::velocity,2>>>);
 
   static_assert(memory_size<typename ball::q, typename osi::keeps> == 2);
+
+//  std::cout << boost::hana::experimental::type_name<decltype(attributes(interaction{}))>().c_str() << std::endl;
+//  std::cout << boost::hana::experimental::type_name<gather<nslaw, relation>>().c_str() << std::endl;
+
+//  std::cout << boost::hana::experimental::type_name<decltype(all_attributes(interaction{}))>().c_str() << std::endl;
+
+  static_assert(std::is_same_v<decltype(attributes(interaction{})),
+                gather<interaction::nonsmooth_law, interaction::relation>>);
+
+  static_assert(std::is_same_v<decltype(all_attributes(interaction{})),
+                gather<interaction::nonsmooth_law, interaction::relation,
+                nslaw::e, relation::h_matrix>>);
+
   }
+
   auto data = siconos::make_storage<env, simulation>();
 //   add<simulation>(data);
 
@@ -185,15 +199,26 @@ int main()
 
    print("ustore1 vector={}\n", ground::get<some::vector<3>>(ustore1));
 
+   auto ustore2 = item_storage<env, simulation>{};
 
-   auto ustore2 = std::apply([]<typename ...Args>(Args...)
-                             { return typename unit_storage<env, Args...> ::type {};}, all_attributes(simulation{}));
+   iget<ball::q>(ustore2) = { 2.0, 3.0, 4.0 };
+   print("ustore2 ball::q ={}\n", iget<ball::q>(ustore2));
 
-   ground::get<ball::q>(ustore2) = { 2.0, 3.0, 4.0 };
+   ground::transform(iget<ball>(ustore2), [&ustore2]<typename A>(A){ return iget<A>(ustore2); });
 
-   print("ustore2 ball::q ={}\n", ground::get<ball::q>(ustore2));
-
-   auto ustore3 = ground::map_vtransform([](auto&&s) { return std::vector {s}; })(ustore2);
+   auto ustore3 = storage_transform(
+     ustore2,
+     []<match::item item_t, typename storage_t>(item_t&&item, storage_t&&s)
+     {
+       if constexpr (match::vertex_item<item_t>)
+       {
+         return std::vector {std::forward<storage_t>(s)};
+       }
+       else
+       {
+         return std::array {std::forward<storage_t>(s)};
+       }
+     });
 
    ground::get<ball::q>(ustore3).push_back({4.,5.,6.});
 

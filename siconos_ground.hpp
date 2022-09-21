@@ -10,7 +10,7 @@
 #include <boost/hana/ext/std/array.hpp>
 #include <boost/hana/fwd/find_if.hpp>
 #include <boost/hana/fwd/for_each.hpp>
-
+#include <boost/hana/experimental/type_name.hpp>
 
 
 namespace siconos
@@ -49,9 +49,18 @@ namespace siconos
       }
     };
 
+    static auto overload = hana::overload;
+
+    static auto apply = hana::apply;
+
     static auto find_if = hana::find_if;
 
     static auto for_each = hana::for_each;
+
+    static auto partial = hana::partial;
+
+    template<typename T>
+    static auto t_arg = []<typename F>(F&& f) { return ground::partial(f, T{}); };
 
     template<typename First, typename Second>
     using pair = hana::pair<decltype(hana::type_c<First>), Second>;
@@ -78,10 +87,13 @@ namespace siconos
 
     static auto transform = hana::transform;
 
+    // map -> tuple -> tranform -> map
     static auto map_transform = hana::demux(hana::to<hana::map_tag>)
         (hana::compose(transform, hana::to<hana::tuple_tag>));
 
-    static auto dup = []<typename F>(F&& f) constexpr -> decltype(auto)
+    // dup(f)(x) = f(x, x)
+    static auto dup = []<typename F>(F&& f)
+      constexpr -> decltype(auto)
     {
       return
       [&f]<typename X>(X&& x)
@@ -92,20 +104,20 @@ namespace siconos
     };
 
     static_assert(dup(hana::plus)(1) == 2);
+    static_assert(dup(hana::mult)(2) == 4);
 
-    static auto transform_map_value = []<typename F>(F&& f)
+    // map_transform pair(first, f(first, second)),
+    static auto map_value_transform =
+      []<typename M, typename F>(M&& m, F&& f)
+      constexpr -> decltype(auto)
     {
-      return
-      dup(hana::lockstep(hana::make_pair)
-          (hana::first,
-           hana::compose(std::forward<F>(f), hana::second)));
-    };
+      return map_transform(std::forward<M>(m),
+                           dup(hana::lockstep(hana::make_pair)
+                               (hana::first,
+                                dup(hana::lockstep(std::forward<F>(f))
+                                    (hana::first,
+                                     hana::second)))));
 
-
-    static auto map_vtransform = []<typename F>(F&& f)
-    { return
-      hana::curry<2>(hana::flip(map_transform))
-      (transform_map_value(std::forward<F>(f)));
     };
   }
 }

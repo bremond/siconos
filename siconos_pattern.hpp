@@ -526,6 +526,19 @@ namespace siconos
     return loop(items);
   };
 
+  static auto attributes = []<match::item Item>(Item&& t)
+    constexpr -> decltype(auto)
+  {
+    if constexpr (match::attributes<Item>)
+    {
+      return typename Item::attributes{};
+    }
+    else
+    {
+      return gather<>{};
+    }
+  };
+
   static auto all_attributes =
   rec(
     [](auto&& all_attributes, match::item auto&& t) constexpr
