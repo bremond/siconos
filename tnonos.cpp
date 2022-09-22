@@ -206,11 +206,11 @@ int main()
 
    ground::transform(iget<ball>(ustore2), [&ustore2]<typename A>(A){ return iget<A>(ustore2); });
 
-   auto ustore3 = storage_transform(
+   auto ustore3 = item_storage_transform(
      ustore2,
      []<match::item item_t, typename storage_t>(item_t&&item, storage_t&&s)
      {
-       if constexpr (match::vertex_item<item_t>)
+       if constexpr (match::graph_item<item_t>)
        {
          return std::vector {std::forward<storage_t>(s)};
        }
@@ -224,4 +224,11 @@ int main()
 
    print("ustore3 ball::q ={}\n", ground::get<ball::q>(ustore3));
 
+   auto ustore4 = attribute_storage_transform(
+     ustore3,
+     []<match::attribute attribute>(attribute&& attr, auto&& s)
+     {
+       using storage_t = std::decay_t<decltype(s)>;
+       return memory_t<storage_t, memory_size<attribute, typename osi::keeps>>{std::forward<storage_t>(s)};
+     });
 }

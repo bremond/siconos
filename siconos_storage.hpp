@@ -264,7 +264,7 @@ namespace siconos
   template<typename T>
   static auto iget = ground::t_arg<T>(iiget);
 
-  static constexpr auto storage_transform =
+  static constexpr auto item_storage_transform =
     []<typename D>(D&& d, auto&&f) constexpr -> decltype(auto)
   {
     using data_t = std::decay_t<decltype(d)>;
@@ -275,6 +275,18 @@ namespace siconos
       {
         using A = typename K::type;
         return f(item_attribute<A>(typename data_t::all_items_t{}), std::forward<S>(store));
+      });
+  };
+
+  static constexpr auto attribute_storage_transform = [](auto&& d, auto&& f)
+    constexpr -> decltype(auto)
+  {
+    return
+      ground::map_value_transform(
+      d,
+      [&f]<typename A, typename S>(A, S&& s)
+      {
+        return f(typename A::type{}, s);
       });
   };
 
