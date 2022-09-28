@@ -49,6 +49,7 @@ namespace siconos
       }
     };
 
+
     static auto overload = hana::overload;
 
     static auto apply = hana::apply;
@@ -57,8 +58,15 @@ namespace siconos
 
     static auto for_each = hana::for_each;
 
+    static auto insert = hana::insert;
+
     static auto partial = hana::partial;
 
+    static auto first = hana::first;
+
+    static auto second = hana::second;
+
+    // f(T{}, ...) -> f<T>(...)
     template<typename T>
     static auto t_arg = []<typename F>(F&& f) { return ground::partial(f, T{}); };
 

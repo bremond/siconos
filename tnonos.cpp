@@ -199,12 +199,12 @@ int main()
 
    print("ustore1 vector={}\n", ground::get<some::vector<3>>(ustore1));
 
-   auto ustore2 = item_storage<env, simulation>{};
+   auto ustore2 = typename item_storage<env, simulation>::type {};
 
    iget<ball::q>(ustore2) = { 2.0, 3.0, 4.0 };
    print("ustore2 ball::q ={}\n", iget<ball::q>(ustore2));
 
-   ground::transform(iget<ball>(ustore2), [&ustore2]<typename A>(A){ return iget<A>(ustore2); });
+   //ground::transform(iget<ball>(ustore2), [&ustore2]<typename A>(A){ return iget<A>(ustore2); });
 
    auto ustore3 = item_storage_transform(
      ustore2,
@@ -229,6 +229,17 @@ int main()
      []<match::attribute attribute>(attribute&& attr, auto&& s)
      {
        using storage_t = std::decay_t<decltype(s)>;
-       return memory_t<storage_t, memory_size<attribute, typename osi::keeps>>{std::forward<storage_t>(s)};
+       return memory_t<storage_t, memory_size<attribute, typename osi::keeps>>
+         {std::forward<storage_t>(s)};
      });
+
+   auto ustore5 = imake_storage<env, simulation>();
+
+   ground::get<ball::q>(ustore5)[0].push_back({7.,8.,9.});
+   print("ustore3 ball::q ={}\n", ground::get<ball::q>(ustore5));
+
+   auto some_iball=iadd<ball>(ustore5, 0);
+
+   oget<ball::velocity>(0, some_iball, ustore5) = {3., 3., 3.};
+   print("ustore3 ball::velocity = {}\n", oget<ball::velocity>(0, some_iball, ustore5));
 }

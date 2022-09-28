@@ -21,7 +21,7 @@ int main(int argc, char* argv[])
   using simulation = time_stepping<td, osi, osnspb, topo, ball, interaction>;
   using siconos::get;
 
-  auto data = make_storage<standard_environment, simulation> ();
+  auto data = make_storage<standard_environment, simulation>();
 
   //unsigned int nDof = 3;         // degrees of freedom for the ball
   double t0 = 0;                   // initial computation time

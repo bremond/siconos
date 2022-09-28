@@ -231,50 +231,61 @@ namespace siconos
 
   };
 
+  struct info{};
+
+  template<typename Info, typename M>
+  using with_info_t = decltype(ground::insert(M{}, ground::pair<info, Info>{}));
+
   template<typename Env, typename ...Items>
   struct item_storage
   {
-    using env = Env;
-    using all_items_t = decltype(flatten(all_items(Items{})...));
-    using attributes = decltype(flatten(all_attributes(Items{})...));
+    struct iinfo
+    {
+      using env = Env;
+      using all_items_t = decltype(flatten(all_items(Items{})...));
+      using all_attributes_t = decltype(flatten(all_attributes(Items{})...));
+    };
 
-    using items_t = decltype(std::apply([]<typename ...IItems>(IItems...)
-      {
-        return ground::map<
-          ground::pair<IItems,
-                       decltype(all_attributes(IItems{}))>
-          ...>{};
-      }, all_items_t{}));
+    using map_t = decltype(
+      std::apply(
+        []<typename ...Attributes>(Attributes...)
+        {
+          return typename unit_storage<typename iinfo::env,
+                                       Attributes...>::type{};
+        },
+        typename iinfo::all_attributes_t{}));
 
-    using storage_t = decltype(std::apply([]<typename ...Attributes>(Attributes...)
-                                          { return typename unit_storage<env, Attributes...>::type{} ;}, attributes{}));
-
-    items_t xitems;
-    storage_t storage;
+    using type = with_info_t<iinfo, map_t>;
   };
 
-  static auto iiget = ground::overload
-    (
-      []<match::attribute A, typename D>(A, D& data) constexpr -> decltype(auto)
-      { return ground::get<A>(data.storage); },
 
-      []<match::item I, typename D>(I, D& data) constexpr -> decltype(auto)
-      { return ground::get<I>(data.xitems); });
-
-  template<typename T>
-  static auto iget = ground::t_arg<T>(iiget);
+  template<typename A>
+  static auto iget = []<typename D>(D&& data)
+    constexpr -> decltype(auto)
+  {
+    return ground::get<A>(std::forward<std::decay_t<D>>(data));
+  };
 
   static constexpr auto item_storage_transform =
     []<typename D>(D&& d, auto&&f) constexpr -> decltype(auto)
   {
-    using data_t = std::decay_t<decltype(d)>;
+    using info_t = std::decay_t<decltype(ground::get<info>(d))>;
+
     return
     ground::map_value_transform(
-      d.storage,
+      d,
       [&f]<typename K, typename S>(K, S&& store)
       {
-        using A = typename K::type;
-        return f(item_attribute<A>(typename data_t::all_items_t{}), std::forward<S>(store));
+        if constexpr (match::attribute<typename K::type>)
+        {
+          using attr_t = typename K::type;
+          return f(item_attribute<attr_t>(typename info_t::all_items_t{}),
+                   std::forward<S>(store));
+        }
+        else
+        {
+          return std::forward<S>(store);
+        }
       });
   };
 
@@ -284,10 +295,92 @@ namespace siconos
     return
       ground::map_value_transform(
       d,
-      [&f]<typename A, typename S>(A, S&& s)
+      [&f]<typename K, typename S>(K, S&& s)
       {
-        return f(typename A::type{}, s);
+        if constexpr (match::attribute<typename K::type>)
+        {
+          return f(typename K::type{}, s);
+        }
+        else
+        {
+          return std::forward<S>(s);
+        }
       });
+  };
+
+  template<typename Env, match::item ...Items>
+  static auto imake_storage = []()
+    constexpr -> decltype(auto)
+  {
+    using all_keeps_t = decltype(flatten(all_keeps(Items{})...));
+    return
+      attribute_storage_transform(
+        item_storage_transform(
+          typename item_storage<Env, Items...>::type{},
+          []<match::item item_t>(item_t&&item, auto&& s)
+          {
+            using storage_t = std::decay_t<decltype(s)>;
+
+            if constexpr (match::graph_item<item_t>)
+            {
+              return std::vector<storage_t>{}; //std::forward<storage_t>(s)};
+            }
+            else
+            {
+              return std::array<storage_t, 1>{}; //std::forward<storage_t>(s0};
+            }
+          }),
+        []<match::attribute attribute>(attribute&& attr, auto&& s)
+        {
+          using storage_t = std::decay_t<decltype(s)>;
+          return memory_t<storage_t, memory_size<attribute, all_keeps_t>>
+            {std::forward<storage_t>(s)};
+        });
+  };
+
+  template<match::item Item>
+  static auto iadd = [](auto&& data, auto step) constexpr -> decltype(auto)
+  {
+    using info_t = std::decay_t<decltype(iget<info>(data))>;
+    using indice = typename info_t::env::indice;
+
+    constexpr auto attrs = attributes(Item{});
+    using attrs_t = std::decay_t<decltype(attrs)>;
+
+    if constexpr (std::tuple_size_v<attrs_t> > 0)
+    {
+      return make_internal_handle<Item>(
+        ground::fold_left(attributes(Item{}), indice{0},
+                          [&data, &step]<match::attribute A>(indice n, A)
+                          {
+                            auto& storage = iget<A>(data)[step];
+                            using storage_t = std::decay_t<decltype(storage)>;
+                            if constexpr (match::push_back<storage_t>)
+                            {
+                              storage.push_back(typename storage_t::value_type{});
+                              return n + std::size(storage) - 1;
+                            }
+                            else
+                            {
+                              // same place
+                              storage[0] = typename storage_t::value_type{};
+                              return n;
+                            }
+                          }) / std::tuple_size_v<attrs_t>
+        );
+    }
+    else
+    {
+      return make_internal_handle<Item>(void());
+    }
+  };
+
+  template<match::attribute A>
+  static auto oget = []<typename Handle, typename Data>(
+    auto step, Handle handle, Data&& data)
+    constexpr -> decltype(auto)
+  {
+    return iget<A>(std::forward<std::decay_t<Data>>(data))[step][handle.get()];
   };
 
   namespace xmemory
