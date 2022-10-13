@@ -12,91 +12,12 @@
 namespace siconos
 {
 
-  template<typename T, typename R>
-  struct handle
+  struct empty{};
+
+  template<typename T>
+  struct kind
   {
-    using handle_t = void;
     using type = T;
-    using value_t = R;
-
-    value_t value = {};
-
-    auto get() const { return value.first; };
-    decltype(auto) data() { return value.second(); };
-
-    explicit handle(R ref) : value{ref} {};
-    handle() : value{} {}; // needed for types associations
-  };
-
-  template<typename T, typename I, typename D>
-  static decltype(auto) make_handle(I indx, D& data)
-  {
-    auto p = std::pair { indx, [&data]() -> D& { return data; } };
-    return handle<T, decltype(p)>{p};
-  }
-
-
-  template<typename T, typename R>
-  struct internal_handle
-  {
-    using internal_handle_t = void;
-    using type = T;
-    using value_t = R;
-
-    value_t value = {};
-
-    auto get() const { return value; };
-
-    explicit internal_handle(R ref) : value{ref} {}
-
-    internal_handle() : value{} {};
-
-    template<typename P>
-    void operator = (handle<T, P>& h)
-    {
-      value = h.value.first;
-    }
-  };
-
-  template<typename T, typename I>
-  static decltype(auto) make_internal_handle(I indx)
-  {
-    return internal_handle<T, I>{indx};
-  }
-
-  template<typename T, typename I, typename D>
-  static decltype(auto) handle_from_internal(internal_handle<T,I> ihandle, D& data)
-  {
-    auto p = std::pair { ihandle.value, [&data]() -> D& { return data; } };
-    return handle<T, decltype(p)>{p};
-  }
-
-  static auto fix = [](auto&& fun)
-    constexpr -> decltype(auto)
-  {
-    return
-      [&fun]<typename ...As, typename Ae>(As&& ...args, Ae&& argend)
-      constexpr -> decltype(auto)
-      {
-        return handle_from_internal(fun(std::forward<As>(args)..., std::forward<Ae>(argend)),
-                                    std::forward<Ae>(argend));
-      };
-  };
-
-  static auto fix_map = [](auto&& fun)
-    constexpr -> decltype(auto)
-  {
-    return
-      [&fun]<typename A1, typename ...As>(A1&& arg1, As&& ...args)
-      constexpr -> decltype(auto)
-      {
-        using ih_t = internal_handle<typename std::decay_t<A1>::type,
-        decltype(arg1.get())>;
-        return
-        fun(std::forward<ih_t>(ih_t{arg1.get()}),
-            std::forward<As>(args)...,
-            std::forward<std::decay_t<decltype(arg1.data())>&>(arg1.data()));
-      };
   };
 
 
@@ -313,20 +234,10 @@ namespace siconos
     template<typename T>
     concept item = requires { typename T::item_t; };
 
-    template<typename T>
-    concept graph_item =
-      item<typename T::item> &&
-      requires { typename T::graph_item_t; };
-
-    template<typename T>
-    concept vertex_item =
-      graph_item<typename T::graph_item> &&
-      requires { typename T::vertex_item_t; };
-
-    template<typename T>
-    concept edge_item =
-      graph_item<typename T::graph_item> &&
-      requires { typename T::edge_item_t; };
+    template<typename I, typename T>
+    concept kind =
+      item<I> &&
+      must::contains<kind<T>, typename I::args>;
 
     template<typename T>
     concept items =
@@ -339,9 +250,14 @@ namespace siconos
       requires { typename T::keeps; };
 
     template<typename T>
+    concept size = requires (T a) { { std::size(a) }; };
+
+    template<typename T>
     concept push_back = requires (T a) { { a.push_back(typename T::value_type{}) }; };
   }
 
+  static_assert(match::size<std::vector<double>>);
+  static_assert(match::size<std::array<double,1>>);
   static_assert(match::push_back<std::vector<double>>);
   static_assert(!match::push_back<std::array<double,3>>);
 
@@ -351,8 +267,8 @@ namespace siconos
     struct attribute
     {
       using attribute_t = void;
-
       static constexpr auto sizes = std::tuple {Sizes...};
+
     };
 
     struct scalar : attribute<>
@@ -401,6 +317,7 @@ namespace siconos
       attribute<T> &&
       item<typename T::type>;
   }
+
   template<string_literal Text>
   struct text
   {
@@ -464,23 +381,24 @@ namespace siconos
     using item_t = void;
   };
 
-  template<typename ...Args>
-  struct graph_item : item<Args...>
-  {
-    using graph_item_t = void;
-  };
 
-  template<typename ...Args>
-  struct vertex_item : graph_item<Args...>
-  {
-    using vertex_item_t = void;
-  };
+  // template<typename ...Args>
+  // struct graph_item : item<Args...>
+  // {
+  //   using graph_item_t = void;
+  // };
 
-  template<typename ...Args>
-  struct edge_item : graph_item<Args...>
-  {
-    using edge_item_t = void;
-  };
+  // template<typename ...Args>
+  // struct vertex_item : graph_item<Args...>
+  // {
+  //   using vertex_item_t = void;
+  // };
+
+  // template<typename ...Args>
+  // struct edge_item : graph_item<Args...>
+  // {
+  //   using edge_item_t = void;
+  // };
 
   template<typename T>
   struct place_holder
@@ -618,21 +536,109 @@ namespace siconos
         }
       });
 
-  static auto all_graph_items = [](match::item auto&& t)
+  template<typename K>
+  static auto all_items_of_kind = [](match::item auto&& t)
     constexpr -> decltype(auto)
   {
-    return filter<hold<decltype([]<typename T>(T) { return match::graph_item<T>; })>>
+    return filter<hold<decltype([]<typename T>(T) { return match::kind<T,K>; })>>
       (all_items(t));
   };
 
-  static auto all_vertex_items = [](match::item auto&& t)
-    constexpr -> decltype(auto)
+  template<match::item T, typename R>
+  struct handle
   {
-    return filter<hold<decltype([]<typename T>(T) constexpr { return match::vertex_item<T>; })>>
-      (all_items(t));
+    using handle_t = void;
+    using type = T;
+    using value_t = R;
+
+    value_t value = {};
+
+    auto get() const { return value.first; };
+    decltype(auto) data() { return value.second(); };
+
+    explicit handle(R ref) : value{ref} {};
+    handle() : value{} {}; // needed for types associations
   };
 
+  template<typename T, typename I, typename D>
+  static decltype(auto) make_handle(I indx, D& data)
+  {
+    auto p = std::pair { indx, [&data]() -> D& { return data; } };
+    return handle<T, decltype(p)>{p};
+  }
 
+
+  template<match::item T, typename R>
+  struct internal_handle
+  {
+    using internal_handle_t = void;
+    using type = T;
+    using value_t = R;
+
+    value_t value = {};
+
+    auto get() const { return value; };
+
+    explicit internal_handle(R ref) : value{ref} {}
+
+    internal_handle() : value{} {};
+
+    template<typename P>
+    void operator = (handle<T, P>& h)
+    {
+      value = h.value.first;
+    }
+  };
+
+  template<match::item T, typename I>
+  static decltype(auto) make_internal_handle(I indx)
+  {
+    return internal_handle<T, I>{indx};
+  }
+
+  template<match::item T, typename I, typename D>
+  static decltype(auto) handle_from_internal(internal_handle<T,I> ihandle, D& data)
+  {
+    auto p = std::pair { ihandle.value, [&data]() -> D& { return data; } };
+    return handle<T, decltype(p)>{p};
+  }
+
+  static auto fix = [](auto&& fun)
+    constexpr -> decltype(auto)
+  {
+    return
+      [&fun]<typename ...As, typename Ae>(As&& ...args, Ae&& argend)
+      constexpr -> decltype(auto)
+      {
+        return handle_from_internal(fun(std::forward<As>(args)..., std::forward<Ae>(argend)),
+                                    std::forward<Ae>(argend));
+      };
+  };
+
+  static auto fix_map = [](auto&& fun)
+    constexpr -> decltype(auto)
+  {
+    return
+      [&fun]<typename A1, typename ...As>(A1&& arg1, As&& ...args)
+      constexpr -> decltype(auto)
+      {
+        using ih_t = internal_handle<typename std::decay_t<A1>::type,
+        decltype(arg1.get())>;
+        return
+        fun(std::forward<ih_t>(ih_t{arg1.get()}),
+            std::forward<As>(args)...,
+            std::forward<std::decay_t<decltype(arg1.data())>&>(arg1.data()));
+      };
+  };
+
+  namespace match
+  {
+    template<typename H, typename A>
+    concept handle_attribute =
+      attribute<A> &&
+      item<typename H::type> &&
+      must::contains<A, typename H::type::attributes>;
+  }
   namespace type
   {
     template<template<typename T> typename Transform, typename ...Args>

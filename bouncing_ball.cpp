@@ -39,8 +39,6 @@ int main(int argc, char* argv[])
   // -- The dynamical_system --
   auto the_ball = add<ball>(data);
 
-  //ball::q::get(the_ball) = {position_init, 0, 0};
-
   get<ball::q>(the_ball, data) = {position_init, 0, 0};
   // set<ball::q>(the_ball, data, {position_init, 0, 0});
   // data(get<ball::q>) = {position_init, 0, 0};
@@ -57,18 +55,20 @@ int main(int argc, char* argv[])
   // --- Interactions ---
   // --------------------
 
-  // Lagrangian relation
+  // -- Lagrangian relation --
   auto the_relation = add<relation>(data);
   get<relation::h_matrix>(the_relation, data) = {1.0, 0., 0.};
+
+  // -- nslaw --
+  double e = 0.9;
+  auto the_nslaw = add<nslaw>(data);
+  get<nslaw::e>(the_nslaw, data) = e;
 
   // Interaction ball-floor
   auto the_interaction = add<interaction>(data);
 
-  // -- nslaw --
-  double e = 0.9;
-  get<nslaw::e>(the_interaction, data) = e;
-
   get<interaction::relation>(the_interaction, data) = { the_relation };
+  get<interaction::nonsmooth_law>(the_interaction, data) = { the_nslaw };
   //get<interaction::link>(the_interaction, data) = { the_ball };
 
   // ------------------

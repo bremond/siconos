@@ -6,12 +6,15 @@
 
 namespace siconos
 {
+  struct graph_item {};
+
   template<typename ...Params>
   struct lagrangian : frame<Params...>
   {
     static constexpr auto dof = frame<Params...>::dof;
 
-    struct dynamical_system : vertex_item<
+    struct dynamical_system : item<
+      kind<graph_item>,
       description
       <"A lagrangian dynamical system [...]">>
     {
@@ -67,7 +70,7 @@ namespace siconos
   };
 
   template<typename Nslaw, typename Relation>
-  struct interaction : edge_item<>
+  struct interaction : item<kind<graph_item>>
   {
     struct nonsmooth_law : some::item_ref<Nslaw>, access<nonsmooth_law> {};
     struct relation : some::item_ref<Relation>, access<relation> {};

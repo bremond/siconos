@@ -52,7 +52,7 @@ int main()
   static_assert(must::contains<osnspb, decltype(all_items(simulation{}))>);
 
   static_assert(match::item<ball>);
-  static_assert(match::vertex_item<ball>);
+  static_assert(match::kind<ball, graph_item>);
   static_assert(match::attribute<nslaw::e>);
 
   static_assert(match::attribute_of<nslaw::e, nslaw>);
@@ -63,18 +63,9 @@ int main()
 
   static_assert(std::is_same_v<typename siconos::traits::config<env, typename siconos::time_discretization<>::step>::type,
                 typename env::indice>);
-  static_assert(attribute_storage_t<
-                env,
-                td::step,
-                decltype(all_items(simulation{}))>{} == typename place_holder<typename env::indice>::type{});
-  static_assert(std::is_same_v<attribute_storage_t<
-                env,
-                td::step,
-                decltype(all_items(simulation{}))>,
-                typename place_holder<typename env::indice>::type>);
 
   static_assert(filter<hold<decltype([]<typename T>(T){ return std::floating_point<T>; })>>(std::tuple<char,int,double>{}) == std::tuple<double>{});
-  static_assert(std::is_same_v<decltype(all_graph_items(simulation{})),
+  static_assert(std::is_same_v<decltype(all_items_of_kind<graph_item>(simulation{})),
                 gather<ball, interaction>>);
 
   static_assert(memory_size<typename td::step, typename osi::keeps> == 1);
@@ -103,10 +94,15 @@ int main()
 //   add<simulation>(data);
 
   print("---\n");
-  ground::for_each(data._collections,
-    [](auto& a)
+  ground::for_each(data,
+    [](auto& pair)
     {
-      print("->{}\n", a.size());
+      using value_t = std::decay_t<decltype(ground::second(pair))>;
+
+      if constexpr (match::size<value_t>)
+      {
+        print("->{}\n", ground::second(pair).size());
+      }
     });
 
    print("---\n");
@@ -123,10 +119,18 @@ int main()
    auto& velocityp = fix_map(get<ball::velocity>)(ds0);
    print("--->{}\n", velocityp);
 
-   ground::for_each(data._collections, [](auto& a) { print("{:d}\n", a.size()); });
-//   print("{0}\n", data._collections);
+   print("---\n");
+   ground::for_each(data,
+    [](auto& pair)
+    {
+      using value_t = std::decay_t<decltype(ground::second(pair))>;
 
-//   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
+      if constexpr (match::size<value_t>)
+      {
+        print("->{}\n", ground::second(pair).size());
+      }
+    });
+   print("---\n");
 
    auto ds1 = fix(add<ball>)(data);
    ball::q::get(ds1) = { 1.,1., 1.};
@@ -183,7 +187,7 @@ int main()
 
    using data_t = std::decay_t<decltype(data)>;
 
-   print("memory_size={}\n", (memory_size<ball::q, typename data_t::machine::osi::keeps> ));
+   print("memory_size={}\n", (memory_size<ball::q, decltype(all_keeps(simulation{}))> ));
    print("q={}\n", siconos::get_memory<ball::q>(data));
    print("v={}\n", siconos::get_memory<ball::velocity>(data));
 
@@ -201,8 +205,8 @@ int main()
 
    auto ustore2 = typename item_storage<env, simulation>::type {};
 
-   iget<ball::q>(ustore2) = { 2.0, 3.0, 4.0 };
-   print("ustore2 ball::q ={}\n", iget<ball::q>(ustore2));
+   ground::get<ball::q>(ustore2) = { 2.0, 3.0, 4.0 };
+   print("ustore2 ball::q ={}\n", ground::get<ball::q>(ustore2));
 
    //ground::transform(iget<ball>(ustore2), [&ustore2]<typename A>(A){ return iget<A>(ustore2); });
 
@@ -210,7 +214,7 @@ int main()
      ustore2,
      []<match::item item_t, typename storage_t>(item_t&&item, storage_t&&s)
      {
-       if constexpr (match::graph_item<item_t>)
+       if constexpr (match::kind<item_t, graph_item>)
        {
          return std::vector {std::forward<storage_t>(s)};
        }
@@ -233,13 +237,18 @@ int main()
          {std::forward<storage_t>(s)};
      });
 
-   auto ustore5 = imake_storage<env, simulation>();
+   auto ustore5 = make_storage<env, simulation>();
 
    ground::get<ball::q>(ustore5)[0].push_back({7.,8.,9.});
    print("ustore3 ball::q ={}\n", ground::get<ball::q>(ustore5));
 
-   auto some_iball=iadd<ball>(ustore5, 0);
+   auto some_iball=add<ball>(ustore5);
 
-   oget<ball::velocity>(0, some_iball, ustore5) = {3., 3., 3.};
-   print("ustore3 ball::velocity = {}\n", oget<ball::velocity>(0, some_iball, ustore5));
+   get<ball::velocity>(some_iball, ustore5) = {3., 3., 3.};
+   print("ustore3 ball::velocity = {}\n", get<ball::velocity>(some_iball, ustore5));
+
+   // ok, compilation failure:
+   // get<nslaw::e>(0, some_iball, ustore5);
+
+   // TD: remove, nsds::link
 }

@@ -9,6 +9,7 @@
 #include <boost/container/static_vector.hpp>
 #include "SiconosGraph.hpp"
 #include "siconos_pattern.hpp"
+#include "siconos.hpp"
 
 namespace siconos
 {
@@ -28,8 +29,19 @@ namespace siconos
     template<typename T>
     using vdescriptor = tuple<graph::VDescriptor, T>;
 
-    template<typename T>
-    using collection = std::vector<T>;
+    template<typename I, typename S>
+    using collection = decltype(
+      []()
+      {
+        if constexpr (match::kind<I ,graph_item>)
+        {
+          return std::vector<S>{};
+        }
+        else
+        {
+          return std::array<S, 1>{};
+        }
+      }());
 
     template<indice N>
     using vector = std::array<scalar, N>;
