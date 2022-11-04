@@ -3,13 +3,14 @@
 
 #include "siconos_storage.hpp"
 #include "siconos_pattern.hpp"
-
+#include "siconos_linear_algebra.hpp"
+#include <range/v3/view/zip.hpp>
 namespace siconos
 {
   struct graph_item {};
 
   template<typename ...Params>
-  struct lagrangian : frame<Params...>
+  struct lagrangian : frame<Params ...>
   {
     static constexpr auto dof = frame<Params...>::dof;
 
@@ -18,7 +19,8 @@ namespace siconos
       description
       <"A lagrangian dynamical system [...]">>
     {
-      struct mass_matrix : some::matrix<dof, dof> {};
+      struct mass_matrix :
+        some::matrix<dof, dof> {};
 
       struct q : some::vector<dof>,
                  access<q> {};
@@ -26,7 +28,7 @@ namespace siconos
       struct velocity : some::vector<dof>,
                         access<velocity> {};
 
-      struct fext : some::vector<dof>,
+      struct fext : some::vector<dof>, // some::function<...>
                     access<fext> {};
 
       using attributes = gather<mass_matrix, q, velocity, fext>;
@@ -97,6 +99,36 @@ namespace siconos
   {
     using formulation = Form;
     using system = typename formulation::dynamical_system;
+    using q = typename system::q;
+    using velocity = typename system::velocity;
+    using mass_matrix = typename system::mass_matrix;
+    using fext = typename system::fext;
+
+    struct euler : item<>
+    {
+      using keeps = gather<
+        keep<q, 2>,
+        keep<velocity, 2>>;
+
+      static void compute_free_state(auto step, auto h, auto& data)
+      {
+        auto& velocities = get_memory<velocity>(data);
+        auto& mass_matrices = get_memory<mass_matrix>(data);
+        auto& external_forces = get_memory<fext>(data);
+
+        auto& Ms =      memory(step, mass_matrices);
+        auto& vs =      memory(step, velocities);
+        auto& vs_next = memory(step+1, velocities);
+        auto& fs =      memory(step, external_forces);
+
+        for (const auto& [M, v, v_next, f] : ranges::views::zip(Ms, vs, vs_next, fs))
+        {
+          v_next = v + h * linear_algebra::solve(M, f);
+        }
+
+      };
+
+    };
 
     struct moreau_jean : item<>
     {
@@ -107,6 +139,10 @@ namespace siconos
       using keeps = gather<
         keep<typename system::q, 2>,
         keep<typename system::velocity, 2>>;
+
+      static void compute_free_state(auto step, auto h, auto& data)
+      {
+      };
     };
   };
 
@@ -133,6 +169,24 @@ namespace siconos
                          one_step_nonsmooth_problem,
                          topology,
                          GraphItems...>;
+
+    static decltype(auto) current_step(auto& data)
+    {
+      return get<typename time_discretization::step>(data)[0];
+    }
+
+    static decltype(auto) time_step(auto& data)
+    {
+      return get<typename time_discretization::h>(data)[0];
+    }
+
+    static void compute_one_step(auto& data)
+    {
+      one_step_integrator::compute_free_state(current_step(data),
+                                              time_step(data), data);
+      current_step(data) += 1;
+
+    }
   };
 
 }

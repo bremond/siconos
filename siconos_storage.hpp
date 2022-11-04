@@ -73,7 +73,7 @@ namespace siconos
 
   static constexpr auto memory =
     []<typename T>(typename T::size_type step, T& mem)
-    constexpr -> typename T::value_type&
+    constexpr -> decltype(auto)
   {
     return mem[step%std::size(mem)];
   };
@@ -120,6 +120,7 @@ namespace siconos
       using env = Env;
       using all_items_t = decltype(flatten(all_items(Items{})...));
       using all_attributes_t = decltype(flatten(all_attributes(Items{})...));
+      using all_keeps_t = decltype(flatten(all_keeps(Items{})...));
     };
 
     using map_t = decltype(
@@ -148,7 +149,7 @@ namespace siconos
       Handle handle, Data&& data)
     constexpr -> decltype(auto)
     {
-      return ground::get<A>(std::forward<std::decay_t<Data>>(data))[0]
+      return memory(0, ground::get<A>(std::forward<std::decay_t<Data>>(data)))
         [handle.get()];
     },
     []<typename Data>(
@@ -235,9 +236,9 @@ namespace siconos
     {
       using data_t = std::decay_t<decltype(data)>;
       using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+      using all_keeps_t = typename info_t::all_keeps_t;
       using indice = typename info_t::env::indice;
 
-      indice step = 0;
       constexpr auto attrs = attributes(Item{});
       using attrs_t = std::decay_t<decltype(attrs)>;
 
@@ -245,21 +246,27 @@ namespace siconos
       {
         return make_internal_handle<Item>(
           ground::fold_left(attributes(Item{}), indice{0},
-                            [&data, &step]<match::attribute A>(indice n, A)
+                            [&data]<match::attribute A>(indice k, A)
                             {
-                              auto& storage = memory(step, ground::get<A>(std::forward<data_t>(data)));
-                              using storage_t = std::decay_t<decltype(storage)>;
-                              if constexpr (match::push_back<storage_t>)
-                              {
-                                storage.push_back(typename storage_t::value_type{});
-                                return n + std::size(storage) - 1;
-                              }
-                              else
-                              {
-                                // same place
-                                storage[0] = typename storage_t::value_type{};
-                                return n;
-                              }
+                              return ground::fold_left(
+                                ground::range<memory_size<A, all_keeps_t>>,
+                                k,
+                                [&data](indice n, auto step)
+                                {
+                                  auto& storage = memory(step, ground::get<A>(std::forward<data_t>(data)));
+                                  using storage_t = std::decay_t<decltype(storage)>;
+                                  if constexpr (match::push_back<storage_t>)
+                                  {
+                                    storage.push_back(typename storage_t::value_type{});
+                                    return n + std::size(storage) - 1;
+                                  }
+                                  else
+                                  {
+                                    // same place
+                                    storage[step] = typename storage_t::value_type{};
+                                    return n;
+                                  }
+                                });
                             }) / std::tuple_size_v<attrs_t>
           );
       }

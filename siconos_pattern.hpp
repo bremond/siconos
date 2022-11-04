@@ -182,6 +182,8 @@ namespace siconos
 
   struct linear {};
   struct time_invariant {};
+  struct symmetric {};
+  struct diagonal {};
 
   template<std::size_t N>
   struct degrees_of_freedom
@@ -215,6 +217,16 @@ namespace siconos
 
   namespace match
   {
+    template<typename T>
+    concept scalar = std::is_scalar_v<T>;
+
+    template<typename T>
+    concept indice = std::is_scalar_v<T> &&
+      requires (T i) { std::array<double,1>{}[i]; };
+
+    template<typename T>
+    concept vector = requires (T a) { a[0] ;};
+
     template<typename T>
     concept degrees_of_freedom = requires { typename T::degrees_of_freedom_t; };
 
@@ -368,6 +380,8 @@ namespace siconos
   {
     using args = gather<Args...>;
 
+    using diagonal_t = decltype(contains<diagonal>(args{}));
+
     static constexpr std::size_t dof =
       ground::find_if(args{},
                       []<typename T>(T) { return degrees_of_freedom_p<T>{}; }).
@@ -499,8 +513,15 @@ namespace siconos
       // item
       else
       {
-        return flatten(append(instance<gather<typename type_t::attributes>>,
-                              transform(all_attributes, items_ref())));
+        if constexpr (match::attributes<type_t>)
+        {
+          return flatten(append(instance<gather<typename type_t::attributes>>,
+                                transform(all_attributes, items_ref())));
+        }
+        else
+        {
+          return flatten(transform(all_attributes, items_ref()));
+        }
       }
 
     });

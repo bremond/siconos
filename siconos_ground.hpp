@@ -1,9 +1,12 @@
 #ifndef SICONOS_GROUND
 #define SICONOS_GROUND
 
+#include <algorithm>
+#include <numeric>
+
+
 #include <boost/hana/fwd/map.hpp>
 #include <boost/hana/pair.hpp>
-#include <numeric>
 #include <boost/hana.hpp>
 #include <boost/hana/fwd/fold_left.hpp>
 #include <boost/hana/ext/std/tuple.hpp>
@@ -19,11 +22,20 @@ namespace siconos
   {
     namespace hana = boost::hana;
 
-    static auto fold_left = [](const auto& array,
-                               const auto& initial_state,
-                               const auto&& fun) constexpr -> decltype(auto)
+    template<std::size_t N>
+    static auto range = hana::range_c<std::size_t, 0, N>;
+
+    template<std::size_t N>
+    static auto iterate = hana::iterate<N>;
+
+    static auto fold_left = []
+      <typename Array, typename State, typename Fun>
+      (Array&& array,
+       State&& initial_state,
+       Fun&& fun)
+      constexpr -> decltype(auto)
     {
-      using array_type = std::decay_t<decltype(array)>;
+      using array_type = std::decay_t<Array>;
 
       /* ~ static */
       if constexpr (hana::Foldable<array_type>::value)
@@ -127,6 +139,54 @@ namespace siconos
                                      hana::second)))));
 
     };
+
+
+    // compile-time itransform
+    static constexpr const auto itransform_ct(const auto& a, auto&& f)
+    {
+      using array_type = std::decay_t<decltype(a)>;
+      using size_type = typename array_type::size_type;
+      array_type ta; // 'a' passed as const ref is not a constant expression
+      return
+        [&f, &a]<size_type... I>(std::index_sequence<I...>)
+        {
+          return (array_type{f(I, a[I])... });
+        }(std::make_integer_sequence<size_type, std::size(ta)>{});
+    }
+
+    static constexpr const auto itransform(const auto& array,
+                                           auto&& func)
+    {
+      using array_type = std::decay_t<decltype(array)>;
+      if constexpr (hana::Foldable<array_type>::value)
+      {
+        return itransform_ct(array, func);
+      }
+      else if constexpr (
+        std::equality_comparable<decltype(array.begin())> &&
+        std::input_iterator<decltype(array.begin())>)
+      {
+        array_type res;
+        using size_type = typename array_type::size_type;
+        std::transform(array.begin(), array.end(),
+                       std::back_inserter(res),
+                       [&func,&res](const auto& x)
+                       {
+                         size_type i = std::size(res);
+                         return func(i, x);
+                       });
+        return res;
+      }
+      else
+      {
+        // cf https://stackoverflow.com/questions/38304847/constexpr-if-and-static-assert
+        []<bool flag = false>()
+          {
+            static_assert(flag, "cannot transform with these parameters");
+          }();
+      }
+    }
+
   }
 }
 #endif

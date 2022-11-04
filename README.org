@@ -1,10 +1,11 @@
-* [#B] internal
+* internal
 #+name: src-dir
 #+begin_src elisp
   (progn
     (mkdir "build-gcc" t)
     (mkdir "build-gcc-debug" t)
     (mkdir "build-clang" t)
+    (mkdir "build-clang-debug" t)
     default-directory)
 #+end_src
 
@@ -17,7 +18,7 @@
 #+header: :dir build-gcc
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2022-04-06.scm -- \
-       environment --pure --ad-hoc siconos benchmark gcc-toolchain boost fmt cmake make dash -- \
+       environment --pure --ad-hoc siconos benchmark gcc-toolchain boost fmt range-v3 cmake make dash -- \
        dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=1" 
 #+end_src
 
@@ -26,7 +27,7 @@
 #+header: :dir build-gcc
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2022-04-06.scm -- \
-       environment --pure --ad-hoc siconos benchmark gcc-toolchain boost fmt cmake make -- \
+       environment --pure --ad-hoc siconos benchmark gcc-toolchain boost fmt range-v3 cmake make -- \
        make VERBOSE=1
 #+end_src
 
@@ -38,7 +39,7 @@
 #+header: :dir build-gcc-debug
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2022-04-06.scm -- \
-       environment --pure --ad-hoc siconos benchmark gcc-toolchain boost fmt cmake make dash -- \
+       environment --pure --ad-hoc siconos benchmark gcc-toolchain boost fmt range-v3 cmake make dash -- \
        dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Debug" 
 #+end_src
 
@@ -47,7 +48,7 @@
 #+header: :dir build-gcc-debug
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2022-04-06.scm -- \
-       environment --pure --ad-hoc siconos benchmark gcc-toolchain boost fmt cmake make -- \
+       environment --pure --ad-hoc siconos benchmark gcc-toolchain boost fmt range-v3 cmake make -- \
        make VERBOSE=1
 #+end_src
 
@@ -60,7 +61,7 @@
 #+header: :dir build-clang
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2022-04-06.scm -- \
-       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt cmake make dash -- \
+       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
        dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=1" 
 #+end_src
 
@@ -69,7 +70,7 @@
 #+header: :dir build-clang
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2022-04-06.scm -- \
-       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt cmake make -- \
+       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt range-v3 cmake make -- \
        make VERBOSE=1
 #+end_src
 
@@ -81,8 +82,8 @@
 #+header: :dir build-clang-debug
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2022-04-06.scm -- \
-       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt cmake make dash -- \
-       dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Debug" 
+       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
+       dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1" 
 #+end_src
 
 #+name: mybenchmarks-make-clang-debug
@@ -90,7 +91,7 @@
 #+header: :dir build-clang-debug
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2022-04-06.scm -- \
-       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt cmake make -- \
+       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt range-v3 cmake make -- \
        make VERBOSE=1
 #+end_src
 

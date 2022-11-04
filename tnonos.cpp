@@ -4,7 +4,7 @@
 #include <tuple>
 #include <fmt/core.h>
 #include <fmt/ranges.h>
-
+#include <functional>
 using fmt::print;
 
 
@@ -16,7 +16,7 @@ int main()
   using formulation = lagrangian<linear, time_invariant, degrees_of_freedom<3>>;
   using ball = formulation::dynamical_system;
   using osnspb = one_step_nonsmooth_problem<lcp>;
-  using osi = one_step_integrator<formulation>::moreau_jean;
+  using osi = one_step_integrator<formulation>::euler;
   using relation = formulation::relation;
   using nslaw = nonsmooth_law::newton_impact;
   using interaction = interaction<nslaw, relation>;
@@ -92,7 +92,7 @@ int main()
 
   auto data = siconos::make_storage<env, simulation>();
 //   add<simulation>(data);
-
+  print("v={}\n", siconos::get_memory<ball::velocity>(data));
   print("---\n");
   ground::for_each(data,
     [](auto& pair)
@@ -115,7 +115,7 @@ int main()
    auto& v0 = ball::velocity::get(ds0);
 
    v0 = { 1., 2., 3.};
-
+   print("v={}\n", siconos::get_memory<ball::velocity>(data));
    auto& velocityp = fix_map(get<ball::velocity>)(ds0);
    print("--->{}\n", velocityp);
 
@@ -245,10 +245,37 @@ int main()
    auto some_iball=add<ball>(ustore5);
 
    get<ball::velocity>(some_iball, ustore5) = {3., 3., 3.};
-   print("ustore3 ball::velocity = {}\n", get<ball::velocity>(some_iball, ustore5));
+   print("ustore5 ball::velocity = {}\n", get<ball::velocity>(some_iball, ustore5));
 
    // ok, compilation failure:
    // get<nslaw::e>(0, some_iball, ustore5);
 
    // TD: remove, nsds::link
+
+
+   get<ball::fext>(some_iball, ustore5) = { 0., 0., 9.81 };
+
+   auto the_td = add<td>(ustore5);
+   get<td::step>(the_td, ustore5) = 0;
+   get<td::h>(the_td, ustore5) = 0.01;
+
+   auto m = 1.0;
+   auto R = 1.0;
+   get<ball::mass_matrix>(some_iball, ustore5) =
+    {m, 0, 0,
+     0, m, 0,
+     0, 0, 2./5.*m*R*R};
+
+   simulation::compute_one_step(ustore5);
+   print("current step : {}\n", simulation::current_step(ustore5));
+   print("v={}\n", siconos::get_memory<ball::velocity>(ustore5));
+   simulation::compute_one_step(ustore5);
+   print("current step : {}\n", simulation::current_step(ustore5));
+   print("v={}\n", siconos::get_memory<ball::velocity>(ustore5));
+   simulation::compute_one_step(ustore5);
+   print("current step : {}\n", simulation::current_step(ustore5));
+   print("v={}\n", siconos::get_memory<ball::velocity>(ustore5));
+
+   auto a = get<ball::velocity>(simulation::current_step(ustore5), some_iball, ustore5);
+   print("ustore5 ball::velocity = {}\n", a);
 }
