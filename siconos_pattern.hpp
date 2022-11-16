@@ -14,6 +14,9 @@ namespace siconos
 
   struct empty{};
 
+  struct linear{};
+  struct time_invariant{};
+
   template<typename T>
   struct kind
   {
@@ -180,11 +183,6 @@ namespace siconos
       }
     };
 
-  struct linear {};
-  struct time_invariant {};
-  struct symmetric {};
-  struct diagonal {};
-
   template<std::size_t N>
   struct degrees_of_freedom
   {
@@ -223,9 +221,6 @@ namespace siconos
     template<typename T>
     concept indice = std::is_scalar_v<T> &&
       requires (T i) { std::array<double,1>{}[i]; };
-
-    template<typename T>
-    concept vector = requires (T a) { a[0] ;};
 
     template<typename T>
     concept degrees_of_freedom = requires { typename T::degrees_of_freedom_t; };
@@ -275,12 +270,10 @@ namespace siconos
 
   namespace some
   {
-    template<size_t ...Sizes>
+    template<typename ...Args>
     struct attribute
     {
       using attribute_t = void;
-      static constexpr auto sizes = std::tuple {Sizes...};
-
     };
 
     struct scalar : attribute<>
@@ -297,13 +290,25 @@ namespace siconos
       using type = T;
     };
 
+    struct undefined_matrix : attribute<> {};
+    struct undefined_vector : attribute<> {};
+
+    template<size_t ...Sizes>
+    struct with_sizes
+    {
+       static constexpr auto sizes = std::tuple {Sizes...};
+    };
+
     template<std::size_t N, std::size_t M>
-    struct matrix : attribute<N, M> {};
+    struct matrix : undefined_matrix, with_sizes<N, M> {};
 
     template<std::size_t N>
-    struct vector : attribute<N> {};
+    struct vector : undefined_vector, with_sizes<N> {};
 
     struct graph : attribute<> {};
+
+    struct unbounded_collection : attribute<> {};
+    struct bounded_collection : attribute<> {};
 
     template<match::item T>
     struct item_ref : attribute<>
@@ -328,6 +333,15 @@ namespace siconos
     concept item_ref =
       attribute<T> &&
       item<typename T::type>;
+
+    template<typename T>
+    concept vector = std::derived_from<T, some::vector<std::get<0>(T::sizes)>>
+      || requires (T a) { a[0] ;};
+
+    template<typename T>
+    concept matrix = std::derived_from<T, some::matrix<std::get<0>(T::sizes), std::get<1>(T::sizes)>> || requires (T a) { a[0] ;};
+
+
   }
 
   template<string_literal Text>
@@ -379,8 +393,6 @@ namespace siconos
   struct frame
   {
     using args = gather<Args...>;
-
-    using diagonal_t = decltype(contains<diagonal>(args{}));
 
     static constexpr std::size_t dof =
       ground::find_if(args{},

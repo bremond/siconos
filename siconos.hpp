@@ -15,12 +15,12 @@ namespace siconos
     static constexpr auto dof = frame<Params...>::dof;
 
     struct dynamical_system : item<
-      kind<graph_item>,
       description
       <"A lagrangian dynamical system [...]">>
     {
       struct mass_matrix :
-        some::matrix<dof, dof> {};
+        some::matrix<dof, dof>,
+        access<mass_matrix> {};
 
       struct q : some::vector<dof>,
                  access<q> {};
@@ -75,7 +75,7 @@ namespace siconos
   struct interaction : item<kind<graph_item>>
   {
     struct nonsmooth_law : some::item_ref<Nslaw>, access<nonsmooth_law> {};
-    struct relation : some::item_ref<Relation>, access<relation> {};
+    struct relation      : some::item_ref<Relation>, access<relation> {};
 
     using attributes = gather<nonsmooth_law,
                               relation>;
@@ -121,7 +121,7 @@ namespace siconos
         auto& vs_next = memory(step+1, velocities);
         auto& fs =      memory(step, external_forces);
 
-        for (const auto& [M, v, v_next, f] : ranges::views::zip(Ms, vs, vs_next, fs))
+        for (auto [M, v, v_next, f] : ranges::views::zip(Ms, vs, vs_next, fs))
         {
           v_next = v + h * linear_algebra::solve(M, f);
         }

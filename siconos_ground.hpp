@@ -85,6 +85,8 @@ namespace siconos
     template<typename First, typename Second>
     using pair = hana::pair<decltype(hana::type_c<First>), Second>;
 
+    static auto make_pair = hana::make_pair;
+
     template<typename ...Pairs>
     using map = hana::map<Pairs...>;
 

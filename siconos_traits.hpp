@@ -24,11 +24,11 @@ namespace siconos
           {
             return typename E::template vdescriptor<typename T::type>{};
           }
-          else if constexpr (std::tuple_size_v<decltype(T::sizes)> == 1)
+          else if constexpr (std::derived_from<T, some::undefined_vector>)
           {
             return typename E::template vector<std::get<0>(T::sizes)>{};
           }
-          else if constexpr (std::tuple_size_v<decltype(T::sizes)> == 2)
+          else if constexpr (std::derived_from<T, some::undefined_matrix>)
           {
             return typename E::template matrix<
               std::get<0>(T::sizes),

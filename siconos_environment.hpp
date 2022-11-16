@@ -29,19 +29,11 @@ namespace siconos
     template<typename T>
     using vdescriptor = tuple<graph::VDescriptor, T>;
 
-    template<typename I, typename S>
-    using collection = decltype(
-      []()
-      {
-        if constexpr (match::kind<I ,graph_item>)
-        {
-          return std::vector<S>{};
-        }
-        else
-        {
-          return std::array<S, 1>{};
-        }
-      }());
+    template<typename S>
+    using unbounded_collection = std::vector<S>;
+
+    template<typename S, std::size_t N>
+    using bounded_collection = std::array<S, N>;
 
     template<indice N>
     using vector = std::array<scalar, N>;
@@ -51,6 +43,9 @@ namespace siconos
 
     template<typename T>
     using item_ref = siconos::internal_handle<T, indice>;
+
+    template<typename T>
+    using default_storage = std::array<T, 1>;
 
   };
 
@@ -71,7 +66,13 @@ namespace siconos
     using vdescriptor = tuple<graph::VDescriptor, T>;
 
     template<typename T>
-    using collection = boost::container::vector<T>;
+    using unbounded_collection = boost::container::vector<T>;
+
+    template<typename T, std::size_t N>
+    using bounded_collection = std::array<T, N>;
+
+    template<typename T>
+    using default_storage = std::array<T, 1>;
 
     template<indice N>
     using vector = std::array<scalar, N>;

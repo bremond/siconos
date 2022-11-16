@@ -18,10 +18,10 @@ int main(int argc, char* argv[])
   using interaction = interaction<nslaw, relation>;
   using td = time_discretization<>;
   using topo = topology; // topology<ball, interaction>
-  using simulation = time_stepping<td, osi, osnspb, topo, ball, interaction>;
+  using simulation = time_stepping<td, osi, osnspb, topo>;
   using siconos::get;
 
-  auto data = make_storage<standard_environment, simulation>();
+  auto data = make_storage<standard_environment, simulation, ball, interaction>();
 
   //unsigned int nDof = 3;         // degrees of freedom for the ball
   double t0 = 0;                   // initial computation time
@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
   get<ball::q>(the_ball, data) = {position_init, 0, 0};
   // set<ball::q>(the_ball, data, {position_init, 0, 0});
   // data(get<ball::q>) = {position_init, 0, 0};
-  get<ball::velocity>(the_ball, data) = {position_init, 0, 0};
+  get<ball::velocity>(the_ball, data) = {velocity_init, 0, 0};
   get<ball::mass_matrix>(the_ball, data) =
     {m, 0, 0,
      0, m, 0,

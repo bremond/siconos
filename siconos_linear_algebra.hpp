@@ -16,12 +16,12 @@ namespace siconos
     static auto solve = []<bool over=true>(const auto& m, auto&x)
       constexpr -> decltype(auto)
     {
-      // m is a collection of diagonal matrices stored in n x n container
       return ground::itransform(
         x,
         [&m,&x](const auto i,
-             const match::scalar auto& xi)
+                const match::scalar auto& xi)
         {
+          static_assert(match::scalar<std::decay_t<decltype(m[0])>>);
           return xi / m[i*(std::size(x)+1)]; // diagonal terms
         });
     };
@@ -32,7 +32,7 @@ namespace siconos
     {
       return ground::itransform(a,
                                 [&b](const auto i,
-                                     const match::scalar auto& ai)
+                                     const auto& ai)
                                 { return ai-b[i];});
     }
 
@@ -51,7 +51,7 @@ namespace siconos
       return ground::itransform(a,
                                 [&b](const auto i, const auto& ai)
                                 { return ai+b[i];});
-      }
+    }
 
   static constexpr decltype(auto) operator *
     (const auto& v, const auto& a)

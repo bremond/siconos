@@ -22,7 +22,7 @@ int main()
   using interaction = interaction<nslaw, relation>;
   using td = time_discretization<>;
   using topo = topology;
-  using simulation = time_stepping<td, osi, osnspb, topo, ball, interaction>;
+  using simulation = time_stepping<td, osi, osnspb, topo>;
   using siconos::get;
 
   {
@@ -52,7 +52,6 @@ int main()
   static_assert(must::contains<osnspb, decltype(all_items(simulation{}))>);
 
   static_assert(match::item<ball>);
-  static_assert(match::kind<ball, graph_item>);
   static_assert(match::attribute<nslaw::e>);
 
   static_assert(match::attribute_of<nslaw::e, nslaw>);
@@ -65,8 +64,8 @@ int main()
                 typename env::indice>);
 
   static_assert(filter<hold<decltype([]<typename T>(T){ return std::floating_point<T>; })>>(std::tuple<char,int,double>{}) == std::tuple<double>{});
-  static_assert(std::is_same_v<decltype(all_items_of_kind<graph_item>(simulation{})),
-                gather<ball, interaction>>);
+//  static_assert(std::is_same_v<decltype(all_items_of_kind<graph_item>(simulation{})),
+//                gather<ball, interaction>>);
 
   static_assert(memory_size<typename td::step, typename osi::keeps> == 1);
 
@@ -76,6 +75,18 @@ int main()
 
   static_assert(memory_size<typename ball::q, typename osi::keeps> == 2);
 
+  static_assert(std::array{1,2,3}-std::array{1,2,3}==std::array{0,0,0});
+  static_assert(std::array{1,2,3}+std::array{1,2,3}==std::array{2,4,6});
+  static_assert(std::array{std::array{1,2,3},std::array{4,5,6}}-std::array{std::array{1,2,3},std::array{4,5,6}}==std::array{std::array{0,0,0},std::array{0,0,0}});
+
+
+  auto v1 = std::vector{1,2,3};
+  auto v2 = std::vector{1,2,3};
+  assert (v1+v2 == (std::vector{2,4,6}));
+
+  auto v3 = std::vector{std::array{1,2,3},std::array{4,5,6}};
+  auto v4 = std::vector{std::array{1,2,3},std::array{4,5,6}};
+  assert(v3-v4 == (std::vector{std::array{0,0,0},std::array{0,0,0}}));
 //  std::cout << boost::hana::experimental::type_name<decltype(attributes(interaction{}))>().c_str() << std::endl;
 //  std::cout << boost::hana::experimental::type_name<gather<nslaw, relation>>().c_str() << std::endl;
 
@@ -90,7 +101,11 @@ int main()
 
   }
 
-  auto data = siconos::make_storage<env, simulation>();
+  auto data = siconos::make_storage<env, simulation,
+                                    bounded_collection<relation, 3>,
+                                    unbounded_collection<ball>,
+                                    unbounded_collection<interaction>,
+                                    diagonal<ball::mass_matrix>>();
 //   add<simulation>(data);
   print("v={}\n", siconos::get_memory<ball::velocity>(data));
   print("---\n");
@@ -110,9 +125,9 @@ int main()
 
    auto ds0 = fixed_add<ball>(data);
 
-   ball::q::get(ds0) = { 0., 0., 1.};
+   ball::q::at(ds0) = { 0., 0., 1.};
 
-   auto& v0 = ball::velocity::get(ds0);
+   auto& v0 = ball::velocity::at(ds0);
 
    v0 = { 1., 2., 3.};
    print("v={}\n", siconos::get_memory<ball::velocity>(data));
@@ -133,10 +148,10 @@ int main()
    print("---\n");
 
    auto ds1 = fix(add<ball>)(data);
-   ball::q::get(ds1) = { 1.,1., 1.};
+   ball::q::at(ds1) = { 1.,1., 1.};
 
    auto ds2 = fix(add<ball>)(data);
-   ball::q::get(ds2) = { 9.,9., 9.};
+   ball::q::at(ds2) = { 9.,9., 9.};
 //   print("---\n");
 //   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
@@ -155,17 +170,17 @@ int main()
 
 //   print("---\n");
 
-   ball::fext::get(ds0) = { 10., 0., 0.};
+   ball::fext::at(ds0) = { 10., 0., 0.};
 //   print("{}\n", data._collections);
 
-   ball::fext::get(ds0) = { 2.,1.,0.};
+   ball::fext::at(ds0) = { 2.,1.,0.};
 //   print("{}\n", data(get<ball::fext>)(ds0));
 
    auto inter1 = fix(add<interaction>)(data);
    auto nslaw1 = add<nslaw>(data);
 
    // siconos::set<interaction::nonsmooth_law>(inter1);
-   interaction::nonsmooth_law::get(inter1) = nslaw1;
+   interaction::nonsmooth_law::at(inter1) = nslaw1;
    fix_map(get<interaction::nonsmooth_law>)(inter1) = nslaw1;
 
    auto& e = siconos::get_memory<nslaw::e>(data);
@@ -176,14 +191,14 @@ int main()
    auto inter2 = fix(add<interaction>)(data);
    auto nslaw2 = fix(add<nslaw>)(data);
 
-   interaction::nonsmooth_law::get(inter2) = nslaw2;
+   interaction::nonsmooth_law::at(inter2) = nslaw2;
 
-   nslaw::e::internal_get(interaction::nonsmooth_law::get(inter2), data) = 0.3;
+   nslaw::e::internal_get(interaction::nonsmooth_law::at(inter2), data) = 0.3;
 
    auto ball1 = add<ball>(data);
    auto ball2 = add<ball>(data);
-   interaction::nonsmooth_law::get(inter2);
-   print("e={}\n", nslaw::e::get(nslaw2));
+   interaction::nonsmooth_law::at(inter2);
+   print("e={}\n", nslaw::e::at(nslaw2));
 
    using data_t = std::decay_t<decltype(data)>;
 
@@ -203,44 +218,17 @@ int main()
 
    print("ustore1 vector={}\n", ground::get<some::vector<3>>(ustore1));
 
-   auto ustore2 = typename item_storage<env, simulation>::type {};
+   auto ustore2 = typename item_storage<env, simulation, ball>::type {};
 
    ground::get<ball::q>(ustore2) = { 2.0, 3.0, 4.0 };
    print("ustore2 ball::q ={}\n", ground::get<ball::q>(ustore2));
 
    //ground::transform(iget<ball>(ustore2), [&ustore2]<typename A>(A){ return iget<A>(ustore2); });
 
-   auto ustore3 = item_storage_transform(
-     ustore2,
-     []<match::item item_t, typename storage_t>(item_t&&item, storage_t&&s)
-     {
-       if constexpr (match::kind<item_t, graph_item>)
-       {
-         return std::vector {std::forward<storage_t>(s)};
-       }
-       else
-       {
-         return std::array {std::forward<storage_t>(s)};
-       }
-     });
-
-   ground::get<ball::q>(ustore3).push_back({4.,5.,6.});
-
-   print("ustore3 ball::q ={}\n", ground::get<ball::q>(ustore3));
-
-   auto ustore4 = attribute_storage_transform(
-     ustore3,
-     []<match::attribute attribute>(attribute&& attr, auto&& s)
-     {
-       using storage_t = std::decay_t<decltype(s)>;
-       return memory_t<storage_t, memory_size<attribute, typename osi::keeps>>
-         {std::forward<storage_t>(s)};
-     });
-
-   auto ustore5 = make_storage<env, simulation>();
+   auto ustore5 = make_storage<env, simulation, unbounded_collection<ball>>();
 
    ground::get<ball::q>(ustore5)[0].push_back({7.,8.,9.});
-   print("ustore3 ball::q ={}\n", ground::get<ball::q>(ustore5));
+   print("ustore5 ball::q ={}\n", ground::get<ball::q>(ustore5));
 
    auto some_iball=add<ball>(ustore5);
 

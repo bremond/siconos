@@ -13,6 +13,26 @@
 
 namespace siconos
 {
+
+  template<match::matrix ...Ms>
+  struct diagonal : item<>
+  {
+    using matrices = std::tuple<Ms...>;
+  };
+
+  template<match::item I>
+  struct unbounded_collection : I, some::unbounded_collection
+  {
+    using type = I;
+  };
+
+  template<match::item I, std::size_t N>
+  struct bounded_collection : I, some::bounded_collection
+  {
+    using type = I;
+    static constexpr std::size_t size = N;
+  };
+
   template<typename T, std::size_t N>
   using memory_t = std::array<T, N>;
 
@@ -118,9 +138,9 @@ namespace siconos
     struct iinfo
     {
       using env = Env;
-      using all_items_t = decltype(flatten(all_items(Items{})...));
-      using all_attributes_t = decltype(flatten(all_attributes(Items{})...));
-      using all_keeps_t = decltype(flatten(all_keeps(Items{})...));
+      using all_items_t = decltype(flatten(append (all_items(Items{})...)));
+      using all_attributes_t = decltype(flatten(append(all_attributes(Items{})...)));
+      using all_keeps_t = decltype(flatten(append(all_keeps(Items{})...)));
     };
 
     using map_t = decltype(
@@ -167,19 +187,25 @@ namespace siconos
     using info_t = std::decay_t<decltype(ground::get<info>(d))>;
 
     return
-    ground::map_value_transform(
+    ground::map_transform(
       d,
-      [&f]<typename K, typename S>(K, S&& store)
+      [&f]<typename P>(P&& key_value)
       {
-        if constexpr (match::attribute<typename K::type>)
+        static auto&& key = ground::first(key_value);
+        static auto&& value = ground::second(key_value);
+        using key_t = std::decay_t<decltype(key)>;
+        using value_t = std::decay_t<decltype(value)>;
+
+        if constexpr (match::attribute<typename key_t::type>)
         {
-          using attr_t = typename K::type;
+          using attr_t = typename key_t::type;
           return f(item_attribute<attr_t>(typename info_t::all_items_t{}),
-                   std::forward<S>(store));
+                   attr_t{},
+                   std::forward<value_t>(value));
         }
         else
         {
-          return std::forward<S>(store);
+          return std::forward<std::decay_t<P>>(key_value);
         }
       });
   };
@@ -207,18 +233,34 @@ namespace siconos
   static auto make_storage = []()
     constexpr -> decltype(auto)
   {
-    using all_keeps_t = decltype(flatten(all_keeps(Items{})...));
+    using all_keeps_t = decltype(flatten(append(all_keeps(Items{})...)));
     return
       attribute_storage_transform(
         item_storage_transform(
           typename item_storage<Env, Items...>::type{},
 
           // item level: collection depends on item kind
-          []<match::item item_t>(item_t&&item, auto&& s)
+          []<match::item item_t, match::attribute attr_t>(item_t&&item,
+                                                          attr_t&& attr,
+                                                          auto&& s)
           {
             using storage_t = std::decay_t<decltype(s)>;
 
-            return typename Env::template collection<item_t, storage_t>{}; // std::forward<storage_t>(s)};
+            if constexpr(std::derived_from<item_t, some::bounded_collection>)
+            {
+              return ground::pair<attr_t,
+                typename
+                Env::template bounded_collection<storage_t, item_t::size>>{}; // std::forward<storage_t>(s)};
+            }
+            else if constexpr(std::derived_from<item_t, some::unbounded_collection>)
+            {
+              return ground::pair<attr_t,
+                typename Env:: template unbounded_collection<storage_t>>{};
+            }
+            else // default storage
+            {
+              return ground::pair<attr_t, typename Env:: template default_storage<storage_t>>{};
+            }
           }),
 
         // attribute level: memory depends on keeps
@@ -242,6 +284,9 @@ namespace siconos
       constexpr auto attrs = attributes(Item{});
       using attrs_t = std::decay_t<decltype(attrs)>;
 
+      // and what about using items = ... ?
+
+      // attributes
       if constexpr (std::tuple_size_v<attrs_t> > 0)
       {
         return make_internal_handle<Item>(
@@ -329,7 +374,7 @@ namespace siconos
       return siconos::get<U>(h, data);
     };
 
-    static constexpr auto get = []<typename U = T>(match::handle auto h)
+    static constexpr auto at = []<typename U = T>(match::handle auto h)
       -> decltype(auto)
     {
       return fix_map(siconos::get<U>)(h);
