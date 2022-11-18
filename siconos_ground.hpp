@@ -2,6 +2,7 @@
 #define SICONOS_GROUND
 
 #include <algorithm>
+#include <boost/hana/functional/overload_linearly.hpp>
 #include <numeric>
 
 
@@ -22,11 +23,13 @@ namespace siconos
   {
     namespace hana = boost::hana;
 
-    template<std::size_t N>
-    static auto range = hana::range_c<std::size_t, 0, N>;
+    static constexpr auto any_of = hana::any_of;
 
     template<std::size_t N>
-    static auto iterate = hana::iterate<N>;
+    static constexpr auto range = hana::range_c<std::size_t, 0, N>;
+
+    template<std::size_t N>
+    static constexpr auto iterate = hana::iterate<N>;
 
     static auto fold_left = []
       <typename Array, typename State, typename Fun>
@@ -62,11 +65,13 @@ namespace siconos
     };
 
 
-    static auto overload = hana::overload;
+    static auto overload = hana::overload_linearly;
 
     static auto apply = hana::apply;
 
     static auto find_if = hana::find_if;
+
+    static auto filter = hana::filter;
 
     static auto for_each = hana::for_each;
 

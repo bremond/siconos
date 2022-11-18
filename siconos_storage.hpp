@@ -13,11 +13,33 @@
 
 namespace siconos
 {
-
-  template<match::matrix ...Ms>
-  struct diagonal : item<>
+  namespace some
   {
-    using matrices = std::tuple<Ms...>;
+    struct keep : kind {};
+    struct diagonal : kind {};
+  }
+
+  struct info{};
+
+  template<match::kind ...Parts>
+  struct with_kinds : item<>
+  {
+    using kinds = gather<Parts...>;
+  };
+
+  template<match::attribute Attr, std::size_t N>
+  struct keep : some::keep
+  {
+    using keep_t = void;
+    using attribute = Attr;
+    static constexpr std::size_t size = N;
+  };
+
+  template<match::matrix M>
+  struct diagonal : some::diagonal
+  {
+    using type = M;
+    using diagonal_t = void;
   };
 
   template<match::item I>
@@ -39,6 +61,7 @@ namespace siconos
   template<match::attribute Attr, concepts::tuple_like keeps_t>
   static constexpr std::size_t memory_size = []()
   {
+    // rewrite this with a filter...
     // let rec loop(...) = ...
     constexpr auto rec_loop = []<typename Tpl>(auto&& loop, Tpl) constexpr
     {
@@ -60,17 +83,25 @@ namespace siconos
       }
     };
 
-    return rec_loop(rec_loop, keeps_t{});
+    if constexpr (std::tuple_size_v<keeps_t> > 0)
+    {
+      return rec_loop(rec_loop, keeps_t{});
+    }
+    else
+    {
+      // no keep in memory has been specified
+      return 1;
+    }
   } ();
 
-  static constexpr auto all_keeps =
-    rec([]<match::item Item>(auto&& all_keeps, Item)
+  static constexpr auto all_kinds =
+    rec([]<match::item Item>(auto&& all_kinds, Item)
   {
-    auto ckeeps = []() constexpr
+    auto ckinds = []() constexpr
     {
-      if constexpr (match::keeps<Item>)
+      if constexpr (match::kinds<Item>)
       {
-        return typename Item::keeps{};
+        return typename Item::kinds{};
       }
       else
       {
@@ -81,15 +112,35 @@ namespace siconos
     if constexpr (match::items<Item>)
     {
       return flatten(append(
-                       ckeeps,
-                       transform(all_keeps,
+                       ckinds,
+                       transform(all_kinds,
                                  typename Item::items{})));
     }
     else
     {
-      return ckeeps;
+      return ckinds;
     }
   });
+
+  template<match::kind K>
+  static auto all_kinds_of = [](auto& data) constexpr -> auto
+  {
+    using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+    using all_kinds_t = typename info_t::all_kinds_t;
+
+    return filter<hold<decltype([]<typename T>(T) { return std::derived_from<T, K>; })>>(all_kinds_t{});
+  };
+
+  template<match::attribute Attr, match::kind K>
+  static auto is_kind_of = [](auto& data) constexpr -> bool
+  {
+    return
+    ground::any_of(
+      all_kinds_of<K>(data),
+      []<match::kind D>(D)
+      { return std::derived_from<Attr,
+                                 typename D::type>; });
+  };
 
   static constexpr auto memory =
     []<typename T>(typename T::size_type step, T& mem)
@@ -127,20 +178,18 @@ namespace siconos
 
   };
 
-  struct info{};
-
   template<typename Info, typename M>
   using with_info_t = decltype(ground::insert(M{}, ground::pair<info, Info>{}));
 
-  template<typename Env, typename ...Items>
+  template<typename Env, match::item ...Items>
   struct item_storage
   {
     struct iinfo
     {
       using env = Env;
-      using all_items_t = decltype(flatten(append (all_items(Items{})...)));
+      using all_items_t = decltype(flatten(append(all_items(Items{})...)));
       using all_attributes_t = decltype(flatten(append(all_attributes(Items{})...)));
-      using all_keeps_t = decltype(flatten(append(all_keeps(Items{})...)));
+      using all_kinds_t = decltype(flatten(append(all_kinds(Items{})...)));
     };
 
     using map_t = decltype(
@@ -233,42 +282,60 @@ namespace siconos
   static auto make_storage = []()
     constexpr -> decltype(auto)
   {
-    using all_keeps_t = decltype(flatten(append(all_keeps(Items{})...)));
+    auto base_storage = typename item_storage<Env, Items...>::type{};
+    using info_t = std::decay_t<decltype(ground::get<info>(base_storage))>;
     return
       attribute_storage_transform(
         item_storage_transform(
-          typename item_storage<Env, Items...>::type{},
-
+          attribute_storage_transform(
+            base_storage,
+            // attribute level for base storage specifications
+            [&base_storage]<match::attribute Attribute, typename Storage>
+            (Attribute, Storage&& s)
+            {
+              // if attribute is derived from one of diagonal specifications
+              if constexpr (is_kind_of<Attribute, some::diagonal>(base_storage))
+              {
+                // refine attribute specification toward diagonal storage
+                return typename traits::config<typename info_t::env,
+                                               some::diagonal_matrix<Attribute>>::type();
+              }
+              else
+              {
+                return std::forward<std::decay_t<Storage>>(s);
+              }
+            }),
           // item level: collection depends on item kind
-          []<match::item item_t, match::attribute attr_t>(item_t&&item,
-                                                          attr_t&& attr,
-                                                          auto&& s)
+          []<match::item Item, match::attribute Attr>(Item item,
+                                                      Attr attr,
+                                                      auto&& s)
           {
             using storage_t = std::decay_t<decltype(s)>;
 
-            if constexpr(std::derived_from<item_t, some::bounded_collection>)
+            if constexpr(std::derived_from<Item, some::bounded_collection>)
             {
-              return ground::pair<attr_t,
+              return ground::pair<Attr,
                 typename
-                Env::template bounded_collection<storage_t, item_t::size>>{}; // std::forward<storage_t>(s)};
+                Env::template bounded_collection<storage_t, Item::size>>{}; // std::forward<storage_t>(s)};
             }
-            else if constexpr(std::derived_from<item_t, some::unbounded_collection>)
+            else if constexpr(std::derived_from<Item, some::unbounded_collection>)
             {
-              return ground::pair<attr_t,
+              return ground::pair<Attr,
                 typename Env:: template unbounded_collection<storage_t>>{};
             }
             else // default storage
             {
-              return ground::pair<attr_t, typename Env:: template default_storage<storage_t>>{};
+              return ground::pair<Attr, typename Env:: template default_storage<storage_t>>{};
             }
           }),
 
         // attribute level: memory depends on keeps
-        []<match::attribute attribute>(attribute&& attr, auto&& s)
+        []<match::attribute Attribute>(Attribute attr, auto&& s)
         {
           using storage_t = std::decay_t<decltype(s)>;
-          return memory_t<storage_t, memory_size<attribute, all_keeps_t>>
-            {std::forward<storage_t>(s)};
+          using all_keeps_t = decltype(all_kinds_of<some::keep>(base_storage));
+          return memory_t<storage_t, memory_size<Attribute, all_keeps_t>>
+            {};
         });
   };
 
@@ -278,7 +345,8 @@ namespace siconos
     {
       using data_t = std::decay_t<decltype(data)>;
       using info_t = std::decay_t<decltype(ground::get<info>(data))>;
-      using all_keeps_t = typename info_t::all_keeps_t;
+      using all_keeps_t = decltype(all_kinds_of<some::keep>(data));
+
       using indice = typename info_t::env::indice;
 
       constexpr auto attrs = attributes(Item{});

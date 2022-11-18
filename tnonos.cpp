@@ -67,13 +67,13 @@ int main()
 //  static_assert(std::is_same_v<decltype(all_items_of_kind<graph_item>(simulation{})),
 //                gather<ball, interaction>>);
 
-  static_assert(memory_size<typename td::step, typename osi::keeps> == 1);
+//  static_assert(memory_size<typename td::step, typename osi::keeps> == 1);
 
-  static_assert(std::is_same_v<
-                decltype(all_keeps(simulation{})),
-                gather<keep<ball::q,2>, keep<ball::velocity,2>>>);
+//  static_assert(std::is_same_v<
+//                decltype(all_keeps(simulation{})),
+//                gather<keep<ball::q,2>, keep<ball::velocity,2>>>);
 
-  static_assert(memory_size<typename ball::q, typename osi::keeps> == 2);
+//  static_assert(memory_size<typename ball::q, typename osi::keeps> == 2);
 
   static_assert(std::array{1,2,3}-std::array{1,2,3}==std::array{0,0,0});
   static_assert(std::array{1,2,3}+std::array{1,2,3}==std::array{2,4,6});
@@ -105,7 +105,9 @@ int main()
                                     bounded_collection<relation, 3>,
                                     unbounded_collection<ball>,
                                     unbounded_collection<interaction>,
-                                    diagonal<ball::mass_matrix>>();
+                                    with_kinds<
+                                      keep<ball::q, 10>,
+                                      diagonal<ball::mass_matrix>>>();
 //   add<simulation>(data);
   print("v={}\n", siconos::get_memory<ball::velocity>(data));
   print("---\n");
@@ -202,7 +204,7 @@ int main()
 
    using data_t = std::decay_t<decltype(data)>;
 
-   print("memory_size={}\n", (memory_size<ball::q, decltype(all_keeps(simulation{}))> ));
+   print("memory_size={}\n", (memory_size<ball::q, decltype(all_kinds_of<some::keep>(data))>));
    print("q={}\n", siconos::get_memory<ball::q>(data));
    print("v={}\n", siconos::get_memory<ball::velocity>(data));
 
@@ -225,7 +227,9 @@ int main()
 
    //ground::transform(iget<ball>(ustore2), [&ustore2]<typename A>(A){ return iget<A>(ustore2); });
 
-   auto ustore5 = make_storage<env, simulation, unbounded_collection<ball>>();
+   auto ustore5 = make_storage<env, simulation,
+                               unbounded_collection<ball>,
+                               with_kinds<diagonal<ball::mass_matrix>>>();
 
    ground::get<ball::q>(ustore5)[0].push_back({7.,8.,9.});
    print("ustore5 ball::q ={}\n", ground::get<ball::q>(ustore5));
@@ -249,10 +253,10 @@ int main()
 
    auto m = 1.0;
    auto R = 1.0;
-   get<ball::mass_matrix>(some_iball, ustore5) =
-    {m, 0, 0,
-     0, m, 0,
-     0, 0, 2./5.*m*R*R};
+
+   print("mass matrix: {}", get<ball::mass_matrix>(some_iball, ustore5));
+   get<ball::mass_matrix>(some_iball, ustore5) = { m, m , 2.5*m*R*R };
+   print("mass matrix: {}", get<ball::mass_matrix>(some_iball, ustore5));
 
    simulation::compute_one_step(ustore5);
    print("current step : {}\n", simulation::current_step(ustore5));

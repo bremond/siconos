@@ -2,6 +2,7 @@
 #define SICONOS_TRAITS_HPP
 
 #include "siconos_pattern.hpp"
+
 namespace siconos
 {
   namespace traits
@@ -28,6 +29,13 @@ namespace siconos
           {
             return typename E::template vector<std::get<0>(T::sizes)>{};
           }
+          else if constexpr (std::derived_from<T, some::undefined_diagonal_matrix>)
+          {
+            return typename E::template diagonal_matrix<
+              std::get<0>(T::sizes)>{};
+
+          }
+
           else if constexpr (std::derived_from<T, some::undefined_matrix>)
           {
             return typename E::template matrix<

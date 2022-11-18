@@ -72,7 +72,7 @@ namespace siconos
   };
 
   template<typename Nslaw, typename Relation>
-  struct interaction : item<kind<graph_item>>
+  struct interaction : item<>
   {
     struct nonsmooth_law : some::item_ref<Nslaw>, access<nonsmooth_law> {};
     struct relation      : some::item_ref<Relation>, access<relation> {};
@@ -106,7 +106,7 @@ namespace siconos
 
     struct euler : item<>
     {
-      using keeps = gather<
+      using kinds = gather<
         keep<q, 2>,
         keep<velocity, 2>>;
 
@@ -136,7 +136,7 @@ namespace siconos
 
       using attributes = gather<theta>;
 
-      using keeps = gather<
+      using kinds = gather<
         keep<typename system::q, 2>,
         keep<typename system::velocity, 2>>;
 

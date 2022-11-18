@@ -13,18 +13,27 @@ namespace siconos
 {
   namespace linear_algebra
   {
-    static auto solve = []<bool over=true>(const auto& m, auto&x)
+    static auto solve =
+      ground::overload(
+        []<match::vector V>(V& m, V&x)
       constexpr -> decltype(auto)
-    {
-      return ground::itransform(
-        x,
-        [&m,&x](const auto i,
-                const match::scalar auto& xi)
-        {
-          static_assert(match::scalar<std::decay_t<decltype(m[0])>>);
-          return xi / m[i*(std::size(x)+1)]; // diagonal terms
-        });
-    };
+      {
+        return ground::itransform(
+          x,
+          [&m](const auto i,
+               const match::scalar auto& xi)
+          {
+            static_assert(match::scalar<std::decay_t<decltype(m[0])>>);
+            return xi / m[i]; // diagonal terms
+          });
+      },
+      [](auto& m, auto &x)
+      {
+         []<bool flag = false>()
+         {
+            static_assert(flag, "not implemented");
+         }();
+      });
 
   }
   static constexpr decltype(auto) operator -

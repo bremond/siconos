@@ -12,16 +12,12 @@
 namespace siconos
 {
 
-  struct empty{};
+  template<typename ...Args>
+  using gather = std::tuple<Args...>;
 
+  struct empty{};
   struct linear{};
   struct time_invariant{};
-
-  template<typename T>
-  struct kind
-  {
-    using type = T;
-  };
 
 
   // let rec
@@ -78,8 +74,6 @@ namespace siconos
     using Ts::operator() ...;
   };
 
-  template<typename ...Args>
-  using gather = std::tuple<Args...>;
 
   static auto car = []<typename Tpl>(Tpl tpl)
     constexpr
@@ -241,20 +235,15 @@ namespace siconos
     template<typename T>
     concept item = requires { typename T::item_t; };
 
-    template<typename I, typename T>
-    concept kind =
-      item<I> &&
-      must::contains<kind<T>, typename I::args>;
-
     template<typename T>
     concept items =
       item<T> &&
       requires { typename T::items; };
 
     template<typename T>
-    concept keeps =
+    concept kinds =
       item<T> &&
-      requires { typename T::keeps; };
+      requires { typename T::kinds; };
 
     template<typename T>
     concept size = requires (T a) { { std::size(a) }; };
@@ -273,7 +262,13 @@ namespace siconos
     template<typename ...Args>
     struct attribute
     {
+      using args = gather<Args...>;
       using attribute_t = void;
+    };
+
+    struct kind
+    {
+      using kind_t = void;
     };
 
     struct scalar : attribute<>
@@ -291,6 +286,7 @@ namespace siconos
     };
 
     struct undefined_matrix : attribute<> {};
+    struct undefined_diagonal_matrix : undefined_matrix {};
     struct undefined_vector : attribute<> {};
 
     template<size_t ...Sizes>
@@ -301,6 +297,9 @@ namespace siconos
 
     template<std::size_t N, std::size_t M>
     struct matrix : undefined_matrix, with_sizes<N, M> {};
+
+    template<typename M>
+    struct diagonal_matrix : undefined_diagonal_matrix, with_sizes<std::get<0>(M::sizes)> {};
 
     template<std::size_t N>
     struct vector : undefined_vector, with_sizes<N> {};
@@ -341,7 +340,14 @@ namespace siconos
     template<typename T>
     concept matrix = std::derived_from<T, some::matrix<std::get<0>(T::sizes), std::get<1>(T::sizes)>> || requires (T a) { a[0] ;};
 
+    template<typename T, std::size_t N>
+    concept cvector = requires (T a) { a[N-1]; };
 
+    template<typename T>
+    concept kind = std::derived_from<T, some::kind>;
+
+    template<typename T, typename K>
+    concept kind_of = kind<T> && kind<K> && std::derived_from<T, K>;
   }
 
   template<string_literal Text>
@@ -376,13 +382,6 @@ namespace siconos
     static constexpr auto value = match::attribute<T>;
   };
 
-  template<match::attribute Attr, std::size_t N>
-  struct keep
-  {
-    using attribute = Attr;
-    static constexpr std::size_t size = N;
-  };
-
   template<typename T>
   struct degrees_of_freedom_p
   {
@@ -406,25 +405,6 @@ namespace siconos
     using args = gather<Args...>;
     using item_t = void;
   };
-
-
-  // template<typename ...Args>
-  // struct graph_item : item<Args...>
-  // {
-  //   using graph_item_t = void;
-  // };
-
-  // template<typename ...Args>
-  // struct vertex_item : graph_item<Args...>
-  // {
-  //   using vertex_item_t = void;
-  // };
-
-  // template<typename ...Args>
-  // struct edge_item : graph_item<Args...>
-  // {
-  //   using edge_item_t = void;
-  // };
 
   template<typename T>
   struct place_holder
@@ -569,13 +549,13 @@ namespace siconos
         }
       });
 
-  template<typename K>
-  static auto all_items_of_kind = [](match::item auto&& t)
-    constexpr -> decltype(auto)
-  {
-    return filter<hold<decltype([]<typename T>(T) { return match::kind<T,K>; })>>
-      (all_items(t));
-  };
+//  template<typename K>
+//  static auto all_items_of_kind = [](match::item auto&& t)
+//    constexpr -> decltype(auto)
+//  {
+//    return filter<hold<decltype([]<typename T>(T) { return match::kind<T,K>; })>>
+//      (all_items(t));
+//  };
 
   template<match::item T, typename R>
   struct handle

@@ -41,6 +41,9 @@ namespace siconos
     template<indice N, indice M>
     using matrix = std::array<scalar, N*M>;
 
+    template<indice N>
+    using diagonal_matrix = std::array<scalar, N>;
+
     template<typename T>
     using item_ref = siconos::internal_handle<T, indice>;
 
