@@ -30,8 +30,9 @@ namespace siconos
   template<match::attribute Attr, std::size_t N>
   struct keep : some::keep
   {
+    using type = Attr;
     using keep_t = void;
-    using attribute = Attr;
+//    using attribute = Attr;
     static constexpr std::size_t size = N;
   };
 
@@ -68,7 +69,7 @@ namespace siconos
       constexpr auto keep = car(Tpl{});
       using keep_t = std::decay_t<decltype(keep)>;
 
-      if constexpr (std::is_same_v<Attr, typename keep_t::attribute>)
+      if constexpr (std::is_same_v<Attr, typename keep_t::type>)
       {
         return keep_t::size;
       }
@@ -128,7 +129,18 @@ namespace siconos
     using info_t = std::decay_t<decltype(ground::get<info>(data))>;
     using all_kinds_t = typename info_t::all_kinds_t;
 
-    return filter<hold<decltype([]<typename T>(T) { return std::derived_from<T, K>; })>>(all_kinds_t{});
+    return filter<hold<decltype([]<typename T>(T)
+      { return std::derived_from<T, K>; })>>(all_kinds_t{});
+  };
+
+  template<match::attribute Attr>
+  static auto attribute_kinds = [](auto& data) constexpr -> auto
+  {
+    using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+    using all_kinds_t = typename info_t::all_kinds_t;
+
+    return filter<hold<decltype([]<typename T>(T)
+      { return std::derived_from<typename T::type, Attr>; })>>(all_kinds_t{});
   };
 
   template<match::attribute Attr, match::kind K>

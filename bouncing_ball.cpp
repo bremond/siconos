@@ -15,9 +15,9 @@ int main(int argc, char* argv[])
   using ball = formulation::dynamical_system;
   using nslaw = nonsmooth_law::newton_impact;
   using relation = formulation::relation;
-  using interaction = interaction<nslaw, relation>;
+  using interaction = interaction<nslaw, formulation, 1>;
   using td = time_discretization<>;
-  using topo = topology; // topology<ball, interaction>
+  using topo = topology<formulation, interaction>; // topology<ball, interaction>
   using simulation = time_stepping<td, osi, osnspb, topo>;
   using siconos::get;
 
@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
   // =========================== End of model definition ===========================
   // ================================= Computation =================================
 
-#if defined(SCIENCE_FICTION)
+#if defined(NONONO)
   auto fd = io::open<ascii>("result.dat");
 
   while (simulation::has_next_event(data))

@@ -13,19 +13,15 @@ namespace siconos
 {
   namespace linear_algebra
   {
-    static auto solve =
+    static auto solve_in_place =
       ground::overload(
         []<match::vector V>(V& m, V&x)
       constexpr -> decltype(auto)
       {
-        return ground::itransform(
-          x,
-          [&m](const auto i,
-               const match::scalar auto& xi)
-          {
-            static_assert(match::scalar<std::decay_t<decltype(m[0])>>);
-            return xi / m[i]; // diagonal terms
-          });
+        for (auto [xi,mi] : ranges::views::zip(m, x))
+        {
+          xi = xi/mi; // diagonal terms
+        };
       },
       [](auto& m, auto &x)
       {

@@ -271,6 +271,11 @@ namespace siconos
       using kind_t = void;
     };
 
+    struct time_invariant : kind
+    {
+      using time_invariant_t = void;
+    };
+
     struct scalar : attribute<>
     {};
 
@@ -295,16 +300,33 @@ namespace siconos
        static constexpr auto sizes = std::tuple {Sizes...};
     };
 
-    template<std::size_t N, std::size_t M>
-    struct matrix : undefined_matrix, with_sizes<N, M> {};
+    template<typename Type>
+    struct with_type
+    {
+      using type = Type;
+    };
 
-    template<typename M>
-    struct diagonal_matrix : undefined_diagonal_matrix, with_sizes<std::get<0>(M::sizes)> {};
+    template<typename ...Types>
+    struct with_types
+    {
+      using types = std::tuple<Types...>;
+    };
 
-    template<std::size_t N>
-    struct vector : undefined_vector, with_sizes<N> {};
+    template<std::size_t N, std::size_t M, typename Type = some::scalar>
+    struct matrix : undefined_matrix,
+      with_sizes<N, M>, with_type<Type> {};
 
-    struct graph : attribute<> {};
+    template<typename M, typename Type = some::scalar>
+    struct diagonal_matrix : undefined_diagonal_matrix,
+      with_sizes<std::get<0>(M::sizes)>, with_type<Type> {};
+
+    template<std::size_t N, typename Type = some::scalar>
+    struct vector : undefined_vector, with_sizes<N>, with_type<Type> {};
+
+    struct undefined_graph : attribute<> {};
+
+    template<typename Edge, typename Vertice>
+    struct graph : undefined_graph, with_types<Edge, Vertice> {};
 
     struct unbounded_collection : attribute<> {};
     struct bounded_collection : attribute<> {};
@@ -348,7 +370,14 @@ namespace siconos
 
     template<typename T, typename K>
     concept kind_of = kind<T> && kind<K> && std::derived_from<T, K>;
+
+    template<typename T, typename Ks>
+    concept any_of_kind = ground::any_of(
+      Ks{},
+      []<match::kind K>(K) { return std::derived_from<T, K>; });
+
   }
+
 
   template<string_literal Text>
   struct text

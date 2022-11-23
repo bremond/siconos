@@ -7,8 +7,6 @@
 #include <range/v3/view/zip.hpp>
 namespace siconos
 {
-  struct graph_item {};
-
   template<typename ...Params>
   struct lagrangian : frame<Params ...>
   {
@@ -28,6 +26,7 @@ namespace siconos
       struct velocity : some::vector<dof>,
                         access<velocity> {};
 
+      // should not be an attribute
       struct fext : some::vector<dof>, // some::function<...>
                     access<fext> {};
 
@@ -40,6 +39,19 @@ namespace siconos
       struct h_matrix : some::matrix<1, dof>, access<h_matrix> {};
 
       using attributes = gather<h_matrix>;
+
+      static constexpr auto compute_input = []()
+      {
+      };
+
+      static constexpr auto compute_output = []<match::item Interaction,
+                                                std::size_t deriv_num>
+        (double time, Interaction, auto& data)
+      {
+        auto& y = get<typename Interaction::y>(data);
+        auto& H = get<h_matrix>(data);
+      };
+
     };
   };
 
@@ -62,21 +74,32 @@ namespace siconos
     };
   };
 
+  template<typename Formulation, typename Interaction>
   struct topology : item<>
   {
-    struct dsg0 : some::graph {};
-    struct ig0 : some::graph {};
-    struct ig1 : some::graph {};
+    using dynamical_system = typename Formulation::dynamical_system;
+    using interaction = Interaction;
+
+    struct dsg0 : some::graph<some::item_ref<dynamical_system>,
+                              some::item_ref<interaction>>{};
+
+    struct ig0 : some::graph<some::item_ref<interaction>,
+                             some::item_ref<dynamical_system>>{};
+
+    struct ig1 : some::graph<some::item_ref<interaction>,
+                             some::item_ref<dynamical_system>>{};
 
     using attributes = gather<dsg0, ig0, ig1>;
   };
 
-  template<typename Nslaw, typename Relation>
+  template<typename Nslaw, typename Formulation, std::size_t N>
   struct interaction : item<>
   {
     struct nonsmooth_law : some::item_ref<Nslaw>, access<nonsmooth_law> {};
-    struct relation      : some::item_ref<Relation>, access<relation> {};
+    struct relation      : some::item_ref<typename Formulation::relation>,
+                           access<relation> {};
 
+    struct y : some::vector<N*Formulation::dof>{};
     using attributes = gather<nonsmooth_law,
                               relation>;
   };
@@ -121,11 +144,6 @@ namespace siconos
         auto& vs_next = memory(step+1, velocities);
         auto& fs =      memory(step, external_forces);
 
-        for (auto [M, v, v_next, f] : ranges::views::zip(Ms, vs, vs_next, fs))
-        {
-          v_next = v + h * linear_algebra::solve(M, f);
-        }
-
       };
 
     };
@@ -140,8 +158,47 @@ namespace siconos
         keep<typename system::q, 2>,
         keep<typename system::velocity, 2>>;
 
+      static constexpr auto compute_iteration_matrix = [](auto step, auto& data)
+        constexpr -> decltype(auto)
+      {
+        auto& mass_matrices = get_memory<mass_matrix>(data);
+        auto& external_forces = get_memory<fext>(data);
+
+        auto& Ms =      memory(step, mass_matrices);
+        auto& fs =      memory(step, external_forces);
+
+        if constexpr(is_kind_of<mass_matrix, some::time_invariant>(data))
+        {
+          if constexpr(is_kind_of<fext, some::time_invariant>(data))
+          {
+            if constexpr(is_kind_of<mass_matrix, some::diagonal>(data))
+            {
+              for (auto [M, f] : ranges::views::zip(Ms, fs))
+              {
+                linear_algebra::solve_in_place(M, f);
+              }
+            }
+          }
+        }
+      };
+
       static void compute_free_state(auto step, auto h, auto& data)
       {
+         auto& velocities = get_memory<velocity>(data);
+         auto fexts  = get_memory<fext>(data);
+         auto theta = get<moreau_jean::theta>(data);
+
+         auto& vs =      memory(step, velocities);
+         auto& vs_next = memory(step+1, velocities);
+         auto& minv_fs      = memory(step, fexts);
+         auto& minv_fs_next      = memory(step+1, fexts);
+
+         // f <- M  f
+         for (auto [v, v_next, minv_f, minv_f_next] :
+                ranges::views::zip(vs, vs_next, minv_fs, minv_fs_next))
+         {
+           v_next = v + h*theta*minv_f + h*(1 - theta)*minv_f_next;
+         }
       };
     };
   };
@@ -155,20 +212,18 @@ namespace siconos
     using attributes = gather<h, t0, step>;
   };
 
-  template<typename TD, typename OSI, typename OSNSPB, typename TOPO, typename ...GraphItems>
+  template<typename TD, typename OSI, typename OSNSPB, typename TOPO>
   struct time_stepping : item<>
   {
     using time_discretization = TD;
     using one_step_integrator = OSI;
     using one_step_nonsmooth_problem = OSNSPB;
     using topology = TOPO;
-    using graph_items = gather<GraphItems...>;
 
     using items = gather<time_discretization,
                          one_step_integrator,
                          one_step_nonsmooth_problem,
-                         topology,
-                         GraphItems...>;
+                         topology>;
 
     static decltype(auto) current_step(auto& data)
     {

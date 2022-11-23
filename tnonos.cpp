@@ -19,9 +19,9 @@ int main()
   using osi = one_step_integrator<formulation>::euler;
   using relation = formulation::relation;
   using nslaw = nonsmooth_law::newton_impact;
-  using interaction = interaction<nslaw, relation>;
+  using interaction = interaction<nslaw, formulation, 1>;
   using td = time_discretization<>;
-  using topo = topology;
+  using topo = topology<formulation, interaction>;
   using simulation = time_stepping<td, osi, osnspb, topo>;
   using siconos::get;
 
@@ -47,7 +47,7 @@ int main()
     }()), gather<nslaw, relation>>);
 
   static_assert(std::is_same_v<decltype(all_items(interaction{})),
-                std::tuple<siconos::interaction<siconos::nonsmooth_law::newton_impact, siconos::lagrangian<linear, time_invariant, degrees_of_freedom<3>>::relation>, siconos::nonsmooth_law::newton_impact, siconos::lagrangian<linear, time_invariant, degrees_of_freedom<3>>::relation>>);
+                std::tuple<siconos::interaction<siconos::nonsmooth_law::newton_impact, siconos::lagrangian<linear, time_invariant, degrees_of_freedom<3>>, 1>, siconos::nonsmooth_law::newton_impact, siconos::lagrangian<linear, time_invariant, degrees_of_freedom<3>>::relation>>);
 
   static_assert(must::contains<osnspb, decltype(all_items(simulation{}))>);
 
@@ -208,7 +208,7 @@ int main()
    print("q={}\n", siconos::get_memory<ball::q>(data));
    print("v={}\n", siconos::get_memory<ball::velocity>(data));
 
-   auto ustore1 = unit_storage<env, some::scalar, some::vector<3>, some::graph>::type {};
+   auto ustore1 = unit_storage<env, some::scalar, some::vector<3>, some::graph<some::indice, some::indice>>::type {};
 
 //   ground::find(ustore1, boost::hana::type_c<some::scalar>) = 1.0;
 //   ground::find(ustore1, boost::hana::type_c<some::vector<3>>).value() = { 1.0, 2.0, 3.0 };
