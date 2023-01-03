@@ -32,6 +32,7 @@ namespace siconos
       });
 
   }
+
   static constexpr decltype(auto) operator -
     (const match::vector auto& a, const match::vector auto& b)
     {
@@ -51,7 +52,7 @@ namespace siconos
 
 
   static constexpr decltype(auto) operator +
-    (const auto &a, const auto& b)
+  (const match::vector auto& a, const match::vector auto& b)
     {
       return ground::itransform(a,
                                 [&b](const auto i, const auto& ai)
@@ -59,7 +60,7 @@ namespace siconos
     }
 
   static constexpr decltype(auto) operator *
-    (const auto& v, const auto& a)
+  (const match::scalar auto& v, const match::vector auto& a)
     {
       return ground::itransform(a,
                                 [&v](const auto i, const auto& ai)

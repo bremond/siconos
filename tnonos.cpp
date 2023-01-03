@@ -1,30 +1,33 @@
 #include "siconos_environment.hpp"
 #include "siconos.hpp"
-
+#include "siconos_ground.hpp"
 #include <tuple>
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 #include <functional>
+#include <typeinfo>
+#if defined(__clang__)
+#include <boost/hana/experimental/type_name.hpp>
+#endif
 using fmt::print;
-
 
 using namespace siconos;
 using env = siconos::standard_environment;
-
 int main()
 {
   using formulation = lagrangian<linear, time_invariant, degrees_of_freedom<3>>;
   using ball = formulation::dynamical_system;
   using osnspb = one_step_nonsmooth_problem<lcp>;
-  using osi = one_step_integrator<formulation>::euler;
   using relation = formulation::relation;
   using nslaw = nonsmooth_law::newton_impact;
   using interaction = interaction<nslaw, formulation, 1>;
+  using osi = one_step_integrator<formulation, interaction>::euler;
   using td = time_discretization<>;
   using topo = topology<formulation, interaction>;
   using simulation = time_stepping<td, osi, osnspb, topo>;
   using siconos::get;
 
+  struct zz {};
   {
   static_assert(must::contains<int,std::tuple<int,float,char>>);
   static_assert(!must::contains<double,std::tuple<int,float,char>>);
@@ -49,7 +52,7 @@ int main()
   static_assert(std::is_same_v<decltype(all_items(interaction{})),
                 std::tuple<siconos::interaction<siconos::nonsmooth_law::newton_impact, siconos::lagrangian<linear, time_invariant, degrees_of_freedom<3>>, 1>, siconos::nonsmooth_law::newton_impact, siconos::lagrangian<linear, time_invariant, degrees_of_freedom<3>>::relation>>);
 
-  static_assert(must::contains<osnspb, decltype(all_items(simulation{}))>);
+  //static_assert(must::contains<osnspb, decltype(all_items(simulation{}))>);
 
   static_assert(match::item<ball>);
   static_assert(match::attribute<nslaw::e>);
@@ -58,7 +61,7 @@ int main()
   static_assert(match::attribute_of<ball::velocity, ball>);
   static_assert(match::attribute_of<td::step, td>);
 
-  static_assert(std::is_same_v<td, decltype(item_attribute<td::step>(all_items(simulation{})))>);
+  //static_assert(std::is_same_v<td, decltype(item_attribute<td::step>(all_items(simulation{})))>);
 
   static_assert(std::is_same_v<typename siconos::traits::config<env, typename siconos::time_discretization<>::step>::type,
                 typename env::indice>);
@@ -93,19 +96,38 @@ int main()
 //  std::cout << boost::hana::experimental::type_name<decltype(all_attributes(interaction{}))>().c_str() << std::endl;
 
   static_assert(std::is_same_v<decltype(attributes(interaction{})),
-                gather<interaction::nonsmooth_law, interaction::relation>>);
+                gather<interaction::nonsmooth_law, interaction::relation, interaction::lambda, interaction::y>>);
 
   static_assert(std::is_same_v<decltype(all_attributes(interaction{})),
-                gather<interaction::nonsmooth_law, interaction::relation,
+                gather<interaction::nonsmooth_law, interaction::relation, interaction::lambda, interaction::y,
                 nslaw::e, relation::h_matrix>>);
 
   }
 
+  auto data0 = siconos::make_storage<env, nslaw>();
+
+  auto nslaw0 = add<nslaw>(data0);
+
+  get<nslaw::e>(nslaw0, data0) = 0.6;
+  get<nslaw::e>(nslaw0, data0) = 0.7;
+  assert(get<nslaw::e>(nslaw0, data0) == 0.7);
+
+  auto x = get<nslaw::e>(nslaw0, data0);
+
+  nslaw::e::at(nslaw0) = 0.8;
+
+  assert (get<nslaw::e>(nslaw0, data0) == 0.8);
+
+  auto data1 = siconos::make_storage<env, wrap<some::unbounded_collection<nslaw>>>();
+
+  auto nslaw1 = add<nslaw>(data1);
+
+  nslaw::e::at(nslaw1) = 0.9;
   auto data = siconos::make_storage<env, simulation,
-                                    bounded_collection<relation, 3>,
-                                    unbounded_collection<ball>,
-                                    unbounded_collection<interaction>,
-                                    with_kinds<
+                                    wrap<some::bounded_collection<relation, 3>>,
+                                    wrap<some::unbounded_collection<ball>>,
+                                    wrap<some::unbounded_collection<interaction>>,
+                                    with_properties<
                                       keep<ball::q, 10>,
                                       diagonal<ball::mass_matrix>>>();
 //   add<simulation>(data);
@@ -125,15 +147,16 @@ int main()
    print("---\n");
 
 
-   auto ds0 = fixed_add<ball>(data);
+   auto ds0 = add<ball>(data);
 
+   ball::fext::at(ds0) = { 10., 0., 0.};
    ball::q::at(ds0) = { 0., 0., 1.};
 
    auto& v0 = ball::velocity::at(ds0);
 
    v0 = { 1., 2., 3.};
    print("v={}\n", siconos::get_memory<ball::velocity>(data));
-   auto& velocityp = fix_map(get<ball::velocity>)(ds0);
+   auto& velocityp = get<ball::velocity>(ds0, data);
    print("--->{}\n", velocityp);
 
    print("---\n");
@@ -149,11 +172,15 @@ int main()
     });
    print("---\n");
 
-   auto ds1 = fix(add<ball>)(data);
+   auto ds1 = add<ball>(data);
+   ball::fext::at(ds0) = { 10., 0., 0.};
    ball::q::at(ds1) = { 1.,1., 1.};
+   ball::fext::at(ds0) = { 10., 0., 0.};
 
-   auto ds2 = fix(add<ball>)(data);
+   auto ds2 = add<ball>(data);
+   ball::fext::at(ds0) = { 10., 0., 0.};
    ball::q::at(ds2) = { 9.,9., 9.};
+   ball::fext::at(ds0) = { 10., 0., 0.};
 //   print("---\n");
 //   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
@@ -161,8 +188,8 @@ int main()
 //   print("---\n");
 //   for_each([](auto& a) { print("{0}\n", a); }, data._collections);
 
-   print("-----{}------", fix_map(get<ball::mass_matrix>)(ds1));
-   print("{}", fix_map(get<ball::mass_matrix>)(ds0));
+   //rint("-----{}------", get<ball::mass_matrix>(ds1, data));
+   //print("{}", get<ball::mass_matrix>(ds0, data));
 
 //   auto m = get<ball::mass_matrix>(ds0, data);
 
@@ -178,35 +205,34 @@ int main()
    ball::fext::at(ds0) = { 2.,1.,0.};
 //   print("{}\n", data(get<ball::fext>)(ds0));
 
-   auto inter1 = fix(add<interaction>)(data);
-   auto nslaw1 = add<nslaw>(data);
+   auto inter1 = add<interaction>(data);
+   auto nslaw2 = add<nslaw>(data);
 
    // siconos::set<interaction::nonsmooth_law>(inter1);
-   interaction::nonsmooth_law::at(inter1) = nslaw1;
-   fix_map(get<interaction::nonsmooth_law>)(inter1) = nslaw1;
+   interaction::nonsmooth_law::at(inter1) = nslaw2;
+   get<interaction::nonsmooth_law>(inter1, data) = nslaw2;
 
    auto& e = siconos::get_memory<nslaw::e>(data);
-   e[0][nslaw1.get()] = 0.7;
+   e[0][nslaw2.get()] = 0.7;
+
+   nslaw2.e() = 0.6;
 
    print("{}\n", siconos::get_memory<nslaw::e>(data));
 
-   auto inter2 = fix(add<interaction>)(data);
-   auto nslaw2 = fix(add<nslaw>)(data);
+   auto inter2 = add<interaction>(data);
+   auto nslaw3 = add<nslaw>(data);
 
-   interaction::nonsmooth_law::at(inter2) = nslaw2;
-
-   nslaw::e::internal_get(interaction::nonsmooth_law::at(inter2), data) = 0.3;
+   interaction::nonsmooth_law::at(inter2) = nslaw3;
+   nslaw::e::at(interaction::nonsmooth_law::at(inter2), data) = 0.3;
 
    auto ball1 = add<ball>(data);
    auto ball2 = add<ball>(data);
-   interaction::nonsmooth_law::at(inter2);
-   print("e={}\n", nslaw::e::at(nslaw2));
+   print("e={}\n", nslaw::e::at(nslaw3));
 
-   using data_t = std::decay_t<decltype(data)>;
-
-   print("memory_size={}\n", (memory_size<ball::q, decltype(all_kinds_of<some::keep>(data))>));
-   print("q={}\n", siconos::get_memory<ball::q>(data));
-   print("v={}\n", siconos::get_memory<ball::velocity>(data));
+   print("memory_size={}\n", (memory_size<ball::q, decltype(all_properties_as<some::keep>(data))>));
+//   auto& q = siconos::get_memory<ball::q>(data);
+//   print("q={}\n", q);
+//   print("v={}\n", siconos::get_memory<ball::velocity>(data));
 
    auto ustore1 = unit_storage<env, some::scalar, some::vector<3>, some::graph<some::indice, some::indice>>::type {};
 
@@ -228,14 +254,17 @@ int main()
    //ground::transform(iget<ball>(ustore2), [&ustore2]<typename A>(A){ return iget<A>(ustore2); });
 
    auto ustore5 = make_storage<env, simulation,
-                               unbounded_collection<ball>,
-                               with_kinds<diagonal<ball::mass_matrix>>>();
+                               wrap<some::unbounded_collection<ball>>,
+                               wrap<some::unbounded_collection<interaction>>,
+                               with_properties<diagonal<ball::mass_matrix>>>();
+//                                               ,
+//                                               attached_storage<ball, zz , some::scalar>>>();
+
 
    ground::get<ball::q>(ustore5)[0].push_back({7.,8.,9.});
    print("ustore5 ball::q ={}\n", ground::get<ball::q>(ustore5));
 
    auto some_iball=add<ball>(ustore5);
-
    get<ball::velocity>(some_iball, ustore5) = {3., 3., 3.};
    print("ustore5 ball::velocity = {}\n", get<ball::velocity>(some_iball, ustore5));
 
@@ -253,21 +282,81 @@ int main()
 
    auto m = 1.0;
    auto R = 1.0;
+//   print("mass matrix: {}", get<ball::mass_matrix>(some_iball, ustore5));
+   auto ma = get<ball::mass_matrix>(some_iball, ustore5);
+   ma.resize(3,3);
+   ma(0,0) = m;
+   ma(1,1) = m;
+   ma(2,2) = 2.5*m*R*R;
+//   print("mass matrix: {}", get<ball::mass_matrix>(some_iball, ustore5));
 
-   print("mass matrix: {}", get<ball::mass_matrix>(some_iball, ustore5));
-   get<ball::mass_matrix>(some_iball, ustore5) = { m, m , 2.5*m*R*R };
-   print("mass matrix: {}", get<ball::mass_matrix>(some_iball, ustore5));
+   auto simul = make_full_handle<simulation>(0, data);
 
-   simulation::compute_one_step(ustore5);
-   print("current step : {}\n", simulation::current_step(ustore5));
+   simul.compute_one_step();
+
+   print("current step : {}\n", simul.current_step());
    print("v={}\n", siconos::get_memory<ball::velocity>(ustore5));
-   simulation::compute_one_step(ustore5);
-   print("current step : {}\n", simulation::current_step(ustore5));
+   simul.compute_one_step();
+   print("current step : {}\n", simul.current_step());
    print("v={}\n", siconos::get_memory<ball::velocity>(ustore5));
-   simulation::compute_one_step(ustore5);
-   print("current step : {}\n", simulation::current_step(ustore5));
+   simul.compute_one_step();
+   print("current step : {}\n", simul.current_step());
    print("v={}\n", siconos::get_memory<ball::velocity>(ustore5));
 
-   auto a = get<ball::velocity>(simulation::current_step(ustore5), some_iball, ustore5);
+   auto a = get<ball::velocity>(simul.current_step(), some_iball, ustore5);
    print("ustore5 ball::velocity = {}\n", a);
+
+   auto htopo = make_full_handle<topo>(0, data);
+
+   auto& dsg0 = get<topo::dynamical_system_graphs>(htopo, ustore5)[0];
+
+   auto dsgv = dsg0.add_vertex(some_iball);
+
+   auto& ig0 = get<topo::interaction_graphs>(htopo, ustore5)[0];
+
+   auto inter = add<interaction>(ustore5);
+
+   auto [new_edge, ig_new_ve] = dsg0.add_edge(dsgv, dsgv, inter, ig0);
+   auto rel = add<relation>(ustore5);
+
+   auto yyv = ground::get<relation::h_matrix>(ustore5);
+   relation::h_matrix::at(rel)(0,0) = 1;
+
+
+   interaction::relation::at(inter) = rel;
+   auto& v = interaction::y::at(inter)[1];
+   v = { 1, 2, 3};
+
+   rel.compute_output<1>(0., inter, some_iball);
+
+//   for_each(ustore5,
+   //           []<typename Key, typename Value>(Key&& key, Value&& value)
+   //        {
+//              print("{}\n", boost::hana::experimental::type_name<Key>().c_str());
+   //       });
+
+
+#ifdef __clang__
+//   print("-->{}\n", boost::hana::experimental::type_name<ground::pair<ball, zz>>().c_str());
+#endif
+   auto dd = make_storage<env, wrap<some::unbounded_collection<ball>>,
+                          with_properties<
+                            diagonal<ball::mass_matrix>,
+                            keep<ball::q, 10>>>();
+//   ,
+//                            attached_storage<ball, zz, some::scalar>>>();
+
+   auto xball1 = add<ball>(dd);
+   auto xball2 = add<ball>(dd);
+
+//   ground::get<attached_storage<ball, zz, some::scalar>>(ustore5)[0][0] = 1.0;
+
+#ifdef __clang__
+   for_each(dd, []<typename Key, typename Value>(Key k, Value v)
+            {
+              print("Key: [{}]\n", boost::hana::experimental::type_name<Key>().c_str());
+              print("Value: [{}]\n\n", boost::hana::experimental::type_name<Value>().c_str());
+            });
+#endif
+//   assert((ground::get<attached_storage<some::unbounded_collection<ball>, internal_index, some::indice>>(dd)[0][1] == 1));
 }

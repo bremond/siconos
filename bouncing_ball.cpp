@@ -10,12 +10,12 @@ using fmt::print;
 int main(int argc, char* argv[])
 {
   using formulation = lagrangian<linear, time_invariant, degrees_of_freedom<3>>;
-  using osi = one_step_integrator<formulation>::moreau_jean;
   using osnspb = one_step_nonsmooth_problem<lcp>;
   using ball = formulation::dynamical_system;
   using nslaw = nonsmooth_law::newton_impact;
   using relation = formulation::relation;
   using interaction = interaction<nslaw, formulation, 1>;
+  using osi = one_step_integrator<formulation, interaction>::moreau_jean;
   using td = time_discretization<>;
   using topo = topology<formulation, interaction>; // topology<ball, interaction>
   using simulation = time_stepping<td, osi, osnspb, topo>;
@@ -67,9 +67,9 @@ int main(int argc, char* argv[])
   // Interaction ball-floor
   auto the_interaction = add<interaction>(data);
 
-  get<interaction::relation>(the_interaction, data) = { the_relation };
-  get<interaction::nonsmooth_law>(the_interaction, data) = { the_nslaw };
-  //get<interaction::link>(the_interaction, data) = { the_ball };
+  get<interaction::relation>(the_interaction, data) =  the_relation ;
+  get<interaction::nonsmooth_law>(the_interaction, data) = the_nslaw ;
+  //get<interaction::link>(the_interaction, data) =  the_ball ;
 
   // ------------------
   // --- Simulation ---

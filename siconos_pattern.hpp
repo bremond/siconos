@@ -9,6 +9,7 @@
 #include <functional>
 #include <type_traits>
 #include <initializer_list>
+
 namespace siconos
 {
 
@@ -67,11 +68,6 @@ namespace siconos
       {
         return f(g(std::forward<Arg>(arg)));
       };
-  };
-
-  template<typename ... Ts>
-  struct overload : Ts ... {
-    using Ts::operator() ...;
   };
 
 
@@ -220,13 +216,6 @@ namespace siconos
     concept degrees_of_freedom = requires { typename T::degrees_of_freedom_t; };
 
     template<typename T>
-    concept handle = requires { typename T::handle_t; };
-
-    template<typename T>
-    concept internal_handle = requires { typename T::internal_handle_t; };
-
-
-    template<typename T>
     concept attributes = requires { typename T::attributes; };
 
     template<typename T>
@@ -241,15 +230,32 @@ namespace siconos
       requires { typename T::items; };
 
     template<typename T>
-    concept kinds =
+    concept properties =
       item<T> &&
-      requires { typename T::kinds; };
+      requires { typename T::properties; };
 
     template<typename T>
     concept size = requires (T a) { { std::size(a) }; };
 
     template<typename T>
     concept push_back = requires (T a) { { a.push_back(typename T::value_type{}) }; };
+
+    template<typename T, typename I>
+    concept handle =
+      item<I> && std::derived_from<I, typename T::type> &&
+      requires { typename T::handle_t; };
+
+    template<typename T>
+    concept any_full_handle =
+      requires { typename T::full_handle_t; };
+
+    template<typename T, typename I>
+    concept full_handle =
+      any_full_handle<T> &&
+      item<I> && std::derived_from<I, typename T::type>;
+
+
+
   }
 
   static_assert(match::size<std::vector<double>>);
@@ -266,12 +272,15 @@ namespace siconos
       using attribute_t = void;
     };
 
-    struct kind
+    struct property
     {
-      using kind_t = void;
+      using property_t = void;
     };
 
-    struct time_invariant : kind
+    struct attached_storage : property {};
+
+    // not here
+    struct time_invariant : property
     {
       using time_invariant_t = void;
     };
@@ -328,8 +337,14 @@ namespace siconos
     template<typename Edge, typename Vertice>
     struct graph : undefined_graph, with_types<Edge, Vertice> {};
 
-    struct unbounded_collection : attribute<> {};
-    struct bounded_collection : attribute<> {};
+    struct undefined_unbounded_collection : attribute<> {};
+    struct undefined_bounded_collection : attribute<> {};
+
+    template<typename Type>
+    struct unbounded_collection : undefined_unbounded_collection, with_type<Type> {};
+
+    template<typename Type, std::size_t N>
+    struct bounded_collection : undefined_bounded_collection, with_sizes<N>, with_type<Type> {};
 
     template<match::item T>
     struct item_ref : attribute<>
@@ -344,11 +359,20 @@ namespace siconos
     template<typename T>
     concept attribute = requires { typename T::attribute_t; };
 
+    template<typename T>
+    concept attribute_or_item = attribute<T> || item<T>;
+
     template<typename T, typename I>
     concept attribute_of =
       attribute<T> &&
       item<I> &&
       must::contains<T, typename I::attributes>;
+
+    template<typename T, typename I>
+    concept attached_storage =
+      attribute<T> &&
+      item<I> &&
+      (std::derived_from<I, typename T::item> ||  std::derived_from<typename T::item, I>);
 
     template<typename T>
     concept item_ref =
@@ -366,15 +390,15 @@ namespace siconos
     concept cvector = requires (T a) { a[N-1]; };
 
     template<typename T>
-    concept kind = std::derived_from<T, some::kind>;
+    concept property = std::derived_from<T, some::property>;
 
     template<typename T, typename K>
-    concept kind_of = kind<T> && kind<K> && std::derived_from<T, K>;
+    concept property_of = property<T> && property<K> && std::derived_from<T, K>;
 
     template<typename T, typename Ks>
-    concept any_of_kind = ground::any_of(
+    concept any_of_property = ground::any_of(
       Ks{},
-      []<match::kind K>(K) { return std::derived_from<T, K>; });
+      []<match::property K>(K) { return std::derived_from<T, K>; });
 
   }
 
@@ -433,6 +457,24 @@ namespace siconos
   {
     using args = gather<Args...>;
     using item_t = void;
+
+    friend auto operator<=>(const item<Args...>&, const item<Args...>&) = default;
+  };
+
+  template<typename Wrap>
+  struct wrap : item<>, Wrap
+  {
+    static_assert(match::item<typename Wrap::type>);
+    using attributes = typename Wrap::type::attributes;
+    using type = typename Wrap::type;
+  };
+
+  template<match::item I, typename Tag, match::attribute DataSpec>
+  struct attached_storage : some::attached_storage, DataSpec
+  {
+    using item    = I;
+    using tag      = Tag;
+    using data_spec = DataSpec;
   };
 
   template<typename T>
@@ -463,6 +505,10 @@ namespace siconos
       {
         return item_t{};
       }
+      else if constexpr (match::attached_storage<Attr, item_t>)
+      {
+          return item_t{};
+      }
       else if constexpr (std::tuple_size_v<tpl_t> > 1)
       {
         return loop(cdr(tpl)) ;
@@ -492,6 +538,7 @@ namespace siconos
     }
   };
 
+  // deprecated
   static auto all_attributes =
   rec(
     [](auto&& all_attributes, match::item auto&& t) constexpr
@@ -579,107 +626,28 @@ namespace siconos
       });
 
 //  template<typename K>
-//  static auto all_items_of_kind = [](match::item auto&& t)
+//  static auto all_items_of_property = [](match::item auto&& t)
 //    constexpr -> decltype(auto)
 //  {
-//    return filter<hold<decltype([]<typename T>(T) { return match::kind<T,K>; })>>
+//    return filter<hold<decltype([]<typename T>(T) { return match::property<T,K>; })>>
 //      (all_items(t));
 //  };
 
-  template<match::item T, typename R>
-  struct handle
-  {
-    using handle_t = void;
-    using type = T;
-    using value_t = R;
-
-    value_t value = {};
-
-    auto get() const { return value.first; };
-    decltype(auto) data() { return value.second(); };
-
-    explicit handle(R ref) : value{ref} {};
-    handle() : value{} {}; // needed for types associations
-  };
-
-  template<typename T, typename I, typename D>
-  static decltype(auto) make_handle(I indx, D& data)
-  {
-    auto p = std::pair { indx, [&data]() -> D& { return data; } };
-    return handle<T, decltype(p)>{p};
-  }
-
-
-  template<match::item T, typename R>
-  struct internal_handle
-  {
-    using internal_handle_t = void;
-    using type = T;
-    using value_t = R;
-
-    value_t value = {};
-
-    auto get() const { return value; };
-
-    explicit internal_handle(R ref) : value{ref} {}
-
-    internal_handle() : value{} {};
-
-    template<typename P>
-    void operator = (handle<T, P>& h)
-    {
-      value = h.value.first;
-    }
-  };
-
-  template<match::item T, typename I>
-  static decltype(auto) make_internal_handle(I indx)
-  {
-    return internal_handle<T, I>{indx};
-  }
-
-  template<match::item T, typename I, typename D>
-  static decltype(auto) handle_from_internal(internal_handle<T,I> ihandle, D& data)
-  {
-    auto p = std::pair { ihandle.value, [&data]() -> D& { return data; } };
-    return handle<T, decltype(p)>{p};
-  }
-
-  static auto fix = [](auto&& fun)
-    constexpr -> decltype(auto)
-  {
-    return
-      [&fun]<typename ...As, typename Ae>(As&& ...args, Ae&& argend)
-      constexpr -> decltype(auto)
-      {
-        return handle_from_internal(fun(std::forward<As>(args)..., std::forward<Ae>(argend)),
-                                    std::forward<Ae>(argend));
-      };
-  };
-
-  static auto fix_map = [](auto&& fun)
-    constexpr -> decltype(auto)
-  {
-    return
-      [&fun]<typename A1, typename ...As>(A1&& arg1, As&& ...args)
-      constexpr -> decltype(auto)
-      {
-        using ih_t = internal_handle<typename std::decay_t<A1>::type,
-        decltype(arg1.get())>;
-        return
-        fun(std::forward<ih_t>(ih_t{arg1.get()}),
-            std::forward<As>(args)...,
-            std::forward<std::decay_t<decltype(arg1.data())>&>(arg1.data()));
-      };
-  };
-
   namespace match
   {
+    //
     template<typename H, typename A>
     concept handle_attribute =
       attribute<A> &&
       item<typename H::type> &&
       must::contains<A, typename H::type::attributes>;
+
+    // suspect
+    template<typename H, typename IA>
+    concept handle_intern_attribute =
+      attribute<IA> &&
+      item<typename H::type> &&
+      must::contains<IA, decltype(all_attributes(typename H::type::attributes{}))>;
   }
   namespace type
   {
@@ -687,7 +655,18 @@ namespace siconos
     using transform = decltype(
       transform([]<typename A>(A){ return Transform<A>{};},
                 gather<Args...>{}));
+    template<match::attribute ...Attrs>
+    using attributes = gather<Attrs...>;
+
+    template<match::item ...Items>
+    using attributes_of_items = decltype(flatten(append(typename Items::attributes{}...)));
   }
+
+  template<typename Handle>
+  struct default_interface
+  {
+    decltype(auto) self() { return static_cast<Handle*>(this); };
+  };
 }
 
 #endif

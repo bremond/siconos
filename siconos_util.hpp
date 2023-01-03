@@ -116,6 +116,13 @@ namespace siconos
     char value[N];
   };
 
+  template<string_literal a>
+  decltype(auto) operator ""_a () { return a; };
+
+  template<typename T>
+  constexpr auto make_string_literal(T&& t) { return string_literal(std::forward<T>(t)); };
+
+
   template<string_literal symb>
   static auto get_m =
     [](auto&& attributes)

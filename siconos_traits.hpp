@@ -20,6 +20,17 @@ namespace siconos
               return typename E::indice{};
             }
             else if constexpr (std::derived_from<Attribute,
+                               some::undefined_unbounded_collection>)
+            {
+              return typename E::template unbounded_collection<decltype(translate(E{}, typename Attribute::type{}))>{};
+            }
+            else if constexpr (std::derived_from<Attribute,
+                               some::undefined_bounded_collection>)
+            {
+              return typename E::template bounded_collection<decltype(translate(E{}, typename Attribute::type{})),
+                                                             std::get<0>(Attribute::sizes)>{};
+            }
+            else if constexpr (std::derived_from<Attribute,
                                some::undefined_vector>)
             {
               return typename E::template vector<decltype(translate(E{}, typename Attribute::type{})),

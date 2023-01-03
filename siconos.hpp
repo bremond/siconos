@@ -5,6 +5,21 @@
 #include "siconos_pattern.hpp"
 #include "siconos_linear_algebra.hpp"
 #include <range/v3/view/zip.hpp>
+
+#define INTERFACE_START(Handle,Data)                                    \
+  using default_interface<Handle>::self;                                \
+  using info_t = std::decay_t<decltype(ground::get<info>(Data{}))>; \
+  using env = typename info_t::env
+
+#define GET(X) decltype(auto) X() \
+  { return get<typename Handle::type::X>(*default_interface<Handle>::self(), \
+                                         default_interface<Handle>::self()->data());}
+
+#define ITEM(Y)                                         \
+  full_handle<Y##_t, typename env::indice, Data> Y() \
+  {                                                     \
+    return make_full_handle<Y##_t>(self()->get(), self()->data());  \
+  };
 namespace siconos
 {
   template<typename ...Params>
@@ -30,31 +45,66 @@ namespace siconos
       struct fext : some::vector<dof>, // some::function<...>
                     access<fext> {};
 
-      using attributes = gather<mass_matrix, q, velocity, fext>;
+      using attributes = type::attributes<mass_matrix, q, velocity, fext>;
 
+      template<typename Handle, typename Data>
+      struct interface : default_interface<Handle>
+      {
+        INTERFACE_START(Handle, Data);
+        GET(mass_matrix);
+        GET(velocity);
+        GET(q);
+        GET(fext);
+      };
     };
 
     struct relation : item<>
     {
-      struct h_matrix : some::matrix<1, dof>, access<h_matrix> {};
+      struct h_matrix : some::matrix<dof, dof>, access<h_matrix> {};
 
-      using attributes = gather<h_matrix>;
+      using attributes = type::attributes<h_matrix>;
 
-      static constexpr auto compute_input = []()
+      template<typename Handle, typename Data>
+      struct interface : default_interface<Handle>
       {
-      };
 
-      static constexpr auto compute_output = []<match::item Interaction,
-                                                std::size_t deriv_num>
-        (double time, Interaction, auto& data)
-      {
-        auto& y = get<typename Interaction::y>(data);
-        auto& H = get<h_matrix>(data);
-      };
+        using default_interface<Handle>::self;
 
+        GET(h_matrix);
+
+        static constexpr auto compute_input = []<typename Interaction, typename DS>
+          (double time, Interaction inter, DS ds)
+        {
+        };
+
+
+        template<std::size_t DerivNum, typename Interaction, typename DS>
+        auto compute_output
+        (double time, Interaction inter, DS ds)
+        {
+          auto& y = inter.y()[DerivNum];
+          auto& H = self()->h_matrix();
+
+          auto& x = [&ds]() -> decltype(auto)
+          {
+          if constexpr (DerivNum == 1)
+          {
+            return ds.velocity();
+          }
+          else
+          {
+            return ds.q();
+          }
+          }();
+
+          prod(H, x, y);
+        };
+      };
     };
   };
 
+  struct equality_condition_nsl {};
+  struct relay_nsl {};
   struct nonsmooth_law
   {
     struct newton_impact_friction : item<>
@@ -62,15 +112,32 @@ namespace siconos
       struct e : access<e>, some::scalar {};
       struct mu : some::scalar, access<mu> {};
 
-      using attributes = gather<e, mu>;
+      using attributes = type::attributes<e, mu>;
+
+      template<typename Handle, typename Data>
+      struct interface : default_interface<Handle>
+      {
+        using default_interface<Handle>::self;
+
+        GET(e);
+        GET(mu);
+
+      };
+
     };
 
     struct newton_impact : item<>
     {
-      struct e : some::scalar, access<e> {};
+      struct e : some::scalar, access<e>, text<"e"> {};
 
       using attributes = gather<e>;
 
+      template<typename Handle, typename Data>
+      struct interface : default_interface<Handle>
+      {
+        using default_interface<Handle>::self;
+        GET(e);
+      };
     };
   };
 
@@ -80,28 +147,60 @@ namespace siconos
     using dynamical_system = typename Formulation::dynamical_system;
     using interaction = Interaction;
 
-    struct dsg0 : some::graph<some::item_ref<dynamical_system>,
-                              some::item_ref<interaction>>{};
+    struct dynamical_system_graphs :
+      some::bounded_collection<some::graph<some::item_ref<dynamical_system>,
+                                           some::item_ref<interaction>>, 1>{};
 
-    struct ig0 : some::graph<some::item_ref<interaction>,
-                             some::item_ref<dynamical_system>>{};
+    struct interaction_graphs :
+      some::bounded_collection<some::graph<some::item_ref<interaction>,
+                                           some::item_ref<dynamical_system>>, 2>{};
 
-    struct ig1 : some::graph<some::item_ref<interaction>,
-                             some::item_ref<dynamical_system>>{};
 
-    using attributes = gather<dsg0, ig0, ig1>;
+    using attributes = gather<dynamical_system_graphs, interaction_graphs>;
+
+    template<typename Handle, typename Data>
+    struct interface : default_interface<Handle>
+    {
+      GET(dynamical_system_graphs);
+      GET(interaction_graphs);
+
+      using default_interface<Handle>::self;
+      template <match::handle<dynamical_system> ds_t,
+        match::handle<interaction> inter_t>
+      decltype(auto) link (ds_t ds, inter_t inter)
+      {
+        auto& dsg0 = self()->dynamical_system_graphs()[0];
+        auto& ig0 = self()->interaction_graphs()[0];;
+
+        auto dsgv = dsg0.add_vertex(ds);
+        return dsg0.add_edge(dsgv, dsgv, inter, ig0);
+      };
+    };
   };
 
-  template<typename Nslaw, typename Formulation, std::size_t N>
+  template<typename Nslaw, typename Formulation, std::size_t N, std::size_t K=2>
   struct interaction : item<>
   {
     struct nonsmooth_law : some::item_ref<Nslaw>, access<nonsmooth_law> {};
     struct relation      : some::item_ref<typename Formulation::relation>,
                            access<relation> {};
-
-    struct y : some::vector<N*Formulation::dof>{};
+    static constexpr auto number_of_ds = N;
+    struct lambda : some::vector<K, some::vector<N*Formulation::dof>>, access<lambda> {};
+    struct y : some::vector<K, some::vector<N*Formulation::dof>>, access<y> {};
     using attributes = gather<nonsmooth_law,
-                              relation>;
+                              relation, lambda, y>;
+
+    template<typename Handle, typename Data>
+    struct interface : default_interface<Handle>
+    {
+      using default_interface<Handle>::self;
+
+      GET(nonsmooth_law);
+      GET(lambda);
+      GET(relation);
+      GET(y);
+    };
+
   };
 
   struct lcp
@@ -111,16 +210,24 @@ namespace siconos
   struct one_step_nonsmooth_problem : item<>
   {
     using problem_type = Type;
-
     struct level : some::indice {};
-
     using attributes = gather<level>;
+
+    template<typename Handle, typename Data>
+    struct interface : default_interface<Handle>
+    {
+      using default_interface<Handle>::self;
+
+      GET(level);
+    };
+
   };
 
-  template<typename Form>
+  template<typename Form, typename Interaction>
   struct one_step_integrator
   {
     using formulation = Form;
+    using interaction = Interaction;
     using system = typename formulation::dynamical_system;
     using q = typename system::q;
     using velocity = typename system::velocity;
@@ -129,21 +236,29 @@ namespace siconos
 
     struct euler : item<>
     {
-      using kinds = gather<
+      using properties = gather<
         keep<q, 2>,
         keep<velocity, 2>>;
 
-      static void compute_free_state(auto step, auto h, auto& data)
+      using attributes = gather<>;
+
+      template<typename Handle, typename Data>
+      struct interface : default_interface<Handle>
       {
-        auto& velocities = get_memory<velocity>(data);
-        auto& mass_matrices = get_memory<mass_matrix>(data);
-        auto& external_forces = get_memory<fext>(data);
+        using default_interface<Handle>::self;
+        void compute_free_state(auto step, auto h)
+        {
+          // auto& data = self()->data();
+          // auto& velocities = get_memory<velocity>(data);
+          // auto& mass_matrices = get_memory<mass_matrix>(data);
+          // auto& external_forces = get_memory<fext>(data);
 
-        auto& Ms =      memory(step, mass_matrices);
-        auto& vs =      memory(step, velocities);
-        auto& vs_next = memory(step+1, velocities);
-        auto& fs =      memory(step, external_forces);
+          // auto& Ms =      memory(step, mass_matrices);
+          // auto& vs =      memory(step, velocities);
+          // auto& vs_next = memory(step+1, velocities);
+          // auto& fs =      memory(step, external_forces);
 
+        };
       };
 
     };
@@ -151,54 +266,88 @@ namespace siconos
     struct moreau_jean : item<>
     {
       struct theta : some::scalar {};
+      struct gamma : some::scalar {};
+      struct constraint_activation_threshold : some::scalar {};
+      using attributes = type::attributes<theta, gamma,
+                                          constraint_activation_threshold>;
 
-      using attributes = gather<theta>;
-
-      using kinds = gather<
+      using properties = gather<
         keep<typename system::q, 2>,
         keep<typename system::velocity, 2>>;
 
-      static constexpr auto compute_iteration_matrix = [](auto step, auto& data)
-        constexpr -> decltype(auto)
+      template<typename Handle, typename Data>
+      struct interface : default_interface<Handle>
       {
-        auto& mass_matrices = get_memory<mass_matrix>(data);
-        auto& external_forces = get_memory<fext>(data);
+        using default_interface<Handle>::self;
 
-        auto& Ms =      memory(step, mass_matrices);
-        auto& fs =      memory(step, external_forces);
+        GET(theta);
+        GET(gamma);
+        GET(constraint_activation_threshold);
 
-        if constexpr(is_kind_of<mass_matrix, some::time_invariant>(data))
+        auto remove_interaction_from_index_set(
+          auto inter,
+          auto h,
+          auto i)
         {
-          if constexpr(is_kind_of<fext, some::time_invariant>(data))
+          auto          y = inter.y()[i-1][0];
+          const auto ydot = inter.y()[i][0];
+          const auto& gamma_v = inter.gamma();;
+          y += gamma_v * h * ydot ;
+
+          return y <= self().constraint_activation_threshold();
+        };
+
+
+        auto add_interaction_in_index_set(
+          auto inter,
+          auto h,
+          auto i)
+        {
+          return !remove_interaction_from_index_set(inter, h, i);
+        };
+
+        auto compute_iteration_matrix(auto step)
+        {
+          auto& data = this->data();
+          auto& mass_matrices = get_memory<mass_matrix>(data);
+          auto& external_forces = get_memory<fext>(data);
+
+          auto& mats =      memory(step, mass_matrices);
+          auto& fs =      memory(step, external_forces);
+
+          if constexpr(has_property<mass_matrix, some::time_invariant>(data))
           {
-            if constexpr(is_kind_of<mass_matrix, some::diagonal>(data))
+            if constexpr(has_property<fext, some::time_invariant>(data))
             {
-              for (auto [M, f] : ranges::views::zip(Ms, fs))
+              if constexpr(has_property<mass_matrix, some::diagonal>(data))
               {
-                linear_algebra::solve_in_place(M, f);
+                for (auto [mat, f] : ranges::views::zip(mats, fs))
+                {
+                  linear_algebra::solve_in_place(mat, f);
+                }
               }
             }
           }
-        }
-      };
+        };
+        auto compute_free_state(auto step, auto h)
+        {
+          auto& data = this->data();
+          auto& velocities = get_memory<velocity>(data);
+          auto fexts  = get_memory<fext>(data);
+          auto theta = get<moreau_jean::theta>(*this, data);
 
-      static void compute_free_state(auto step, auto h, auto& data)
-      {
-         auto& velocities = get_memory<velocity>(data);
-         auto fexts  = get_memory<fext>(data);
-         auto theta = get<moreau_jean::theta>(data);
+          auto& vs =      memory(step, velocities);
+          auto& vs_next = memory(step+1, velocities);
+          auto& minv_fs      = memory(step, fexts);
+          auto& minv_fs_next      = memory(step+1, fexts);
 
-         auto& vs =      memory(step, velocities);
-         auto& vs_next = memory(step+1, velocities);
-         auto& minv_fs      = memory(step, fexts);
-         auto& minv_fs_next      = memory(step+1, fexts);
-
-         // f <- M  f
-         for (auto [v, v_next, minv_f, minv_f_next] :
-                ranges::views::zip(vs, vs_next, minv_fs, minv_fs_next))
-         {
-           v_next = v + h*theta*minv_f + h*(1 - theta)*minv_f_next;
-         }
+          // f <- M  f
+          for (auto [v, v_next, minv_f, minv_f_next] :
+                 ranges::views::zip(vs, vs_next, minv_fs, minv_fs_next))
+          {
+            v_next = v + h*theta*minv_f + h*(1 - theta)*minv_f_next;
+          }
+        };
       };
     };
   };
@@ -210,40 +359,233 @@ namespace siconos
     struct h : some::scalar {};
     struct step : some::indice {};
     using attributes = gather<h, t0, step>;
+
+    template<typename Handle, typename Data>
+    struct interface : default_interface<Handle>
+    {
+      using default_interface<Handle>::self;
+      using info_t = std::decay_t<decltype(ground::get<info>(Data{}))>;
+      using env = typename info_t::env;
+
+      GET(t0);
+      GET(h);
+      GET(step);
+    };
+
   };
 
   template<typename TD, typename OSI, typename OSNSPB, typename TOPO>
   struct time_stepping : item<>
   {
-    using time_discretization = TD;
-    using one_step_integrator = OSI;
-    using one_step_nonsmooth_problem = OSNSPB;
-    using topology = TOPO;
+    using time_discretization_t = TD;
+    using one_step_integrator_t = OSI;
+    using one_step_nonsmooth_problem_t = OSNSPB;
+    using topology_t = TOPO;
 
-    using items = gather<time_discretization,
-                         one_step_integrator,
-                         one_step_nonsmooth_problem,
-                         topology>;
+    using attributes = type::attributes_of_items<time_discretization_t,
+                                                 one_step_integrator_t,
+                                                 one_step_nonsmooth_problem_t,
+                                                 topology_t>;
 
-    static decltype(auto) current_step(auto& data)
+    template<typename Handle, typename Data>
+    struct interface : default_interface<Handle>
     {
-      return get<typename time_discretization::step>(data)[0];
-    }
+      using default_interface<Handle>::self;
+      using info_t = std::decay_t<decltype(ground::get<info>(Data{}))>;
+      using env = typename info_t::env;
 
-    static decltype(auto) time_step(auto& data)
-    {
-      return get<typename time_discretization::h>(data)[0];
-    }
+      ITEM(time_discretization);
+      ITEM(one_step_integrator);
+      ITEM(one_step_nonsmooth_problem);
+      ITEM(topology);
 
-    static void compute_one_step(auto& data)
-    {
-      one_step_integrator::compute_free_state(current_step(data),
-                                              time_step(data), data);
-      current_step(data) += 1;
+      decltype(auto) current_step()
+      {
+        return (*self()).time_discretization().step();
+      }
 
-    }
+      decltype(auto) time_step()
+      {
+        return self()->time_discretization().h();
+      }
+
+      decltype(auto) compute_output()
+      {
+        auto& index_set1 = topology().interaction_graphs()[1];
+
+        for (auto [ui1, ui1end] = index_set1.vertices();
+             ui1 != ui1end; ++ui1)
+        {
+          auto inter1 = index_set1.bundle(*ui1);
+          auto ds = index_set1.properties(*ui1).source;
+          self()->topology().interaction().compute_output<1>(0., inter1, ds);
+
+        }
+      }
+      void compute_one_step()
+      {
+        self()->one_step_integrator().compute_free_state(current_step(),
+                                                 time_step());
+        current_step() += 1;
+      }
+
+      void update_indexsets(auto i)
+      {
+        auto& data = self()->data();
+        using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+        using env = typename info_t::env;
+
+        auto osi = self()->one_step_integrator();
+        auto topo = self()->topology();
+
+        auto& index_set0 = topo.interaction_graphs()[0];
+        auto& index_set1 = topo.interaction_graphs()[1];
+        auto& dsg0 = topo.dynamical_system_graphs()[0];
+
+        // Check index_set1
+        auto [ui1, ui1end] = index_set1.vertices();
+
+        // Remove interactions from the index_set1
+        for (auto v1next = ui1; ui1 != ui1end; ui1 = v1next)
+        {
+          ++v1next;
+          auto inter1 = xfull_handle(index_set1.bundle(*ui1), self()->data());  // get inter handle
+          auto rel1 = inter1.relation();
+
+          if (index_set0.is_vertex(inter1))
+          {
+            auto inter1_descr0 = index_set0.descriptor(inter1);
+            assert((index_set0.color(inter1_descr0) == env::white_color));
+
+            index_set0.color(inter1_descr0) = env::gray_color;
+            if constexpr (
+              !std::derived_from<typename topology_t::interaction::nonsmooth_law,
+              equality_condition_nsl>)
+            {
+              // We assume that the integrator of the ds1 drive the update of the index set
+              //SP::OneStepIntegrator Osi = index_set1.properties(*ui1).osi;
+              auto& ds1 = index_set1.properties(*ui1).source;
+//              auto& osi = dsg0.properties(dsg0.descriptor(ds1)).osi;
+
+//              //if(predictorDeactivate(inter1,i))
+              if(osi.remove_interaction_from_index_set(inter1, self()->time_step(), i))
+              {
+//                // Interaction is not active
+//                // ui1 becomes invalid
+                index_set0.color(inter1_descr0) = env::black_color;
+                index_set1.eraseProperties(*ui1);
+
+//              InteractionsGraph::OEIterator oei, oeiend;
+                for(auto [oei, oeiend] = index_set1.out_edges(*ui1);
+                    oei != oeiend; ++oei)
+                {
+                  auto [ed1, ed2] = index_set1.edges(index_set1.source(*oei), index_set1.target(*oei));
+                  if(ed2 != ed1)
+                  {
+                    index_set1.eraseProperties(ed1);
+                    index_set1.eraseProperties(ed2);
+                  }
+                  else
+                  {
+                    index_set1.eraseProperties(ed1);
+                  }
+                }
+                index_set1.remove_vertex(inter1);
+//           /* \warning V.A. 25/05/2012 : Multiplier lambda are only set to zero if they are removed from the IndexSet*/
+                inter1.lambda(1) = {};
+//                topo->setHasChanged(true);
+              }
+            }
+          }
+          else
+          {
+            // Interaction is not in index_set0 anymore.
+            // ui1 becomes invalid
+            index_set1.eraseProperties(*ui1);
+            for(auto [oei, oeiend] = index_set1.out_edges(*ui1);
+                oei != oeiend; ++oei)
+            {
+              auto [ed1, ed2] = index_set1.edges(index_set1.source(*oei), index_set1.target(*oei));
+              if(ed2 != ed1)
+              {
+                index_set1.eraseProperties(ed1);
+                index_set1.eraseProperties(ed2);
+              }
+              else
+              {
+                index_set1.eraseProperties(ed1);
+              }
+            }
+
+            index_set1.remove_vertex(inter1);
+//       topo->setHasChanged(true);
+          }
+      }
+
+//   // index_set0\index_set1 scan
+//   InteractionsGraph::VIterator ui0, ui0end;
+//   //Add interaction in index_set1
+      for(auto [ui0, ui0end] = index_set0.vertices(); ui0 != ui0end; ++ui0)
+      {
+        if(index_set0.color(*ui0) == env::black_color)
+        {
+          // reset
+          index_set0.color(*ui0) = env::white_color ;
+        }
+        else
+        {
+          if(index_set0.color(*ui0) == env::gray_color)
+          {
+            // reset
+            index_set0.color(*ui0) = env::white_color;
+
+            assert(index_set1.is_vertex(index_set0.bundle(*ui0)));
+//         /*assert( { !predictorDeactivate(index_set0->bundle(*ui0),i) ||
+//           Type::value(*(index_set0->bundle(*ui0)->nonSmoothLaw())) == Type::EqualityConditionNSL ;
+//           });*/
+          }
+          else
+          {
+            assert(index_set0.color(*ui0) == env::white_color);
+
+            auto inter0 = index_set0.bundle(*ui0);
+            assert(!index_set1.is_vertex(inter0));
+            bool activate = true;
+            if constexpr(
+              !std::derived_from<typename topology_t::interaction::nonsmooth_law,
+              equality_condition_nsl> &&
+              !std::derived_from<typename topology_t::interaction::nonsmooth_law,
+              relay_nsl>)
+//             && Type::value(*(inter0->nonSmoothLaw())) != Type::RelayNSL)
+            {
+              //SP::OneStepIntegrator Osi = index_set0->properties(*ui0).osi;
+//           // We assume that the integrator of the ds1 drive the update of the index set
+              auto ds1 = index_set1.properties(*ui0).source;
+//           OneStepIntegrator& osi = *DSG0.properties(DSG0.descriptor(ds1)).osi;
+
+              activate = osi.add_interaction_in_index_set(inter0, time_step(), i);
+            }
+            if(activate)
+            {
+              assert(!index_set1.is_vertex(inter0));
+
+//           // vertex and edges insertion in index_set1
+              index_set1.copy_vertex(inter0, *index_set0);
+//           topo->setHasChanged(true);
+              assert(index_set1.is_vertex(inter0));
+            }
+          }
+        }
+      }
+
+//   assert(index_set1->size() <= index_set0->size());
+
+//   DEBUG_PRINTF("TimeStepping::updateIndexSet(unsigned int i). update index_sets end : index_set0 size : %ld\n", index_set0->size());
+//   DEBUG_PRINTF("TimeStepping::updateIndexSet(unsigned int i). update IndexSets end : index_set1 size : %ld\n", index_set1->size());
+// }
+
+      };
+    };
   };
-
-}
-
+};
 #endif

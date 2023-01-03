@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <boost/hana/functional/overload_linearly.hpp>
 #include <numeric>
-
+#include <type_traits>
 
 #include <boost/hana/fwd/map.hpp>
 #include <boost/hana/pair.hpp>
@@ -14,14 +14,25 @@
 #include <boost/hana/ext/std/array.hpp>
 #include <boost/hana/fwd/find_if.hpp>
 #include <boost/hana/fwd/for_each.hpp>
-#include <boost/hana/experimental/type_name.hpp>
+#include <boost/hana/string.hpp>
 
+#if defined(__clang__)
+#include <ctti/nameof.hpp>
+#endif
+#include <typeinfo>
+// cf https://www.boost.org/doc/libs/1_80_0/libs/hana/doc/html/structboost_1_1hana_1_1string.html#ad77f7afff008c2ce15739ad16a8bf0a8
+#define BOOST_HANA_CONFIG_ENABLE_STRING_UDL 1
 
 namespace siconos
 {
+
   namespace ground
   {
     namespace hana = boost::hana;
+
+    static constexpr auto compose = hana::compose;
+
+    static constexpr auto lockstep = hana::lockstep;
 
     static constexpr auto any_of = hana::any_of;
 
@@ -88,28 +99,46 @@ namespace siconos
     static auto t_arg = []<typename F>(F&& f) { return ground::partial(f, T{}); };
 
     template<typename First, typename Second>
-    using pair = hana::pair<decltype(hana::type_c<First>), Second>;
+    using pair = hana::pair<std::decay_t<decltype(hana::type_c<First>)>,
+                            Second>;
 
-    static auto make_pair = hana::make_pair;
+    template<typename First, typename Second>
+    using ipair = hana::pair<First, Second>;
+
+    template<typename T>
+    static auto type_c = hana::type_c<T>;
+
+    static auto make_pair = []<typename First, typename Second>(First, Second&& second) constexpr -> decltype(auto)
+    {
+      return hana::make_pair(hana::type_c<First>, std::forward<Second>(second));
+    };
 
     template<typename ...Pairs>
     using map = hana::map<Pairs...>;
 
+    template<typename Data, typename Key>
+    concept has_key = requires (Data m) { m[hana::type_c<Key>] ;};
+
     template<typename T>
-    static auto get = [](auto&& data) constexpr -> decltype(auto)
+    static auto get = []<has_key<T> D>(D&& data) constexpr -> decltype(auto)
     {
-//      if constexpr (hana::contains(data_t{}, hana::type_c<T>))
-      {
-        return data[hana::type_c<T>];
-      }
-//      else
-//      {
-        // cf https://stackoverflow.com/questions/38304847/constexpr-if-and-static-assert
-//        []<bool flag = false>()
-//        {
-//          static_assert(flag, "map: unknown key");
-//        }();
-//      }
+//     using data_t = std::decay_t<D>;
+//     if (hana::contains(data_t{}, hana::type_c<T>))
+//     {
+//       [&data]<bool flag = true>()
+//   {
+          return data[hana::type_c<T>];
+//       }();
+//     }
+          //   else
+          //    {
+       // cf https://stackoverflow.com/questions/38304847/constexpr-if-and-static-assert
+       //[]<bool flag = false, typename U = T>()
+          // {
+          // std::cout << "---" << typeid(T).name() << std::endl;
+          // assert("map: unknown key");
+          // }();
+          //   }
     };
 
     static auto transform = hana::transform;

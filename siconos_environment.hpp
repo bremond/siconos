@@ -11,8 +11,16 @@
 #include "siconos_pattern.hpp"
 #include "siconos.hpp"
 
+#include <boost/numeric/ublas/vector.hpp>
+#include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/banded.hpp>
+#include <boost/numeric/ublas/functional.hpp>
+#include <boost/numeric/ublas/io.hpp>
+
+
 namespace siconos
 {
+  namespace ublas = boost::numeric::ublas;
   struct standard_environment
   {
     using scalar = double;
@@ -34,19 +42,26 @@ namespace siconos
     using bounded_collection = std::array<S, N>;
 
     template<typename T, indice N>
-    using vector = std::array<T, N>;
+    using vector = ublas::fixed_vector<T, N>;
 
     template<typename T, indice N, indice M>
-    using matrix = std::array<T, N*M>;
+    using matrix = ublas::fixed_matrix<T, M, N>;
 
     template<typename T, indice N>
-    using diagonal_matrix = std::array<T, N>;
+    using diagonal_matrix = ublas::diagonal_matrix<T, ublas::row_major, ublas::bounded_array<scalar, N>>;
 
     template<typename T>
-    using item_ref = siconos::internal_handle<T, indice>;
+    using item_ref = siconos::half_handle<T, indice>;
 
     template<typename T>
     using default_storage = std::array<T, 1>;
+
+    static constexpr auto white_color = boost::white_color;
+
+    static constexpr auto gray_color = boost::gray_color;
+
+    static constexpr auto black_color = boost::black_color;
+
 
   };
 }
