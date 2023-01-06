@@ -254,7 +254,9 @@ namespace siconos
       any_full_handle<T> &&
       item<I> && std::derived_from<I, typename T::type>;
 
-
+    template<typename T>
+    concept wrap =
+      item<T> && requires { T::type; };
 
   }
 
@@ -372,7 +374,9 @@ namespace siconos
     concept attached_storage =
       attribute<T> &&
       item<I> &&
-      (std::derived_from<I, typename T::item> ||  std::derived_from<typename T::item, I>);
+      (std::derived_from<I, typename T::item> ||  std::derived_from<typename T::item, I>
+       // wrap case
+       || std::derived_from<typename I::type, typename T::item> );
 
     template<typename T>
     concept item_ref =
@@ -494,6 +498,8 @@ namespace siconos
   template<match::attribute Attr>
   static auto item_attribute = [](concepts::tuple_like auto items) constexpr
   {
+    using items_t = std::decay_t<decltype(items)>;
+
     auto loop = rec([]<typename Tpl>(auto&& loop, Tpl tpl)
     {
       using tpl_t = std::decay_t<Tpl>;
@@ -515,7 +521,8 @@ namespace siconos
       }
       else
       {
-        []<bool flag = false>()
+        []<typename Attribute = Attr, typename LastItem = item_t,
+           typename Items = items_t, bool flag = false>()
           {
             static_assert(flag, "item not found");
           }();
@@ -635,19 +642,15 @@ namespace siconos
 
   namespace match
   {
-    //
+    template<typename H>
+    concept half_handle = requires { typename H::half_handle_t; };
+
     template<typename H, typename A>
     concept handle_attribute =
       attribute<A> &&
       item<typename H::type> &&
       must::contains<A, typename H::type::attributes>;
 
-    // suspect
-    template<typename H, typename IA>
-    concept handle_intern_attribute =
-      attribute<IA> &&
-      item<typename H::type> &&
-      must::contains<IA, decltype(all_attributes(typename H::type::attributes{}))>;
   }
   namespace type
   {

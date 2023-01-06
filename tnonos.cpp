@@ -13,6 +13,7 @@ using fmt::print;
 
 using namespace siconos;
 using env = siconos::standard_environment;
+
 int main()
 {
   using formulation = lagrangian<linear, time_invariant, degrees_of_freedom<3>>;
@@ -63,9 +64,15 @@ int main()
 
   //static_assert(std::is_same_v<td, decltype(item_attribute<td::step>(all_items(simulation{})))>);
 
-  static_assert(std::is_same_v<typename siconos::traits::config<env, typename siconos::time_discretization<>::step>::type,
+  static_assert(std::is_same_v<typename siconos::traits::config<env>::convert<typename siconos::time_discretization<>::step>::type,
                 typename env::indice>);
 
+  static_assert(std::is_same_v<typename siconos::traits::config<env>::convert<some::scalar>::type,
+                typename env::scalar>);
+
+  static_assert(match::attached_storage<attached_storage<ball, zz, some::scalar>, ball>);
+  static_assert(match::attached_storage<attached_storage<ball, zz, some::scalar>, wrap<some::unbounded_collection<ball>>>);
+  static_assert(!match::attached_storage<attached_storage<ball, zz, some::scalar>, nslaw>);
   static_assert(filter<hold<decltype([]<typename T>(T){ return std::floating_point<T>; })>>(std::tuple<char,int,double>{}) == std::tuple<double>{});
 //  static_assert(std::is_same_v<decltype(all_items_of_kind<graph_item>(simulation{})),
 //                gather<ball, interaction>>);
@@ -123,6 +130,11 @@ int main()
   auto nslaw1 = add<nslaw>(data1);
 
   nslaw::e::at(nslaw1) = 0.9;
+
+  auto data2 = siconos::make_storage<env,
+                                     wrap<some::unbounded_collection<nslaw>>,
+                                     with_properties<attached_storage<nslaw, zz, some::scalar>>>();
+
   auto data = siconos::make_storage<env, simulation,
                                     wrap<some::bounded_collection<relation, 3>>,
                                     wrap<some::unbounded_collection<ball>>,
@@ -256,9 +268,8 @@ int main()
    auto ustore5 = make_storage<env, simulation,
                                wrap<some::unbounded_collection<ball>>,
                                wrap<some::unbounded_collection<interaction>>,
-                               with_properties<diagonal<ball::mass_matrix>>>();
-//                                               ,
-//                                               attached_storage<ball, zz , some::scalar>>>();
+                               with_properties<diagonal<ball::mass_matrix>,
+                                               attached_storage<ball, zz , some::scalar>>>();
 
 
    ground::get<ball::q>(ustore5)[0].push_back({7.,8.,9.});
@@ -348,8 +359,19 @@ int main()
 
    auto xball1 = add<ball>(dd);
    auto xball2 = add<ball>(dd);
+   auto xball3 = add<ball>(dd);
 
-//   ground::get<attached_storage<ball, zz, some::scalar>>(ustore5)[0][0] = 1.0;
+   print("{},{}\n", xball1.get(), xball2.get());
+   xball1.velocity() = {1, 1, 1};
+   xball2.velocity() = {2, 2, 2};
+   xball3.velocity() = {3, 3, 3};
+   print("{}\n", ground::get<ball::velocity>(dd));
+   siconos::remove(xball1, dd);
+   print("{},{},{}\n", xball1.get(), xball2.get(), xball3.get());
+   print("{}\n", ground::get<ball::velocity>(dd));
+
+   //   ground::get<attached_storage<ball, zz, some::scalar>>(ustore5)[0][0]
+   //   = 1.0;
 
 #ifdef __clang__
    for_each(dd, []<typename Key, typename Value>(Key k, Value v)

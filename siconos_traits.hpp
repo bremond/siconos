@@ -72,10 +72,17 @@ namespace siconos
             }
           });
 
-    template<typename E, match::attribute A>
+    template<typename T, typename E>
+    concept translatable = requires (T t) { translate(E{}, t); };
+
+    template<typename E>
     struct config
     {
-      using type = decltype(translate(E{}, A{}));
+      template<translatable<E> A>
+      struct convert
+      {
+        using type = decltype(translate(E{}, A{}));
+      };
     };
   }
 }

@@ -28,6 +28,14 @@ namespace siconos
 
   namespace ground
   {
+
+    // debug (see_below for clang, gcc above...)
+#if defined( __clang__)
+    template <typename ...Ts> constexpr bool type_trace() { int see_messages_below; return true;};
+#else
+    template <typename ...Ts> constexpr bool type_trace() { int see_messages_above; return true;};
+#endif
+
     namespace hana = boost::hana;
 
     static constexpr auto compose = hana::compose;
@@ -122,23 +130,7 @@ namespace siconos
     template<typename T>
     static auto get = []<has_key<T> D>(D&& data) constexpr -> decltype(auto)
     {
-//     using data_t = std::decay_t<D>;
-//     if (hana::contains(data_t{}, hana::type_c<T>))
-//     {
-//       [&data]<bool flag = true>()
-//   {
-          return data[hana::type_c<T>];
-//       }();
-//     }
-          //   else
-          //    {
-       // cf https://stackoverflow.com/questions/38304847/constexpr-if-and-static-assert
-       //[]<bool flag = false, typename U = T>()
-          // {
-          // std::cout << "---" << typeid(T).name() << std::endl;
-          // assert("map: unknown key");
-          // }();
-          //   }
+      return data[hana::type_c<T>];
     };
 
     static auto transform = hana::transform;

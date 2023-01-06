@@ -21,7 +21,6 @@ namespace siconos
   }
 
   struct info{};
-  struct internal_index{};
 
   template<match::property ...Parts>
   struct with_properties : item<>
@@ -70,7 +69,11 @@ namespace siconos
     using full_handle_t = void;
     using info_t = std::decay_t<decltype(ground::get<info>(D{}))>;
     using indice = typename info_t::env::indice;
-
+    using attached_storages_t = decltype(filter<hold<decltype(
+                                           []<typename X>(X)
+      {
+        return match::attached_storage<X, T>;
+      })>>(typename info_t::all_properties_t{}));
     decltype(auto) attributes() { return typename half_handle<T, R>::type::attributes{}; };
 
     D& _data;
@@ -114,26 +117,6 @@ namespace siconos
   }
 
 
-  template<match::item T>
-  auto make_full_handle(const auto& indx, auto& data)
-  {
-    using data_t = std::decay_t<decltype(data)>;
-    using info_t = std::decay_t<decltype(ground::get<info>(data))>;
-    using indice = typename info_t::env::indice;
-
-    indice index = indx;
-    return full_handle<T, indice, data_t>{index, data};
-  }
-
-  template<match::item T, typename D>
-  auto xfull_handle(const half_handle<T, typename std::decay_t<decltype(ground::get<info>(D{}))>::env::indice>& ha, D& data)
-  {
-    using data_t = std::decay_t<decltype(data)>;
-    using info_t = std::decay_t<decltype(ground::get<info>(data))>;
-    using indice = typename info_t::env::indice;
-
-    return full_handle<T, indice, data_t>{ha, data};
-  }
 
   template<typename T, std::size_t N>
   using memory_t = std::array<T, N>;
@@ -257,14 +240,14 @@ namespace siconos
     // else...
   };
 
-  template<typename Env, typename ...Attributes>
+  template<typename Env, match::attribute ...Attributes>
   struct unit_storage
   {
     using env = Env;
 
     using type = ground::map<
       ground::pair<Attributes,
-                   typename traits::config<env, Attributes>::type>
+                   typename traits::config<env>::template convert<Attributes>::type>
       ...>;
 
   };
@@ -278,20 +261,18 @@ namespace siconos
     struct iinfo
     {
       using env = Env;
-      using all_items_t =
-        decltype(flatten(append(
-                           all_items(Items{})...,
-                           gather<with_properties<attached_storage<Items,
-                           internal_index, some::indice>>>{}...)));
+      using all_items_t      = decltype(flatten(append(all_items(Items{})...)));
       using all_attributes_t = decltype(flatten(append(transform(all_attributes, all_items_t{}))));
       using all_properties_t = decltype(flatten(append(transform(all_properties, all_items_t{}))));
+
+      // subset of all_properties_t
+      using all_attached_storages_t = decltype(filter<hold<decltype(
+                                                 []<typename T>(T)
+        {
+          return std::derived_from<T, some::attached_storage>;
+        })>>(all_properties_t{}));
     };
 
-    using all_attached_storage_t = decltype(filter<hold<decltype(
-                                           []<typename T>(T)
-      {
-        return std::derived_from<T, some::attached_storage>;
-      })>>(typename iinfo::all_properties_t{}));
 
     // base map with declared attributes
     using map_t = decltype(
@@ -302,14 +283,14 @@ namespace siconos
                                        Attributes...>::type{};
         },
         flatten(append(typename iinfo::all_attributes_t{},
-                       all_attached_storage_t{}))));
+                       typename iinfo::all_attached_storages_t{}))));
 
     // final map with info added
     using type = with_info_t<iinfo, map_t>;
   };
 
   static auto attached_storages = []<typename Handle>(Handle h, auto& data)
-    constexpr
+    constexpr -> decltype(auto)
   {
     using info_t = std::decay_t<decltype(ground::get<info>(data))>;
     using item_t = typename Handle::type;
@@ -324,51 +305,32 @@ namespace siconos
   template<typename Handle, typename Data>
   using attached_storages_t = std::decay_t<decltype(attached_storages(Handle{}, Data{}))>;
 
-  static auto handle_index = []<typename Handle>(Handle& h, auto step, auto& data)
-    constexpr -> decltype(auto)
+  template<match::item T>
+  auto make_full_handle(const auto& indx, auto& data)
   {
-     using istores_t = std::decay_t<decltype(filter<hold<decltype(
-      []<typename T>(T)
-       {
-         return std::derived_from<typename T::tag, internal_index>;
-       })>>(attached_storages(h, data)))>;
-     static_assert(std::tuple_size_v<istores_t> <= 1);
-     if constexpr(std::tuple_size_v<istores_t> == 1)
-     {
-       using key = std::decay_t<decltype(std::get<0>(istores_t{}))>;
-       // indirect index
-       return ground::get<key>(data)[step][h.get()];
-     }
-     else
-     {
-       // direct index : for example info key
-       return h.get();
-     }
-  };
+    using data_t = std::decay_t<decltype(data)>;
+    using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+    using indice = typename info_t::env::indice;
 
-  static auto xhandle_index(auto& h, auto step, auto& data)
-  {
-    return handle_index(h, step, data);
+    indice index = indx;
+    return full_handle<T, indice, data_t>{index, data};
   }
-
-
-  template<typename Handle>
-  using internal_index_storage_t = std::decay_t<decltype(internal_index_storage(Handle{}))>;
 
   template<match::attribute A>
   static auto get = ground::overload (
-    []<match::handle_attribute<A> Handle, typename Data>(auto step, Handle& handle, Data&& data)
+    []<match::handle_attribute<A> Handle, typename Data>(
+      auto step, Handle& handle, Data& data)
     constexpr -> decltype(auto)
     {
       return memory(step,
-                    ground::get<A>(std::forward<Data>(data)))
+                    ground::get<A>(data))
         [handle.get()];
     },
     []<match::handle_attribute<A> Handle, typename Data>(
-      Handle& handle, Data&& data)
+      Handle& handle, Data& data)
     constexpr -> decltype(auto)
     {
-      return memory(0, ground::get<A>(std::forward<Data>(data)))
+      return memory(0, ground::get<A>(data))
         [handle.get()];
     });
 
@@ -440,8 +402,8 @@ namespace siconos
               if constexpr (has_property<Attribute, some::diagonal>(base_storage))
               {
                 // refine attribute specification toward diagonal storage
-                return typename traits::config<typename info_t::env,
-                                               some::diagonal_matrix<Attribute>>::type();
+                return typename traits::config<typename info_t::env>::template
+                  convert<some::diagonal_matrix<Attribute>>::type();
               }
               // if constexpr (has_property<Attribute, other>(base_storage))
               // etc.
@@ -486,6 +448,35 @@ namespace siconos
         });
   };
 
+  static auto remove =
+    [](auto h, auto& data)
+    {
+      using item_t = typename std::decay_t<decltype(h)>::type;
+      using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+      using all_keeps_t = decltype(all_properties_as<some::keep>(data));
+
+      using indice = typename info_t::env::indice;
+
+      auto attrs = flatten(append(attributes(item_t{}),
+                                  attached_storages(h, data)));
+
+      using attrs_t = std::decay_t<decltype(attrs)>;
+
+      if constexpr (std::tuple_size_v<attrs_t> > 0)
+      {
+        ground::for_each(attrs,
+                         [&data, &h]<match::attribute A>(A)
+                         {
+                           return ground::for_each(
+                             ground::range<memory_size<A, all_keeps_t>>,
+                             [&data, &h](indice step)
+                             {
+                               move_back(h.get(),
+                                         memory(step, ground::get<A>(data)));
+                             });
+                         });
+      }
+    };
   template<match::item Item>
   static auto add =
     [](auto&& data) constexpr -> decltype(auto)
@@ -527,30 +518,29 @@ namespace siconos
                                     if constexpr (match::push_back<storage_t>)
                                     {
                                       storage.push_back(std::size(storage));
-                                      return n + std::size(storage) - 1;
+                                      return std::size(storage) - 1;
                                     }
                                     else
                                     {
                                       storage[0] = 0;
-                                      return n;
+                                      return 0;
                                     }
                                   }
                                   else
                                   {
                                     if constexpr (match::push_back<storage_t>)
                                     {
-                                      auto r = typename storage_t::value_type{};
-                                      storage.push_back(r);
-                                      return n + std::size(storage) - 1;
+                                      storage.push_back(typename storage_t::value_type{});
+                                      return std::size(storage) - 1;
                                     }
                                     else
                                     {
                                       storage[0] = typename storage_t::value_type{};
-                                      return n;
+                                      return 0;
                                     }
                                   }
                                 });
-                            }) / std::tuple_size_v<attrs_t>;
+                            });
         return make_full_handle<Item>(index, data);
       }
       else
