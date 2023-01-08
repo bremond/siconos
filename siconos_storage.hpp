@@ -316,7 +316,7 @@ namespace siconos
     return full_handle<T, indice, data_t>{index, data};
   }
 
-  template<match::attribute A>
+  template<typename A>
   static auto get = ground::overload (
     []<match::handle_attribute<A> Handle, typename Data>(
       auto step, Handle& handle, Data& data)
@@ -332,6 +332,36 @@ namespace siconos
     {
       return memory(0, ground::get<A>(data))
         [handle.get()];
+    },
+    []<match::handle_attached_storage<A> Handle, typename Data>(
+      auto step, Handle& handle, Data& data)
+    {
+      using item_t = typename Handle::type;
+      using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+      constexpr auto tpl = filter<hold<decltype(
+        []<typename T>(T)
+        {
+          return (match::attached_storage<T, item_t> && match::tag<T, A>);
+        })>>(typename info_t::all_properties_t{});
+
+//      static_assert (std::tuple_size_v<decltype(tpl)> >= 1, "attached storage not found");
+      using attached_storage_t = std::decay_t<decltype(std::get<0>(tpl))>;
+      return memory(step, ground::get<attached_storage_t>(data))[handle.get()];
+    },
+    []<match::handle_attached_storage<A> Handle, typename Data>(
+      Handle& handle, Data& data)
+    {
+      using item_t = typename Handle::type;
+      using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+      constexpr auto tpl = filter<hold<decltype(
+        []<typename T>(T)
+        {
+          return (match::attached_storage<T, item_t> && match::tag<T, A>);
+        })>>(typename info_t::all_properties_t{});
+
+//      static_assert (std::tuple_size_v<decltype(tpl)> >= 1, "attached storage not found");
+      using attached_storage_t = std::decay_t<decltype(std::get<0>(tpl))>;
+      return memory(0, ground::get<attached_storage_t>(data))[handle.get()];
     });
 
   static constexpr auto item_storage_transform =

@@ -370,8 +370,11 @@ int main()
    print("{},{},{}\n", xball1.get(), xball2.get(), xball3.get());
    print("{}\n", ground::get<ball::velocity>(dd));
 
-   //   ground::get<attached_storage<ball, zz, some::scalar>>(ustore5)[0][0]
-   //   = 1.0;
+   ground::get<attached_storage<ball, zz, some::scalar>>(ustore5)[0][0]   = 1.0;
+
+   static_assert(match::tag<attached_storage<ball, zz, some::scalar>, zz>);
+
+   auto zzx = get<zz>(some_iball, ustore5);
 
 #ifdef __clang__
    for_each(dd, []<typename Key, typename Value>(Key k, Value v)

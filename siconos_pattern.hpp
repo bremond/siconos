@@ -378,6 +378,9 @@ namespace siconos
        // wrap case
        || std::derived_from<typename I::type, typename T::item> );
 
+    template<typename T, typename Tag>
+    concept tag = std::derived_from<typename T::tag, Tag>;
+
     template<typename T>
     concept item_ref =
       attribute<T> &&
@@ -650,6 +653,15 @@ namespace siconos
       attribute<A> &&
       item<typename H::type> &&
       must::contains<A, typename H::type::attributes>;
+
+    template<typename H, typename A>
+    concept handle_attached_storage =
+      item<typename H::type> &&
+      std::tuple_size_v<std::decay_t<decltype(filter<hold<decltype(
+                                                []<typename T>(T)
+        {
+          return (match::attached_storage<T, typename H::type> && match::tag<T, A>);
+        })>>(typename H::info_t::all_properties_t{}))>> >=1 ; // not an attached storage
 
   }
   namespace type
