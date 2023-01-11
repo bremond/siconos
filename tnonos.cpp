@@ -14,6 +14,9 @@ using fmt::print;
 using namespace siconos;
 using env = siconos::standard_environment;
 
+
+
+using namespace boost::hana::literals;
 int main()
 {
   using formulation = lagrangian<linear, time_invariant, degrees_of_freedom<3>>;
@@ -22,7 +25,7 @@ int main()
   using relation = formulation::relation;
   using nslaw = nonsmooth_law::newton_impact;
   using interaction = interaction<nslaw, formulation, 1>;
-  using osi = one_step_integrator<formulation, interaction>::euler;
+  using osi = one_step_integrator<formulation, interaction>::moreau_jean;
   using td = time_discretization<>;
   using topo = topology<formulation, interaction>;
   using simulation = time_stepping<td, osi, osnspb, topo>;
@@ -294,7 +297,7 @@ int main()
    auto m = 1.0;
    auto R = 1.0;
 //   print("mass matrix: {}", get<ball::mass_matrix>(some_iball, ustore5));
-   auto ma = get<ball::mass_matrix>(some_iball, ustore5);
+   auto ma = some_iball.mass_matrix();//get<ball::mass_matrix>(some_iball, ustore5);
    ma.resize(3,3);
    ma(0,0) = m;
    ma(1,1) = m;
@@ -303,6 +306,7 @@ int main()
 
    auto simul = make_full_handle<simulation>(0, data);
 
+   simul.update_indexsets(0);
    simul.compute_one_step();
 
    print("current step : {}\n", simul.current_step());
@@ -333,13 +337,19 @@ int main()
    auto yyv = ground::get<relation::h_matrix>(ustore5);
    relation::h_matrix::at(rel)(0,0) = 1;
 
-
    interaction::relation::at(inter) = rel;
    auto& v = interaction::y::at(inter)[1];
    v = { 1, 2, 3};
 
-   rel.compute_output<1>(0., inter, some_iball);
+   rel.compute_output(0., inter, some_iball, 1_c);
 
+   rel.compute_input(0., inter, some_iball, 1_c);
+   auto hsim = make_full_handle<simulation>(0, data);
+   hsim.compute_output(1_c);
+
+   ground::get<attached_storage<ball, zz, some::scalar>>(ustore5)[0][0] = 1.0;
+   get<zz>(0, some_iball, ustore5) = 1.0;
+   some_iball.property(zz{}) = 1.0;
 //   for_each(ustore5,
    //           []<typename Key, typename Value>(Key&& key, Value&& value)
    //        {
@@ -351,31 +361,32 @@ int main()
 //   print("-->{}\n", boost::hana::experimental::type_name<ground::pair<ball, zz>>().c_str());
 #endif
    auto dd = make_storage<env, wrap<some::unbounded_collection<ball>>,
-                          with_properties<
-                            diagonal<ball::mass_matrix>,
-                            keep<ball::q, 10>>>();
-//   ,
-//                            attached_storage<ball, zz, some::scalar>>>();
+                          with_properties<diagonal<ball::mass_matrix>, keep<ball::q, 10>,
+                                          attached_storage<ball, decltype("z"_s), some::scalar>,
+                                          attached_storage<ball, symbol<"x">, some::scalar>>>();
 
-   auto xball1 = add<ball>(dd);
-   auto xball2 = add<ball>(dd);
-   auto xball3 = add<ball>(dd);
+  auto xball1 = add<ball>(dd);
+  auto xball2 = add<ball>(dd);
+  auto xball3 = add<ball>(dd);
 
-   print("{},{}\n", xball1.get(), xball2.get());
-   xball1.velocity() = {1, 1, 1};
-   xball2.velocity() = {2, 2, 2};
-   xball3.velocity() = {3, 3, 3};
-   print("{}\n", ground::get<ball::velocity>(dd));
-   siconos::remove(xball1, dd);
-   print("{},{},{}\n", xball1.get(), xball2.get(), xball3.get());
-   print("{}\n", ground::get<ball::velocity>(dd));
+  print("{},{}\n", xball1.get(), xball2.get());
+  xball1.velocity() = {1, 1, 1};
+  xball2.velocity() = {2, 2, 2};
+  xball3.velocity() = {3, 3, 3};
+  print("{}\n", ground::get<ball::velocity>(dd));
+  siconos::remove(xball1, dd);
+  print("{},{},{}\n", xball1.get(), xball2.get(), xball3.get());
+  print("{}\n", ground::get<ball::velocity>(dd));
 
-   ground::get<attached_storage<ball, zz, some::scalar>>(ustore5)[0][0]   = 1.0;
+  static_assert(match::tag<attached_storage<ball, zz, some::scalar>, zz>);
+  auto xball4 = add<ball>(dd);
+  xball4.property(symbol<"x">{}) = 3.0;
+  xball4.property("z"_s) = 4.0;
+  xball2.property(symbol<"x">{}) = 1.0;
+  xball2.property("z"_s) = 2.0;
 
-   static_assert(match::tag<attached_storage<ball, zz, some::scalar>, zz>);
 
-   auto zzx = get<zz>(some_iball, ustore5);
-
+  print("{},{},{},{}\n", xball2.property(symbol<"x">{}), xball2.property("z"_s), xball4.property(symbol<"x">{}), xball4.property("z"_s));
 #ifdef __clang__
    for_each(dd, []<typename Key, typename Value>(Key k, Value v)
             {

@@ -14,6 +14,13 @@
 
 namespace siconos
 {
+  static constexpr auto memory =
+    []<typename T>(typename T::size_type step, T& mem)
+    constexpr -> decltype(auto)
+  {
+    return mem[step%std::size(mem)];
+  };
+
   namespace some
   {
     struct keep : property {};
@@ -64,7 +71,7 @@ namespace siconos
   };
 
   template<match::item T, typename R, typename D>
-  struct full_handle : half_handle<T, R>, T::template interface<full_handle<T, R, D>, D>
+  struct full_handle : half_handle<T, R>, T::template interface<full_handle<T, R, D>>
   {
     using full_handle_t = void;
     using info_t = std::decay_t<decltype(ground::get<info>(D{}))>;
@@ -78,25 +85,21 @@ namespace siconos
 
     D& _data;
 
-    template<typename S>
-    constexpr decltype(auto) find (S&& s)
+    template<typename A>
+    constexpr decltype(auto) property(A, indice step=0)
     {
-      constexpr auto sl = make_string_literal(std::forward<S>(s));
-      using k_t = text<sl>;
-      using v_t = std::decay_t<decltype(
-        std::get<0>(
-          filter<hold<decltype([]<typename A>(A)
-            { return std::derived_from<A, k_t>; })>>
-          (attributes())))>;
-      return ground::get<v_t>(this->data())[this->get()];
+      using item_t = T;
+      constexpr auto tpl = filter<hold<decltype(
+        []<typename X>(X)
+        {
+          return (match::attached_storage<X, item_t> && match::tag<X, A>);
+        })>>(typename info_t::all_properties_t{});
+
+//      static_assert (std::tuple_size_v<decltype(tpl)> >= 1, "attached storage not found");
+      using attached_storage_t = std::decay_t<decltype(std::get<0>(tpl))>;
+      return memory(step, ground::get<attached_storage_t>(data()))[this->get()];
     }
     decltype(auto) data() { return _data; };
-
-    decltype(auto) operator () (auto attr)
-    {
-      using attr_t = decltype(attr);
-      return ground::get<attr_t>(this->data())[this->get()];
-    };
 
     explicit full_handle(R& ref, D& data) : half_handle<T, R>{ref}, _data{data} {};
 
@@ -216,12 +219,6 @@ namespace siconos
                                  typename P::type>; });
   };
 
-  static constexpr auto memory =
-    []<typename T>(typename T::size_type step, T& mem)
-    constexpr -> decltype(auto)
-  {
-    return mem[step%std::size(mem)];
-  };
 
   template<match::attribute T>
   static auto get_memory = [](auto& data) constexpr
@@ -334,7 +331,7 @@ namespace siconos
         [handle.get()];
     },
     []<match::handle_attached_storage<A> Handle, typename Data>(
-      auto step, Handle& handle, Data& data)
+      auto step, Handle& handle, Data& data) constexpr -> decltype(auto)
     {
       using item_t = typename Handle::type;
       using info_t = std::decay_t<decltype(ground::get<info>(data))>;
@@ -349,7 +346,7 @@ namespace siconos
       return memory(step, ground::get<attached_storage_t>(data))[handle.get()];
     },
     []<match::handle_attached_storage<A> Handle, typename Data>(
-      Handle& handle, Data& data)
+      Handle& handle, Data& data) constexpr -> decltype(auto)
     {
       using item_t = typename Handle::type;
       using info_t = std::decay_t<decltype(ground::get<info>(data))>;

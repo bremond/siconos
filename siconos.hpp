@@ -6,22 +6,30 @@
 #include "siconos_linear_algebra.hpp"
 #include <range/v3/view/zip.hpp>
 
-#define INTERFACE_START(Handle,Data)                                    \
-  using default_interface<Handle>::self;                                \
-  using info_t = std::decay_t<decltype(ground::get<info>(Data{}))>; \
-  using env = typename info_t::env
-
 #define GET(X) decltype(auto) X() \
   { return get<typename Handle::type::X>(*default_interface<Handle>::self(), \
                                          default_interface<Handle>::self()->data());}
 
 #define ITEM(Y)                                         \
-  full_handle<Y##_t, typename env::indice, Data> Y() \
+  decltype(auto) Y()                                    \
   {                                                     \
-    return make_full_handle<Y##_t>(self()->get(), self()->data());  \
+    return make_full_handle<Y##_t>(self()->get(), self()->data()); \
   };
 namespace siconos
 {
+
+  decltype(auto) edge1(auto& g, auto& descr)
+  {
+    auto [oei, oee] = g.out_edges(descr);
+    return oei;
+  };
+
+  decltype(auto) edge2(auto& g, auto& descr)
+  {
+    auto [oei, oee] = g.out_edges(descr);
+    return oee;
+  };
+
   template<typename ...Params>
   struct lagrangian : frame<Params ...>
   {
@@ -47,11 +55,14 @@ namespace siconos
 
       using attributes = type::attributes<mass_matrix, q, velocity, fext>;
 
-      template<typename Handle, typename Data>
+      template<typename Handle>
       struct interface : default_interface<Handle>
       {
-        INTERFACE_START(Handle, Data);
-        GET(mass_matrix);
+        using default_interface<Handle>::self;
+
+        decltype(auto) mass_matrix()
+        { return Handle::type::mass_matrix::at(*self()); };
+
         GET(velocity);
         GET(q);
         GET(fext);
@@ -64,7 +75,10 @@ namespace siconos
 
       using attributes = type::attributes<h_matrix>;
 
-      template<typename Handle, typename Data>
+      using properties = std::tuple<attached_storage<dynamical_system, symbol<"p0">,
+                                                     some::vector<dof>>>;
+
+      template<typename Handle>
       struct interface : default_interface<Handle>
       {
 
@@ -72,22 +86,24 @@ namespace siconos
 
         GET(h_matrix);
 
-        static constexpr auto compute_input = []<typename Interaction, typename DS>
-          (double time, Interaction inter, DS ds)
+        template<typename Interaction, typename DS>
+        void compute_input
+        (double time, Interaction inter, DS ds, auto level)
         {
+          auto& lambda = inter.lambda()[level];
+          prod(lambda, self()->h_matrix(), ds.property(symbol<"p0">{}));
+         // link to ds variables => check graph
         };
 
-
-        template<std::size_t DerivNum, typename Interaction, typename DS>
-        auto compute_output
-        (double time, Interaction inter, DS ds)
+        template<typename Interaction, typename DS>
+        void compute_output(double time, Interaction inter, DS ds, auto level)
         {
-          auto& y = inter.y()[DerivNum];
+          auto& y = inter.y()[1];
           auto& H = self()->h_matrix();
 
-          auto& x = [&ds]() -> decltype(auto)
+          auto& x = [&ds,&level]() -> decltype(auto)
           {
-          if constexpr (DerivNum == 1)
+          if constexpr (level == 1)
           {
             return ds.velocity();
           }
@@ -114,7 +130,7 @@ namespace siconos
 
       using attributes = type::attributes<e, mu>;
 
-      template<typename Handle, typename Data>
+      template<typename Handle>
       struct interface : default_interface<Handle>
       {
         using default_interface<Handle>::self;
@@ -132,7 +148,7 @@ namespace siconos
 
       using attributes = gather<e>;
 
-      template<typename Handle, typename Data>
+      template<typename Handle>
       struct interface : default_interface<Handle>
       {
         using default_interface<Handle>::self;
@@ -158,7 +174,7 @@ namespace siconos
 
     using attributes = gather<dynamical_system_graphs, interaction_graphs>;
 
-    template<typename Handle, typename Data>
+    template<typename Handle>
     struct interface : default_interface<Handle>
     {
       GET(dynamical_system_graphs);
@@ -167,7 +183,7 @@ namespace siconos
       using default_interface<Handle>::self;
       template <match::handle<dynamical_system> ds_t,
         match::handle<interaction> inter_t>
-      decltype(auto) link (ds_t ds, inter_t inter)
+      decltype(auto) link (inter_t inter, ds_t ds)
       {
         auto& dsg0 = self()->dynamical_system_graphs()[0];
         auto& ig0 = self()->interaction_graphs()[0];;
@@ -190,14 +206,15 @@ namespace siconos
     using attributes = gather<nonsmooth_law,
                               relation, lambda, y>;
 
-    template<typename Handle, typename Data>
+    template<typename Handle>
     struct interface : default_interface<Handle>
     {
       using default_interface<Handle>::self;
 
       GET(nonsmooth_law);
       GET(lambda);
-      GET(relation);
+      auto relation()
+      { return full_handle(Handle::type::relation::at(*self()), self()->data()); };
       GET(y);
     };
 
@@ -213,7 +230,7 @@ namespace siconos
     struct level : some::indice {};
     using attributes = gather<level>;
 
-    template<typename Handle, typename Data>
+    template<typename Handle>
     struct interface : default_interface<Handle>
     {
       using default_interface<Handle>::self;
@@ -242,7 +259,7 @@ namespace siconos
 
       using attributes = gather<>;
 
-      template<typename Handle, typename Data>
+      template<typename Handle>
       struct interface : default_interface<Handle>
       {
         using default_interface<Handle>::self;
@@ -275,7 +292,7 @@ namespace siconos
         keep<typename system::q, 2>,
         keep<typename system::velocity, 2>>;
 
-      template<typename Handle, typename Data>
+      template<typename Handle>
       struct interface : default_interface<Handle>
       {
         using default_interface<Handle>::self;
@@ -284,31 +301,31 @@ namespace siconos
         GET(gamma);
         GET(constraint_activation_threshold);
 
-        auto remove_interaction_from_index_set(
+        bool add_interaction_in_index_set(
           auto inter,
           auto h,
           auto i)
         {
           auto          y = inter.y()[i-1][0];
           const auto ydot = inter.y()[i][0];
-          const auto& gamma_v = inter.gamma();;
+          const auto& gamma_v = 0.5;
           y += gamma_v * h * ydot ;
 
-          return y <= self().constraint_activation_threshold();
+          return y <= self()->constraint_activation_threshold();
         };
 
 
-        auto add_interaction_in_index_set(
+        bool remove_interaction_from_index_set(
           auto inter,
           auto h,
           auto i)
         {
-          return !remove_interaction_from_index_set(inter, h, i);
+          return !add_interaction_in_index_set(inter, h, i);
         };
 
         auto compute_iteration_matrix(auto step)
         {
-          auto& data = this->data();
+          auto& data = self()->data();
           auto& mass_matrices = get_memory<mass_matrix>(data);
           auto& external_forces = get_memory<fext>(data);
 
@@ -331,10 +348,10 @@ namespace siconos
         };
         auto compute_free_state(auto step, auto h)
         {
-          auto& data = this->data();
+          auto& data = self()->data();
           auto& velocities = get_memory<velocity>(data);
           auto fexts  = get_memory<fext>(data);
-          auto theta = get<moreau_jean::theta>(*this, data);
+          auto theta_ = self()->theta();
 
           auto& vs =      memory(step, velocities);
           auto& vs_next = memory(step+1, velocities);
@@ -345,7 +362,7 @@ namespace siconos
           for (auto [v, v_next, minv_f, minv_f_next] :
                  ranges::views::zip(vs, vs_next, minv_fs, minv_fs_next))
           {
-            v_next = v + h*theta*minv_f + h*(1 - theta)*minv_f_next;
+            v_next = v + h*theta_*minv_f + h*(1 - theta_)*minv_f_next;
           }
         };
       };
@@ -360,12 +377,10 @@ namespace siconos
     struct step : some::indice {};
     using attributes = gather<h, t0, step>;
 
-    template<typename Handle, typename Data>
+    template<typename Handle>
     struct interface : default_interface<Handle>
     {
       using default_interface<Handle>::self;
-      using info_t = std::decay_t<decltype(ground::get<info>(Data{}))>;
-      using env = typename info_t::env;
 
       GET(t0);
       GET(h);
@@ -387,12 +402,10 @@ namespace siconos
                                                  one_step_nonsmooth_problem_t,
                                                  topology_t>;
 
-    template<typename Handle, typename Data>
+    template<typename Handle>
     struct interface : default_interface<Handle>
     {
       using default_interface<Handle>::self;
-      using info_t = std::decay_t<decltype(ground::get<info>(Data{}))>;
-      using env = typename info_t::env;
 
       ITEM(time_discretization);
       ITEM(one_step_integrator);
@@ -409,23 +422,29 @@ namespace siconos
         return self()->time_discretization().h();
       }
 
-      decltype(auto) compute_output()
+      decltype(auto) compute_output(auto level)
       {
         auto& index_set1 = topology().interaction_graphs()[1];
 
         for (auto [ui1, ui1end] = index_set1.vertices();
              ui1 != ui1end; ++ui1)
         {
-          auto inter1 = index_set1.bundle(*ui1);
-          auto ds = index_set1.properties(*ui1).source;
-          self()->topology().interaction().compute_output<1>(0., inter1, ds);
-
+          auto inter1 = full_handle(index_set1.bundle(*ui1), self()->data());
+          auto [oei, oee] = index_set1.out_edges(*ui1);
+          if (oee == oei)
+          {
+            // one ds
+            inter1.relation().compute_output(0.,
+                                             inter1,
+                                             full_handle(index_set1.bundle(*oei), self()->data()),
+                                             level);
+          };
         }
       }
       void compute_one_step()
       {
         self()->one_step_integrator().compute_free_state(current_step(),
-                                                 time_step());
+                                                         time_step());
         current_step() += 1;
       }
 
@@ -440,7 +459,7 @@ namespace siconos
 
         auto& index_set0 = topo.interaction_graphs()[0];
         auto& index_set1 = topo.interaction_graphs()[1];
-        auto& dsg0 = topo.dynamical_system_graphs()[0];
+//        auto& dsg0 = topo.dynamical_system_graphs()[0];
 
         // Check index_set1
         auto [ui1, ui1end] = index_set1.vertices();
@@ -449,8 +468,8 @@ namespace siconos
         for (auto v1next = ui1; ui1 != ui1end; ui1 = v1next)
         {
           ++v1next;
-          auto inter1 = xfull_handle(index_set1.bundle(*ui1), self()->data());  // get inter handle
-          auto rel1 = inter1.relation();
+          auto inter1 = full_handle(index_set1.bundle(*ui1), self()->data());  // get inter handle
+//          auto rel1 = inter1.relation();
 
           if (index_set0.is_vertex(inter1))
           {
@@ -464,7 +483,7 @@ namespace siconos
             {
               // We assume that the integrator of the ds1 drive the update of the index set
               //SP::OneStepIntegrator Osi = index_set1.properties(*ui1).osi;
-              auto& ds1 = index_set1.properties(*ui1).source;
+//              auto&& ds1 = edge1(index_set1, *ui1);
 //              auto& osi = dsg0.properties(dsg0.descriptor(ds1)).osi;
 
 //              //if(predictorDeactivate(inter1,i))
@@ -473,7 +492,7 @@ namespace siconos
 //                // Interaction is not active
 //                // ui1 becomes invalid
                 index_set0.color(inter1_descr0) = env::black_color;
-                index_set1.eraseProperties(*ui1);
+//                index_set1.eraseProperties(*ui1);
 
 //              InteractionsGraph::OEIterator oei, oeiend;
                 for(auto [oei, oeiend] = index_set1.out_edges(*ui1);
@@ -482,17 +501,17 @@ namespace siconos
                   auto [ed1, ed2] = index_set1.edges(index_set1.source(*oei), index_set1.target(*oei));
                   if(ed2 != ed1)
                   {
-                    index_set1.eraseProperties(ed1);
-                    index_set1.eraseProperties(ed2);
+//                    index_set1.eraseProperties(ed1);
+//                    index_set1.eraseProperties(ed2);
                   }
                   else
                   {
-                    index_set1.eraseProperties(ed1);
+//                    index_set1.eraseProperties(ed1);
                   }
                 }
                 index_set1.remove_vertex(inter1);
 //           /* \warning V.A. 25/05/2012 : Multiplier lambda are only set to zero if they are removed from the IndexSet*/
-                inter1.lambda(1) = {};
+                inter1.lambda()[1] = {};
 //                topo->setHasChanged(true);
               }
             }
@@ -501,19 +520,19 @@ namespace siconos
           {
             // Interaction is not in index_set0 anymore.
             // ui1 becomes invalid
-            index_set1.eraseProperties(*ui1);
+//            index_set1.eraseProperties(*ui1);
             for(auto [oei, oeiend] = index_set1.out_edges(*ui1);
                 oei != oeiend; ++oei)
             {
               auto [ed1, ed2] = index_set1.edges(index_set1.source(*oei), index_set1.target(*oei));
               if(ed2 != ed1)
               {
-                index_set1.eraseProperties(ed1);
-                index_set1.eraseProperties(ed2);
+//                index_set1.eraseProperties(ed1);
+//                index_set1.eraseProperties(ed2);
               }
               else
               {
-                index_set1.eraseProperties(ed1);
+//                index_set1.eraseProperties(ed1);
               }
             }
 
@@ -548,7 +567,7 @@ namespace siconos
           {
             assert(index_set0.color(*ui0) == env::white_color);
 
-            auto inter0 = index_set0.bundle(*ui0);
+            auto inter0 = full_handle(index_set0.bundle(*ui0), self()->data());
             assert(!index_set1.is_vertex(inter0));
             bool activate = true;
             if constexpr(
@@ -560,7 +579,7 @@ namespace siconos
             {
               //SP::OneStepIntegrator Osi = index_set0->properties(*ui0).osi;
 //           // We assume that the integrator of the ds1 drive the update of the index set
-              auto ds1 = index_set1.properties(*ui0).source;
+//              auto&& ds1 = edge1(index_set1, *ui0);
 //           OneStepIntegrator& osi = *DSG0.properties(DSG0.descriptor(ds1)).osi;
 
               activate = osi.add_interaction_in_index_set(inter0, time_step(), i);
@@ -570,7 +589,7 @@ namespace siconos
               assert(!index_set1.is_vertex(inter0));
 
 //           // vertex and edges insertion in index_set1
-              index_set1.copy_vertex(inter0, *index_set0);
+              index_set1.copy_vertex(inter0, index_set0);
 //           topo->setHasChanged(true);
               assert(index_set1.is_vertex(inter0));
             }

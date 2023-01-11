@@ -174,10 +174,16 @@ namespace siconos
     };
 
   template<std::size_t N>
-  struct degrees_of_freedom
+  struct size
+  {
+    using size_t = void;
+    static constexpr std::size_t value = N;
+  };
+
+  template<std::size_t N>
+  struct degrees_of_freedom : size<N>
   {
     using degrees_of_freedom_t = void;
-    static constexpr std::size_t value = N;
   };
 
   template<typename T>
@@ -417,7 +423,7 @@ namespace siconos
   };
 
   template<string_literal Symbol>
-  struct symbol : text<Symbol>{};;
+  struct symbol : text<Symbol>{};
 
   template<string_literal Descr>
   struct description : text<Descr>{};
