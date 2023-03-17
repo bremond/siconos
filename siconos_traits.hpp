@@ -8,67 +8,77 @@ namespace siconos
   namespace traits
   {
     static auto translate =
-      rec([]<typename E, match::attribute Attribute>
-          (auto&& translate, E, Attribute)
+      rec([]<typename E, typename T>
+          (auto&& translate, E, T)
           {
-            if constexpr (std::derived_from<Attribute, some::scalar>)
+            if constexpr (std::derived_from<T, some::scalar>)
             {
               return typename E::scalar{};
             }
-            else if constexpr (std::derived_from<Attribute, some::indice>)
+            else if constexpr (std::derived_from<T, some::indice>)
             {
               return typename E::indice{};
             }
-            else if constexpr (std::derived_from<Attribute,
+            else if constexpr (std::derived_from<T,
                                some::undefined_unbounded_collection>)
             {
-              return typename E::template unbounded_collection<decltype(translate(E{}, typename Attribute::type{}))>{};
+              return typename E::template unbounded_collection<decltype(translate(E{}, typename T::type{}))>{};
             }
-            else if constexpr (std::derived_from<Attribute,
+            else if constexpr (std::derived_from<T,
                                some::undefined_bounded_collection>)
             {
-              return typename E::template bounded_collection<decltype(translate(E{}, typename Attribute::type{})),
-                                                             std::get<0>(Attribute::sizes)>{};
+              return typename E::template bounded_collection<decltype(translate(E{}, typename T::type{})),
+                                                             std::get<0>(T::sizes)>{};
             }
-            else if constexpr (std::derived_from<Attribute,
+            else if constexpr (std::derived_from<T,
                                some::undefined_vector>)
             {
-              return typename E::template vector<decltype(translate(E{}, typename Attribute::type{})),
-                                                 std::get<0>(Attribute::sizes)>{};
+              return typename E::template vector<decltype(translate(E{}, typename T::type{})),
+                                                 std::get<0>(T::sizes)>{};
             }
-            else if constexpr (std::derived_from<Attribute,
+            else if constexpr (std::derived_from<T,
                                some::undefined_diagonal_matrix>)
             {
-              return typename E::template diagonal_matrix<decltype(translate(E{}, typename Attribute::type{})),
-                                                          std::get<0>(Attribute::sizes)>{};
+              return typename E::template diagonal_matrix<decltype(translate(E{}, typename T::type{})),
+                                                          std::get<0>(T::sizes)>{};
             }
-            else if constexpr (std::derived_from<Attribute,
+            else if constexpr (std::derived_from<T,
                                some::undefined_matrix>)
             {
               return typename E::template matrix<
-                decltype(translate(E{}, typename Attribute::type{})),
-                std::get<0>(Attribute::sizes),
-                std::get<1>(Attribute::sizes)>{};
+                decltype(translate(E{}, typename T::type{})),
+                std::get<0>(T::sizes),
+                std::get<1>(T::sizes)>{};
             }
-            else if constexpr (std::derived_from<Attribute, some::undefined_graph>)
+            else if constexpr (std::derived_from<T,
+                               some::undefined_unbounded_matrix>)
+            {
+              return typename E::template unbounded_matrix<
+                decltype(translate(E{}, typename T::type{}))>{};
+            }
+            else if constexpr (std::derived_from<T, some::undefined_graph>)
             {
               return typename E::template graph<
-                decltype(translate(E{}, std::get<0>(typename Attribute::types{}))),
-                decltype(translate(E{}, std::get<1>(typename Attribute::types{})))>{};
+                decltype(translate(E{}, std::get<0>(typename T::types{}))),
+                decltype(translate(E{}, std::get<1>(typename T::types{})))>{};
             }
-            else if constexpr (std::derived_from<Attribute,
-                               some::item_ref<typename Attribute::type>>)
+            else if constexpr (std::derived_from<T, some::undefined_vdescriptor>)
             {
-              return typename E::template item_ref<typename Attribute::type>{};
+              return typename E::template vdescriptor<decltype(translate(E{}, typename T::type{}))>{};
+            }
+            else if constexpr (std::derived_from<T,
+                               some::item_ref<typename T::type>>)
+            {
+              return typename E::template item_ref<typename T::type>{};
+            }
+            else if constexpr (std::derived_from<T, some::given_type>)
+            {
+              return typename T::type{};
             }
             else
             {
-              // not found
-              // cf https://stackoverflow.com/questions/38304847/constexpr-if-and-static-assert
-              []<typename U = Attribute, bool flag = false>()
-                {
-                  static_assert(flag, "cannot translate this attribute");
-                }();
+              // translation not found, return the type itself
+              return T{};
             }
           });
 

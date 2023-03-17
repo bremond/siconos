@@ -52,13 +52,9 @@ namespace siconos
     template<std::size_t N>
     static constexpr auto iterate = hana::iterate<N>;
 
-    static auto fold_left = []
-      <typename Array, typename State, typename Fun>
-      (Array&& array,
-       State&& initial_state,
-       Fun&& fun)
-      constexpr -> decltype(auto)
-    {
+    static auto fold_left = []<typename Array, typename State, typename Fun>(
+                                Array &&array, State &&initial_state,
+                                Fun &&fun) constexpr -> decltype(auto) {
       using array_type = std::decay_t<Array>;
 
       /* ~ static */
@@ -79,12 +75,12 @@ namespace siconos
       {
         // cf https://stackoverflow.com/questions/38304847/constexpr-if-and-static-assert
         []<bool flag = false>()
-          {
-            static_assert(flag, "cannot fold_left with these parameters");
-          }();
+        {
+          static_assert(flag, "cannot fold_left with these parameters");
+        }
+        ();
       }
     };
-
 
     static auto overload = hana::overload_linearly;
 

@@ -299,8 +299,9 @@ namespace siconos
     struct indice : attribute<>
     {};
 
+    struct undefined_vdescriptor : attribute<> {};
     template<typename T>
-    struct vdescriptor : attribute<>
+    struct vdescriptor : undefined_vdescriptor
     {
       using vdescriptor_t = void;
       static constexpr bool descriptor = true;
@@ -310,6 +311,8 @@ namespace siconos
     struct undefined_matrix : attribute<> {};
     struct undefined_diagonal_matrix : undefined_matrix {};
     struct undefined_vector : attribute<> {};
+
+    struct undefined_unbounded_matrix : attribute<> {};
 
     template<size_t ...Sizes>
     struct with_sizes
@@ -329,15 +332,19 @@ namespace siconos
       using types = std::tuple<Types...>;
     };
 
-    template<std::size_t N, std::size_t M, typename Type = some::scalar>
+    template<typename Type, std::size_t N, std::size_t M>
     struct matrix : undefined_matrix,
       with_sizes<N, M>, with_type<Type> {};
 
-    template<typename M, typename Type = some::scalar>
+    template<typename Type = some::scalar>
+    struct unbounded_matrix : undefined_unbounded_matrix,
+      with_type<Type> {};
+
+    template<typename Type, typename M>
     struct diagonal_matrix : undefined_diagonal_matrix,
       with_sizes<std::get<0>(M::sizes)>, with_type<Type> {};
 
-    template<std::size_t N, typename Type = some::scalar>
+    template<typename Type, std::size_t N>
     struct vector : undefined_vector, with_sizes<N>, with_type<Type> {};
 
     struct undefined_graph : attribute<> {};
@@ -359,6 +366,11 @@ namespace siconos
     {
       using type = T;
     };
+
+    struct given_type {};
+
+    template<typename T>
+    struct specific : given_type, with_type<T> {};
 
   }
 
@@ -393,11 +405,11 @@ namespace siconos
       item<typename T::type>;
 
     template<typename T>
-    concept vector = std::derived_from<T, some::vector<std::get<0>(T::sizes)>>
+    concept vector = std::derived_from<T, some::undefined_vector>
       || requires (T a) { a[0] ;};
 
     template<typename T>
-    concept matrix = std::derived_from<T, some::matrix<std::get<0>(T::sizes), std::get<1>(T::sizes)>> || requires (T a) { a[0] ;};
+    concept matrix = std::derived_from<T, some::undefined_matrix> || requires (T a) { a[0] ;};
 
     template<typename T, std::size_t N>
     concept cvector = requires (T a) { a[N-1]; };
@@ -423,7 +435,23 @@ namespace siconos
   };
 
   template<string_literal Symbol>
-  struct symbol : text<Symbol>{};
+  struct symbol : text<Symbol>
+  {
+  };
+
+
+  template<size_t N>
+  constexpr auto make_string_literal(const string_literal<N>& a)
+  {
+    return a;
+  }
+
+  template<size_t N>
+  consteval auto make_symbol(const string_literal<N>& a)
+  {
+    symbol s = a;
+    return s;
+  };
 
   template<string_literal Descr>
   struct description : text<Descr>{};
@@ -474,12 +502,12 @@ namespace siconos
     friend auto operator<=>(const item<Args...>&, const item<Args...>&) = default;
   };
 
-  template<typename Wrap>
-  struct wrap : item<>, Wrap
+  template<typename Wrapped>
+  struct wrap : item<>, Wrapped
   {
-    static_assert(match::item<typename Wrap::type>);
-    using attributes = typename Wrap::type::attributes;
-    using type = typename Wrap::type;
+    static_assert(match::item<typename Wrapped::type>);
+    using attributes = typename Wrapped::type::attributes;
+    using type = typename Wrapped::type;
   };
 
   template<match::item I, typename Tag, match::attribute DataSpec>
@@ -541,7 +569,7 @@ namespace siconos
     return loop(items);
   };
 
-  static auto attributes = []<match::item Item>(Item&& t)
+  static auto attributes = []<match::item Item>(Item)
     constexpr -> decltype(auto)
   {
     if constexpr (match::attributes<Item>)
@@ -554,61 +582,18 @@ namespace siconos
     }
   };
 
-  // deprecated
-  static auto all_attributes =
-  rec(
-    [](auto&& all_attributes, match::item auto&& t) constexpr
+  static auto properties = []<match::item Item>(Item)
+    constexpr -> decltype(auto)
+  {
+    if constexpr (match::properties<Item>)
     {
-      using type_t = std::decay_t<decltype(t)>;
-
-      auto items_ref = []()
-      {
-        if constexpr (match::attributes<type_t>)
-        {
-          return transform([]<typename T>(T) { return typename T::type{}; },
-                           filter<hold<decltype([]<typename T>(T) { return match::item_ref<T>; })>>(typename type_t::attributes{}));
-        }
-        else
-        {
-          return gather<>{};
-        }
-      };
-      // sub items
-      if constexpr (match::items<type_t>)
-      {
-        if constexpr (match::attributes<type_t>)
-        {
-          // attributes + sub items attributes
-          return
-            flatten(
-              append(
-                instance<typename type_t::attributes>,
-                transform(all_attributes, append(items_ref(),
-                                                 instance<typename type_t::items>))));
-        }
-        else
-        {
-          return
-            flatten(transform(all_attributes,
-                              append(items_ref(),
-                                     instance<typename type_t::items>)));
-        }
-      }
-      // item
-      else
-      {
-        if constexpr (match::attributes<type_t>)
-        {
-          return flatten(append(instance<gather<typename type_t::attributes>>,
-                                transform(all_attributes, items_ref())));
-        }
-        else
-        {
-          return flatten(transform(all_attributes, items_ref()));
-        }
-      }
-
-    });
+      return typename Item::properties{};
+    }
+    else
+    {
+      return gather<>{};
+    }
+  };
 
   static auto all_items =
     rec(
@@ -641,6 +626,17 @@ namespace siconos
         }
       });
 
+
+  static auto all_attributes = []<match::item Item>(Item) constexpr
+  {
+    return flatten(append(transform(attributes, all_items(Item{}))));
+  };
+
+  static auto all_properties = []<match::item Item>(Item) constexpr
+  {
+    return flatten(append(transform(properties, all_items(Item{}))));
+  };
+
 //  template<typename K>
 //  static auto all_items_of_property = [](match::item auto&& t)
 //    constexpr -> decltype(auto)
@@ -670,7 +666,7 @@ namespace siconos
         })>>(typename H::info_t::all_properties_t{}))>> >=1 ; // not an attached storage
 
   }
-  namespace type
+  namespace types
   {
     template<template<typename T> typename Transform, typename ...Args>
     using transform = decltype(
@@ -681,6 +677,12 @@ namespace siconos
 
     template<match::item ...Items>
     using attributes_of_items = decltype(flatten(append(typename Items::attributes{}...)));
+
+    template<match::item ...Items>
+    using properties_of_items = decltype(flatten(append(typename Items::properties{}...)));
+
+    template<size_t N, typename tpl>
+    using nth_t = std::decay_t<decltype(std::get<N>(tpl{}))>;
   }
 
   template<typename Handle>

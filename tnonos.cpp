@@ -75,6 +75,7 @@ int main()
 
   static_assert(match::attached_storage<attached_storage<ball, zz, some::scalar>, ball>);
   static_assert(match::attached_storage<attached_storage<ball, zz, some::scalar>, wrap<some::unbounded_collection<ball>>>);
+  static_assert(match::attached_storage<attached_storage<ball, symbol<"Z">, some::scalar>, wrap<some::unbounded_collection<ball>>>);
   static_assert(!match::attached_storage<attached_storage<ball, zz, some::scalar>, nslaw>);
   static_assert(filter<hold<decltype([]<typename T>(T){ return std::floating_point<T>; })>>(std::tuple<char,int,double>{}) == std::tuple<double>{});
 //  static_assert(std::is_same_v<decltype(all_items_of_kind<graph_item>(simulation{})),
@@ -106,11 +107,11 @@ int main()
 //  std::cout << boost::hana::experimental::type_name<decltype(all_attributes(interaction{}))>().c_str() << std::endl;
 
   static_assert(std::is_same_v<decltype(attributes(interaction{})),
-                gather<interaction::nonsmooth_law, interaction::relation, interaction::lambda, interaction::y>>);
+                gather<interaction::nonsmooth_law, interaction::relation, interaction::h_matrix, interaction::lambda, interaction::y>>);
 
   static_assert(std::is_same_v<decltype(all_attributes(interaction{})),
-                gather<interaction::nonsmooth_law, interaction::relation, interaction::lambda, interaction::y,
-                nslaw::e, relation::h_matrix>>);
+                gather<interaction::nonsmooth_law, interaction::relation, interaction::h_matrix,
+                interaction::lambda, interaction::y, nslaw::e>>);
 
   }
 
@@ -137,6 +138,10 @@ int main()
   auto data2 = siconos::make_storage<env,
                                      wrap<some::unbounded_collection<nslaw>>,
                                      with_properties<attached_storage<nslaw, zz, some::scalar>>>();
+
+  auto nslaw2b = add<nslaw>(data2);
+
+  nslaw2b.property(zz{}) = 2;
 
   auto data = siconos::make_storage<env, simulation,
                                     wrap<some::bounded_collection<relation, 3>>,
@@ -240,26 +245,52 @@ int main()
    interaction::nonsmooth_law::at(inter2) = nslaw3;
    nslaw::e::at(interaction::nonsmooth_law::at(inter2), data) = 0.3;
 
+   auto htopo = make_full_handle<topo>(0, data);
+   auto hosi = make_full_handle<osi>(0, data);
    auto ball1 = add<ball>(data);
    auto ball2 = add<ball>(data);
+   auto ball3 = add<ball>(data);
    print("e={}\n", nslaw::e::at(nslaw3));
+
+   auto intera = htopo.link(ball1);
+   auto interb = htopo.link(ball1, ball2);
+   auto interc = htopo.link(ball1, ball3);
+   auto interd = htopo.link(ball3);
+
+   print("intera.nds={}\n", intera.property(symbol<"nds">{}));
+   print("interb.nds={}\n", interb.property(symbol<"nds">{}));
+   print("interc.nds={}\n", interc.property(symbol<"nds">{}));
+   print("interd.nds={}\n", interd.property(symbol<"nds">{}));
+
+   handle(htopo.dynamical_system_graphs()[0].bundle(ball1.property(symbol<"vd">{})), data).property(symbol<"index">{}) +=10;;
+
+   ball2.property(symbol<"index">{}) +=1;
+   print("ball1.index = {}\n", ball1.property(symbol<"index">{}));
+   print("ball2.index = {}\n", ball2.property(symbol<"index">{}));
+
+   print("htopo.index : {}\n", ground::get<attached_storage<ball, symbol<"index">, some::indice>>(data));
+   print("make_index\n");
+   htopo.make_index();
+   print("htopo.index : {}\n", ground::get<attached_storage<ball, symbol<"index">, some::indice>>(data));
+
+   hosi.assemble_h_matrix(0, 3);
 
    print("memory_size={}\n", (memory_size<ball::q, decltype(all_properties_as<some::keep>(data))>));
 //   auto& q = siconos::get_memory<ball::q>(data);
 //   print("q={}\n", q);
 //   print("v={}\n", siconos::get_memory<ball::velocity>(data));
 
-   auto ustore1 = unit_storage<env, some::scalar, some::vector<3>, some::graph<some::indice, some::indice>>::type {};
+   auto ustore1 = unit_storage<env, some::scalar, some::vector<some::scalar, 3>, some::graph<some::indice, some::indice>>::type {};
 
 //   ground::find(ustore1, boost::hana::type_c<some::scalar>) = 1.0;
 //   ground::find(ustore1, boost::hana::type_c<some::vector<3>>).value() = { 1.0, 2.0, 3.0 };
 
    ground::get<some::scalar>(ustore1) = 2.0;
-   ground::get<some::vector<3>>(ustore1) = std::array {1.0, 2.0, 3.0};
+   ground::get<some::vector<some::scalar, 3>>(ustore1) = std::array {1.0, 2.0, 3.0};
 
    print("ustore1 scalar={}\n", ground::get<some::scalar>(ustore1));
 
-   print("ustore1 vector={}\n", ground::get<some::vector<3>>(ustore1));
+   print("ustore1 vector={}\n", ground::get<some::vector<some::scalar, 3>>(ustore1));
 
    auto ustore2 = typename item_storage<env, simulation, ball>::type {};
 
@@ -304,7 +335,7 @@ int main()
    ma(2,2) = 2.5*m*R*R;
 //   print("mass matrix: {}", get<ball::mass_matrix>(some_iball, ustore5));
 
-   auto simul = make_full_handle<simulation>(0, data);
+   auto simul = make_full_handle<simulation>(0, ustore5);
 
    simul.update_indexsets(0);
    simul.compute_one_step();
@@ -321,8 +352,6 @@ int main()
    auto a = get<ball::velocity>(simul.current_step(), some_iball, ustore5);
    print("ustore5 ball::velocity = {}\n", a);
 
-   auto htopo = make_full_handle<topo>(0, data);
-
    auto& dsg0 = get<topo::dynamical_system_graphs>(htopo, ustore5)[0];
 
    auto dsgv = dsg0.add_vertex(some_iball);
@@ -334,16 +363,16 @@ int main()
    auto [new_edge, ig_new_ve] = dsg0.add_edge(dsgv, dsgv, inter, ig0);
    auto rel = add<relation>(ustore5);
 
-   auto yyv = ground::get<relation::h_matrix>(ustore5);
-   relation::h_matrix::at(rel)(0,0) = 1;
+   auto yyv = ground::get<interaction::h_matrix>(ustore5);
+   interaction::h_matrix::at(inter)[0](0,0) = 1;
 
    interaction::relation::at(inter) = rel;
    auto& v = interaction::y::at(inter)[1];
-   v = { 1, 2, 3};
+   v = { 1 };
 
-   rel.compute_output(0., inter, some_iball, 1_c);
+   rel.compute_output(0., some_iball, inter, 1_c);
 
-   rel.compute_input(0., inter, some_iball, 1_c);
+   rel.compute_input(0., some_iball, inter, 1_c);
    auto hsim = make_full_handle<simulation>(0, data);
    hsim.compute_output(1_c);
 
@@ -395,4 +424,6 @@ int main()
             });
 #endif
 //   assert((ground::get<attached_storage<some::unbounded_collection<ball>, internal_index, some::indice>>(dd)[0][1] == 1));
+
+   
 }

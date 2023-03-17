@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
   using interaction = interaction<nslaw, formulation, 1>;
   using osi = one_step_integrator<formulation, interaction>::moreau_jean;
   using td = time_discretization<>;
-  using topo = topology<formulation, interaction>; // topology<ball, interaction>
+  using topo = topology<formulation, interaction>;  // topology<ball, interaction>
   using simulation = time_stepping<td, osi, osnspb, topo>;
   using siconos::get;
 
