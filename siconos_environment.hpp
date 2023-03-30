@@ -54,7 +54,10 @@ namespace siconos
     using unbounded_matrix = ublas::compressed_matrix<T>;
 
     template<typename T, indice N>
-    using diagonal_matrix = ublas::diagonal_matrix<T, ublas::row_major, ublas::bounded_array<scalar, N>>;
+    using diagonal_matrix = ublas::diagonal_matrix<T, ublas::row_major, ublas::bounded_array<T, N>>;
+
+    template<typename T>
+    using unbounded_diagonal_matrix = ublas::diagonal_matrix<T, ublas::row_major, ublas::unbounded_array<T>>;
 
     template<typename T>
     using item_ref = siconos::index<T, indice>;

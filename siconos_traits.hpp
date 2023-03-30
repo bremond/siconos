@@ -11,7 +11,12 @@ namespace siconos
       rec([]<typename E, typename T>
           (auto&& translate, E, T)
           {
-            if constexpr (std::derived_from<T, some::scalar>)
+            if constexpr (!match::attribute<T>)
+            {
+              // return the type itself
+              return T{};
+            }
+            else if constexpr (std::derived_from<T, some::scalar>)
             {
               return typename E::scalar{};
             }
@@ -37,7 +42,11 @@ namespace siconos
                                                  std::get<0>(T::sizes)>{};
             }
             else if constexpr (std::derived_from<T,
-                               some::undefined_diagonal_matrix>)
+                               some::undefined_diagonal_matrix> && std::derived_from<T, some::unbounded_storage>)
+            {
+              return typename E::template unbounded_diagonal_matrix<decltype(translate(E{}, typename T::type{}))>{};
+            }
+            else if constexpr (std::derived_from<T, some::undefined_diagonal_matrix>)
             {
               return typename E::template diagonal_matrix<decltype(translate(E{}, typename T::type{})),
                                                           std::get<0>(T::sizes)>{};
@@ -77,8 +86,10 @@ namespace siconos
             }
             else
             {
-              // translation not found, return the type itself
-              return T{};
+              []<typename Attr=T, bool flag = false>()
+                {
+                  static_assert(flag, "cannot translate attribute");
+                }();
             }
           });
 

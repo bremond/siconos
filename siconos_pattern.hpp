@@ -262,7 +262,7 @@ namespace siconos
 
     template<typename T>
     concept wrap =
-      item<T> && requires { T::type; };
+      item<T> && requires { typename T::wrap_t; };
 
   }
 
@@ -308,11 +308,18 @@ namespace siconos
       using type = T;
     };
 
-    struct undefined_matrix : attribute<> {};
-    struct undefined_diagonal_matrix : undefined_matrix {};
-    struct undefined_vector : attribute<> {};
+    struct unbounded_storage : attribute<> {};
+    struct bounded_storage : attribute<> {};
 
-    struct undefined_unbounded_matrix : attribute<> {};
+    struct undefined_unbounded_collection : unbounded_storage {};
+    struct undefined_bounded_collection : bounded_storage {};
+
+
+    struct undefined_matrix : bounded_storage {};
+    struct undefined_diagonal_matrix : undefined_matrix {};
+    struct undefined_vector : bounded_storage {};
+
+    struct undefined_unbounded_matrix : unbounded_storage {};
 
     template<size_t ...Sizes>
     struct with_sizes
@@ -344,6 +351,10 @@ namespace siconos
     struct diagonal_matrix : undefined_diagonal_matrix,
       with_sizes<std::get<0>(M::sizes)>, with_type<Type> {};
 
+    template<typename Type>
+    struct unbounded_diagonal_matrix : unbounded_storage, undefined_diagonal_matrix,
+      with_type<Type> {};
+
     template<typename Type, std::size_t N>
     struct vector : undefined_vector, with_sizes<N>, with_type<Type> {};
 
@@ -351,9 +362,6 @@ namespace siconos
 
     template<typename Edge, typename Vertice>
     struct graph : undefined_graph, with_types<Edge, Vertice> {};
-
-    struct undefined_unbounded_collection : attribute<> {};
-    struct undefined_bounded_collection : attribute<> {};
 
     template<typename Type>
     struct unbounded_collection : undefined_unbounded_collection, with_type<Type> {};
@@ -403,6 +411,12 @@ namespace siconos
     concept item_ref =
       attribute<T> &&
       item<typename T::type>;
+
+    template<typename T>
+    concept unbounded_storage = std::derived_from<T, some::unbounded_storage>;
+
+    template<typename T>
+    concept bounded_storage = std::derived_from<T, some::bounded_storage>;
 
     template<typename T>
     concept vector = std::derived_from<T, some::undefined_vector>
@@ -502,16 +516,23 @@ namespace siconos
     friend auto operator<=>(const item<Args...>&, const item<Args...>&) = default;
   };
 
-  template<typename Wrapped>
-  struct wrap : item<>, Wrapped
+  struct any_wrapper {};
+
+  struct any_bounded_wrapper : any_wrapper {};
+  struct any_unbounded_wrapper : any_wrapper {};
+
+  template<template<typename T> typename Wrapper, match::item Item>
+  struct wrap : item<>, any_wrapper
   {
-    static_assert(match::item<typename Wrapped::type>);
-    using attributes = typename Wrapped::type::attributes;
-    using type = typename Wrapped::type;
+    using wrap_t = void;
+    template<typename T>
+    using wrapper = Wrapper<T>;
+    using attributes = typename Item::attributes;
+    using type = Item;
   };
 
   template<match::item I, typename Tag, match::attribute DataSpec>
-  struct attached_storage : some::attached_storage, DataSpec
+  struct attached_storage : DataSpec, some::attached_storage
   {
     using item    = I;
     using tag      = Tag;

@@ -99,15 +99,15 @@ namespace siconos
           auto& y = inter.y()[1][0];
           auto& H = inter.h_matrix()[0];
 
-          auto& x = [&inter,&level,&ds]() -> decltype(auto)
+          auto& x = [&level,&ds]() -> decltype(auto)
           {
           if constexpr (level == 1)
           {
-            return ds.property(symbol<"velocity">{})[0];
+            return ds.velocity();
           }
           else
           {
-            return ds.property(symbol<"q">{})[0];;
+            return ds.q();;
           }
           }();
 

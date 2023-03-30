@@ -102,14 +102,18 @@
 #+header: :var src_dir=src-dir
 #+header: :dir build-local-clang-debug
 #+begin_src sh :compile :results output silent
-  cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+     environment --ad-hoc siconos benchmark dash -- \
+     dash -c "CC=/usr/local/bin/clang cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1"
 #+end_src
 
 #+name: mybenchmarks-make-local-clang-debug
 #+header: :var src_dir=src-dir
 #+header: :dir build-local-clang-debug
 #+begin_src sh :compile :results output silent
-  make VERBOSE=1
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment --ad-hoc siconos benchmark dash -- \
+    dash -c "make -k VERBOSE=1 "
 #+end_src
 
 * Run

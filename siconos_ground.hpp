@@ -1,5 +1,6 @@
 #ifndef SICONOS_GROUND
 #define SICONOS_GROUND
+#include <boost/hana/fwd/type.hpp>
 #define BOOST_HANA_CONFIG_ENABLE_STRING_UDL 1
 #include <algorithm>
 #include <boost/hana/functional/overload_linearly.hpp>
@@ -11,6 +12,9 @@
 #include <boost/hana.hpp>
 #include <boost/hana/fwd/fold_left.hpp>
 #include <boost/hana/ext/std/tuple.hpp>
+#include <boost/hana/integral_constant.hpp>
+#include <boost/hana/equal.hpp>
+#include <boost/hana/not_equal.hpp>
 #include <boost/hana/ext/std/array.hpp>
 #include <boost/hana/fwd/find_if.hpp>
 #include <boost/hana/fwd/for_each.hpp>
@@ -24,12 +28,36 @@
 #include <typeinfo>
 // cf https://www.boost.org/doc/libs/1_80_0/libs/hana/doc/html/structboost_1_1hana_1_1string.html#ad77f7afff008c2ce15739ad16a8bf0a8
 
+#include <string_view>
+
 
 namespace siconos
 {
 
   namespace ground
   {
+
+
+    template <typename T>
+    constexpr auto type_name() {
+      std::string_view name, prefix, suffix;
+#ifdef __clang__
+      name = __PRETTY_FUNCTION__;
+      prefix = "auto type_name() [T = ";
+      suffix = "]";
+#elif defined(__GNUC__)
+      name = __PRETTY_FUNCTION__;
+      prefix = "constexpr auto type_name() [with T = ";
+      suffix = "]";
+#elif defined(_MSC_VER)
+      name = __FUNCSIG__;
+      prefix = "auto __cdecl type_name<";
+      suffix = ">(void)";
+#endif
+      name.remove_prefix(prefix.size());
+      name.remove_suffix(suffix.size());
+      return name;
+    }
 
     // debug (see_below for clang, gcc above...)
 #if defined( __clang__)
@@ -40,6 +68,10 @@ namespace siconos
 
     namespace hana = boost::hana;
 
+    static constexpr auto typeid_ = hana::typeid_;
+
+    template<template<typename ...Ts> typename F>
+    static constexpr auto trait = hana::trait<F>;
     static constexpr auto compose = hana::compose;
 
     static constexpr auto lockstep = hana::lockstep;
@@ -193,6 +225,42 @@ namespace siconos
           ();
         }
       }
-    }
+    template <typename Base>
+    struct from
+    {
+      template <typename T>
+      struct is_a_derivation
+      {
+        using type = is_a_derivation<T>;
+        static constexpr bool value = std::derived_from<T, Base>;
+      };
+    };
+
+    template <auto F, typename... Ts>
+    using check = std::conditional_t<F.template operator()<Ts...>(),
+                                     std::true_type, std::false_type>;
+
+    template <auto F, typename... Ts>
+    struct on_concept {
+      template <typename T2>
+      struct is_a_model {
+        using type = is_a_model<T2>;
+        static constexpr bool value = check<F, T2, Ts...>::value;
+      };
+    };
+
+    template <auto F, typename... Ts>
+    static constexpr auto is_a_model =
+        compose(trait<on_concept<F, Ts...>::template is_a_model>, typeid_);
+
+    static constexpr auto is_integral =
+      is_a_model <
+      []<typename T>() consteval { return std::is_integral<T>::value; }>;
+
+    template<typename B>
+    static constexpr auto derive_from =
+      is_a_model<
+      []<typename T>() consteval { return std::derived_from<T, B>; }>;
+  }
 }
 #endif

@@ -1,6 +1,8 @@
 #include "siconos_environment.hpp"
 #include "siconos.hpp"
 #include "siconos_ground.hpp"
+#include "siconos_pattern.hpp"
+#include <charconv>
 #include <tuple>
 #include <fmt/core.h>
 #include <fmt/ranges.h>
@@ -13,7 +15,6 @@ using fmt::print;
 
 using namespace siconos;
 using env = siconos::standard_environment;
-
 
 
 using namespace boost::hana::literals;
@@ -32,7 +33,7 @@ int main()
   using siconos::get;
 
   struct zz {};
-  {
+//  {
   static_assert(must::contains<int,std::tuple<int,float,char>>);
   static_assert(!must::contains<double,std::tuple<int,float,char>>);
   static_assert(std::is_same_v<decltype(
@@ -74,20 +75,49 @@ int main()
                 typename env::scalar>);
 
   static_assert(match::attached_storage<attached_storage<ball, zz, some::scalar>, ball>);
-  static_assert(match::attached_storage<attached_storage<ball, zz, some::scalar>, wrap<some::unbounded_collection<ball>>>);
-  static_assert(match::attached_storage<attached_storage<ball, symbol<"Z">, some::scalar>, wrap<some::unbounded_collection<ball>>>);
+  static_assert(match::attached_storage<attached_storage<ball, zz, some::scalar>,
+                wrap<some::unbounded_collection, ball>>);
+  static_assert(match::attached_storage<attached_storage<ball, symbol<"Z">, some::scalar>, wrap<some::unbounded_collection, ball>>);
   static_assert(!match::attached_storage<attached_storage<ball, zz, some::scalar>, nslaw>);
+
+
+  static_assert(match::unbounded_storage<some::unbounded_collection<some::scalar>>);
+  static_assert(match::bounded_storage<some::bounded_collection<some::scalar, 1>>);
+  static_assert(!match::unbounded_storage<some::bounded_collection<some::scalar, 1>>);
+  static_assert(!match::bounded_storage<some::unbounded_collection<some::scalar>>);
+  static_assert(match::unbounded_storage<some::unbounded_diagonal_matrix<some::scalar>>);
+
+  static_assert(match::wrap<wrap<some::unbounded_diagonal_matrix, ball>>);
+
+  static_assert(traits::translatable<int, env>);
+
+  std::cout << ground::type_name<traits::config<env>::convert<int>::type>();
+  static_assert(std::is_same_v<traits::config<env>::convert<int>::type, int>);
+
+  static_assert(traits::translatable<siconos::some::unbounded_collection<char[3]>, env>);
   static_assert(filter<hold<decltype([]<typename T>(T){ return std::floating_point<T>; })>>(std::tuple<char,int,double>{}) == std::tuple<double>{});
-//  static_assert(std::is_same_v<decltype(all_items_of_kind<graph_item>(simulation{})),
-//                gather<ball, interaction>>);
 
-//  static_assert(memory_size<typename td::step, typename osi::keeps> == 1);
+  static_assert(ground::filter(std::tuple<char, int, double>{},
+                               ground::compose(
+                                   ground::trait<std::is_floating_point>,
+                                   ground::typeid_)) == std::tuple<double>{});
 
-//  static_assert(std::is_same_v<
-//                decltype(all_keeps(simulation{})),
-//                gather<keep<ball::q,2>, keep<ball::velocity,2>>>);
+  static_assert(
+      std::is_same_v <
+          decltype(ground::filter(
+              std::tuple<nslaw::e, ball::velocity>{},
+              ground::derive_from<some::scalar>)),
+      std::tuple<nslaw::e>>);
+  //  static_assert(std::is_same_v<decltype(all_items_of_kind<graph_item>(simulation{})),
+  //                gather<ball, interaction>>);
 
-//  static_assert(memory_size<typename ball::q, typename osi::keeps> == 2);
+  //  static_assert(memory_size<typename td::step, typename osi::keeps> == 1);
+
+  //  static_assert(std::is_same_v<
+  //                decltype(all_keeps(simulation{})),
+  //                gather<keep<ball::q,2>, keep<ball::velocity,2>>>);
+
+  //  static_assert(memory_size<typename ball::q, typename osi::keeps> == 2);
 
   static_assert(std::array{1,2,3}-std::array{1,2,3}==std::array{0,0,0});
   static_assert(std::array{1,2,3}+std::array{1,2,3}==std::array{2,4,6});
@@ -113,10 +143,9 @@ int main()
                 gather<interaction::nonsmooth_law, interaction::relation, interaction::h_matrix,
                 interaction::lambda, interaction::y, nslaw::e>>);
 
-  }
+  //}
 
   auto data0 = siconos::make_storage<env, nslaw>();
-
   auto nslaw0 = add<nslaw>(data0);
 
   get<nslaw::e>(nslaw0, data0) = 0.6;
@@ -129,14 +158,14 @@ int main()
 
   assert (get<nslaw::e>(nslaw0, data0) == 0.8);
 
-  auto data1 = siconos::make_storage<env, wrap<some::unbounded_collection<nslaw>>>();
+  auto data1 = siconos::make_storage<env, wrap<some::unbounded_collection, nslaw>>();
 
   auto nslaw1 = add<nslaw>(data1);
 
   nslaw::e::at(nslaw1) = 0.9;
 
   auto data2 = siconos::make_storage<env,
-                                     wrap<some::unbounded_collection<nslaw>>,
+                                     wrap<some::unbounded_collection, nslaw>,
                                      with_properties<attached_storage<nslaw, zz, some::scalar>>>();
 
   auto nslaw2b = add<nslaw>(data2);
@@ -144,9 +173,9 @@ int main()
   nslaw2b.property(zz{}) = 2;
 
   auto data = siconos::make_storage<env, simulation,
-                                    wrap<some::bounded_collection<relation, 3>>,
-                                    wrap<some::unbounded_collection<ball>>,
-                                    wrap<some::unbounded_collection<interaction>>,
+                                    wrap<some::unbounded_collection, relation>,
+                                    wrap<some::unbounded_collection, ball>,
+                                    wrap<some::unbounded_collection, interaction>,
                                     with_properties<
                                       keep<ball::q, 10>,
                                       diagonal<ball::mass_matrix>>>();
@@ -300,13 +329,13 @@ int main()
    //ground::transform(iget<ball>(ustore2), [&ustore2]<typename A>(A){ return iget<A>(ustore2); });
 
    auto ustore5 = make_storage<env, simulation,
-                               wrap<some::unbounded_collection<ball>>,
-                               wrap<some::unbounded_collection<interaction>>,
+                               wrap<some::unbounded_collection, ball>,
+                               wrap<some::unbounded_collection, interaction>,
                                with_properties<diagonal<ball::mass_matrix>,
                                                attached_storage<ball, zz , some::scalar>>>();
 
 
-   ground::get<ball::q>(ustore5)[0].push_back({7.,8.,9.});
+   //ground::get<ball::q>(ustore5)[0].push_back({7.,8.,9.});
    print("ustore5 ball::q ={}\n", ground::get<ball::q>(ustore5));
 
    auto some_iball=add<ball>(ustore5);
@@ -389,7 +418,7 @@ int main()
 #ifdef __clang__
 //   print("-->{}\n", boost::hana::experimental::type_name<ground::pair<ball, zz>>().c_str());
 #endif
-   auto dd = make_storage<env, wrap<some::unbounded_collection<ball>>,
+   auto dd = make_storage<env, wrap<some::unbounded_collection, ball>,
                           with_properties<diagonal<ball::mass_matrix>, keep<ball::q, 10>,
                                           attached_storage<ball, decltype("z"_s), some::scalar>,
                                           attached_storage<ball, symbol<"x">, some::scalar>>>();
@@ -416,14 +445,11 @@ int main()
 
 
   print("{},{},{},{}\n", xball2.property(symbol<"x">{}), xball2.property("z"_s), xball4.property(symbol<"x">{}), xball4.property("z"_s));
-#ifdef __clang__
+
    for_each(dd, []<typename Key, typename Value>(Key k, Value v)
             {
-              print("Key: [{}]\n", boost::hana::experimental::type_name<Key>().c_str());
-              print("Value: [{}]\n\n", boost::hana::experimental::type_name<Value>().c_str());
+              print("Key: [{}]\n", ground::type_name<Key>());
+              print("Value: [{}]\n\n", ground::type_name<Value>());
             });
-#endif
 //   assert((ground::get<attached_storage<some::unbounded_collection<ball>, internal_index, some::indice>>(dd)[0][1] == 1));
-
-   
 }
