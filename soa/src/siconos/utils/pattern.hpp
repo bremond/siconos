@@ -1,8 +1,7 @@
-#ifndef SICONOS_PATTERN_HPP
-#define SICONOS_PATTERN_HPP
+#pragma once
 
-#include "siconos_util.hpp"
-#include "siconos_ground.hpp"
+#include "siconos/utils/utils.hpp"
+#include "siconos/utils/ground.hpp"
 
 #include <tuple>
 #include <utility>
@@ -219,6 +218,12 @@ namespace siconos
       requires (T i) { std::array<double,1>{}[i]; };
 
     template<typename T>
+    concept ublas_matrix = requires (T m) { m(0,0); };
+
+    template<typename T>
+    concept ublas_sparse_matrix = requires (T m) { m(0,0); m.index1_data(); m.index2_data(); };
+
+    template<typename T>
     concept degrees_of_freedom = requires { typename T::degrees_of_freedom_t; };
 
     template<typename T>
@@ -293,6 +298,9 @@ namespace siconos
       using time_invariant_t = void;
     };
 
+    struct boolean : attribute<>
+    {};
+
     struct scalar : attribute<>
     {};
 
@@ -320,6 +328,7 @@ namespace siconos
     struct undefined_vector : bounded_storage {};
 
     struct undefined_unbounded_matrix : unbounded_storage {};
+    struct undefined_unbounded_vector : unbounded_storage {};
 
     template<size_t ...Sizes>
     struct with_sizes
@@ -345,6 +354,10 @@ namespace siconos
 
     template<typename Type = some::scalar>
     struct unbounded_matrix : undefined_unbounded_matrix,
+      with_type<Type> {};
+
+    template<typename Type = some::scalar>
+    struct unbounded_vector : undefined_unbounded_vector,
       with_type<Type> {};
 
     template<typename Type, typename M>
@@ -419,11 +432,11 @@ namespace siconos
     concept bounded_storage = std::derived_from<T, some::bounded_storage>;
 
     template<typename T>
-    concept vector = std::derived_from<T, some::undefined_vector>
+    concept abstract_vector = std::derived_from<T, some::undefined_vector>
       || requires (T a) { a[0] ;};
 
     template<typename T>
-    concept matrix = std::derived_from<T, some::undefined_matrix> || requires (T a) { a[0] ;};
+    concept abstract_matrix = std::derived_from<T, some::undefined_matrix>;
 
     template<typename T, std::size_t N>
     concept cvector = requires (T a) { a[N-1]; };
@@ -712,5 +725,3 @@ namespace siconos
     decltype(auto) self() { return static_cast<Handle*>(this); };
   };
 }
-
-#endif

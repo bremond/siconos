@@ -1,8 +1,6 @@
-#ifndef SICONOS_LINEAR_ALGEBRA_HPP
-#define SICONOS_LINEAR_ALGEBRA_HPP
+#pragma once
 
-
-#include "siconos_pattern.hpp"
+#include "siconos/utils/pattern.hpp"
 
 #include <range/v3/view/join.hpp>
 #include <range/v3/view/stride.hpp>
@@ -15,10 +13,10 @@ namespace siconos
   {
     static auto solve_in_place =
       ground::overload(
-        []<match::vector V>(V& m, V&x)
+        []<match::abstract_vector V>(V& m, V&x)
       constexpr -> decltype(auto)
       {
-        for (auto [xi,mi] : ranges::views::zip(m, x))
+        for (auto [xi,mi] : ranges::views::zip(x, m))
         {
           xi = xi/mi; // diagonal terms
         };
@@ -34,7 +32,7 @@ namespace siconos
   }
 
   static constexpr decltype(auto) operator -
-    (const match::vector auto& a, const match::vector auto& b)
+    (const match::abstract_vector auto& a, const match::abstract_vector auto& b)
     {
       return ground::itransform(a,
                                 [&b](const auto i,
@@ -43,7 +41,7 @@ namespace siconos
     }
 
   static constexpr decltype(auto) operator -
-    (const match::vector auto&a)
+    (const match::abstract_vector auto&a)
     {
       return ground::itransform(a,
                                 [](const auto i, const auto& ai)
@@ -52,7 +50,7 @@ namespace siconos
 
 
   static constexpr decltype(auto) operator +
-  (const match::vector auto& a, const match::vector auto& b)
+  (const match::abstract_vector auto& a, const match::abstract_vector auto& b)
     {
       return ground::itransform(a,
                                 [&b](const auto i, const auto& ai)
@@ -60,7 +58,7 @@ namespace siconos
     }
 
   static constexpr decltype(auto) operator *
-  (const match::scalar auto& v, const match::vector auto& a)
+  (const match::scalar auto& v, const match::abstract_vector auto& a)
     {
       return ground::itransform(a,
                                 [&v](const auto i, const auto& ai)
@@ -68,5 +66,3 @@ namespace siconos
     }
 
 }
-
-#endif

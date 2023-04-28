@@ -1,7 +1,8 @@
-#include "siconos_environment.hpp"
-#include "siconos.hpp"
-#include "siconos_ground.hpp"
-#include "siconos_pattern.hpp"
+#include "siconos/utils/environment.hpp"
+#include "siconos/siconos.hpp"
+#include "siconos/utils/ground.hpp"
+#include "siconos/utils/pattern.hpp"
+#include "siconos/algebra/numerics.hpp"
 #include <charconv>
 #include <tuple>
 #include <fmt/core.h>
@@ -302,7 +303,9 @@ int main()
    htopo.make_index();
    print("htopo.index : {}\n", ground::get<attached_storage<ball, symbol<"index">, some::indice>>(data));
 
-   hosi.assemble_h_matrix(0, 3);
+   hosi.assemble_h_matrix_for_involved_ds(0);
+
+//   hosi.compute_w_matrix(0);
 
    print("memory_size={}\n", (memory_size<ball::q, decltype(all_properties_as<some::keep>(data))>));
 //   auto& q = siconos::get_memory<ball::q>(data);
@@ -403,7 +406,7 @@ int main()
 
    rel.compute_input(0., some_iball, inter, 1_c);
    auto hsim = make_full_handle<simulation>(0, data);
-   hsim.compute_output(1_c);
+//   hsim.compute_output(1_c);
 
    ground::get<attached_storage<ball, zz, some::scalar>>(ustore5)[0][0] = 1.0;
    get<zz>(0, some_iball, ustore5) = 1.0;
@@ -444,6 +447,7 @@ int main()
   xball2.property("z"_s) = 2.0;
 
 
+  
   print("{},{},{},{}\n", xball2.property(symbol<"x">{}), xball2.property("z"_s), xball4.property(symbol<"x">{}), xball4.property("z"_s));
 
    for_each(dd, []<typename Key, typename Value>(Key k, Value v)

@@ -1,7 +1,6 @@
-#ifndef SICONOS_TRAITS_HPP
-#define SICONOS_TRAITS_HPP
+#pragma once
 
-#include "siconos_pattern.hpp"
+#include "siconos/utils/pattern.hpp"
 
 namespace siconos
 {
@@ -15,6 +14,10 @@ namespace siconos
             {
               // return the type itself
               return T{};
+            }
+            else if constexpr (std::derived_from<T, some::boolean>)
+            {
+              return typename E::boolean{};
             }
             else if constexpr (std::derived_from<T, some::scalar>)
             {
@@ -65,6 +68,12 @@ namespace siconos
               return typename E::template unbounded_matrix<
                 decltype(translate(E{}, typename T::type{}))>{};
             }
+            else if constexpr (std::derived_from<T,
+                               some::undefined_unbounded_vector>)
+            {
+              return typename E::template unbounded_vector<
+                decltype(translate(E{}, typename T::type{}))>{};
+            }
             else if constexpr (std::derived_from<T, some::undefined_graph>)
             {
               return typename E::template graph<
@@ -107,4 +116,3 @@ namespace siconos
     };
   }
 }
-#endif

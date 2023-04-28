@@ -1,4 +1,4 @@
-* [#B] internal
+* internal
 #+name: src-dir
 #+begin_src elisp
   (progn
@@ -10,47 +10,8 @@
     default-directory)
 #+end_src
 
-#+begin_src C++ :flags "--std=c++20"
-  #include <iostream>
-  #include <concepts>
-  #include <tuple>
-
-  template <typename T>
-  concept scalar = std::is_scalar_v<T>;
-
-  template<typename ...Ts>
-  struct item
-  {
-    std::tuple<Ts...> members;
-
-    item(Ts... ts) : members(ts...) {};
-  };
-
-  template<typename ...Ts>
-  static constexpr auto define(Ts... ts)
-  {
-    return item(ts...);
-  }
-
-  template<item i>
-  struct yo
-  {
-    static constexpr auto value = i;
-
-  };
-
-  int main() {
-    define(env, "dynamical_system");
-    define(env, "interaction")
-    define(env, "nonsmooth_law", member("e", 1.5));
-
-    attach(env, "dynamical_system", member("velocity",);
-    std::cout << std::get<0>(ok.members) << std::endl;
-  }
-#+end_src
 
 #+RESULTS:
-
 
 * gcc
 

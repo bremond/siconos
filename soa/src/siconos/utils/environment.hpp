@@ -1,5 +1,4 @@
-#ifndef SICONOS_ENVIRONMENT_HPP
-#define SICONOS_ENVIRONMENT_HPP
+#pragma once
 
 #include <boost/container/vector.hpp>
 #include <cstddef>
@@ -7,10 +6,11 @@
 #include <vector>
 #include <tuple>
 #include <boost/container/static_vector.hpp>
-#include "SiconosGraph.hpp"
 #include "SolverOptions.h"
-#include "siconos_pattern.hpp"
-#include "siconos.hpp"
+
+#include "siconos/utils/SiconosGraph.hpp" // modified for std::array
+#include "siconos/utils/pattern.hpp"
+#include "siconos/siconos.hpp"
 
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
@@ -26,6 +26,7 @@ namespace siconos
   struct standard_environment
   {
 
+    using boolean = bool;
     using scalar = double;
     using indice = std::size_t;
 
@@ -53,6 +54,9 @@ namespace siconos
     template<typename T>
     using unbounded_matrix = ublas::compressed_matrix<T>;
 
+    template<typename T>
+    using unbounded_vector = ublas::vector<T>;
+
     template<typename T, indice N>
     using diagonal_matrix = ublas::diagonal_matrix<T, ublas::row_major, ublas::bounded_array<T, N>>;
 
@@ -76,5 +80,5 @@ namespace siconos
 
   };
 }
-#endif
+
 

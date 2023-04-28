@@ -1,10 +1,12 @@
-#ifndef SICONOS_HPP
-#define SICONOS_HPP
+#pragma once
 
-#include "siconos_storage.hpp"
-#include "siconos_pattern.hpp"
-#include "siconos_linear_algebra.hpp"
+#include "siconos/storage/storage.hpp"
+#include "siconos/utils/pattern.hpp"
+#include "siconos/algebra/linear_algebra.hpp"
+#include "siconos/algebra/numerics.hpp"
 #include <range/v3/view/zip.hpp>
+#include <range/v3/view/enumerate.hpp>
+#include <range/v3/view/filter.hpp>
 #include <tuple>
 
 #define GET(X) decltype(auto) X()                                       \
@@ -179,6 +181,7 @@ namespace siconos
       interaction_graphs, nids>;
 
     using properties = gather<
+      attached_storage<dynamical_system, symbol<"involved">, some::boolean>,
         attached_storage<dynamical_system, symbol<"index">, some::indice>,
         attached_storage<
             dynamical_system, symbol<"p0">,
@@ -251,6 +254,7 @@ namespace siconos
         return inter;
       };
 
+      // strategy 2 : h_matrix is assembled for involved ds only
       auto make_index()
       {
         auto& data = self()->data();
@@ -262,12 +266,15 @@ namespace siconos
         for (auto [dsi, dsiend] = dsg0.vertices(); dsi!=dsiend; ++dsi)
         {
           indice& prop = handle(dsg0.bundle(*dsi), data).property(symbol<"index">{});
+          auto&& involved = handle(dsg0.bundle(*dsi), data).property(symbol<"involved">{});
           auto [oei, oeiend] = dsg0.out_edges(*dsi);
           if (oeiend != oei) // ds is involved in some interaction
           {
+            involved = true;
             prop = counter++;
           } else
           {
+            involved = false;
             prop = 0;
           }
         }
@@ -340,6 +347,7 @@ namespace siconos
     using formulation = Form;
     using interaction = Interaction;
     using system = typename formulation::dynamical_system;
+    using y = typename interaction::y;
     using q = typename system::q;
     using velocity = typename system::velocity;
     using mass_matrix = typename system::mass_matrix;
@@ -382,10 +390,21 @@ namespace siconos
       struct constraint_activation_threshold : some::scalar {};
 
       struct h_matrix_assembled : some::unbounded_matrix<h_matrix> {};
+      struct q_vector_assembled : some::unbounded_vector<q> {};
+      struct velocity_vector_assembled : some::unbounded_matrix<velocity> {};
+      struct y_vector_assembled : some::unbounded_matrix<y> {};
+      struct mass_matrix_assembled : some::unbounded_matrix<mass_matrix> {};
+      struct w_matrix : some::unbounded_matrix<mass_matrix> {};
 
-      using attributes = types::attributes<theta, gamma,
+      using attributes = types::attributes<theta,
+                                           gamma,
                                            constraint_activation_threshold,
-                                           h_matrix_assembled>;
+                                           h_matrix_assembled,
+                                           mass_matrix_assembled,
+                                           w_matrix,
+                                           q_vector_assembled,
+                                           velocity_vector_assembled,
+                                           y_vector_assembled>;
 
       using properties = gather<
         keep<typename system::q, 2>,
@@ -400,6 +419,11 @@ namespace siconos
         GET(gamma)
         GET(constraint_activation_threshold)
         GET(h_matrix_assembled)
+        GET(q_vector_assembled)
+        GET(velocity_vector_assembled)
+        GET(y_vector_assembled)
+        GET(mass_matrix_assembled)
+        GET(w_matrix)
 
         bool add_interaction_in_index_set(
           auto inter,
@@ -423,20 +447,101 @@ namespace siconos
           return !add_interaction_in_index_set(inter, h, i);
         }
 
-        auto assemble_h_matrix(auto step, auto size)
+        // strategy 1 : assemble the matrix for involved ds only
+        auto assemble_h_matrix_for_involved_ds(auto step)
         {
           auto& data = self()->data();
           auto& h_matrices = memory(step, get_memory<h_matrix>(data));
-          auto& ids1s = ground::get<attached_storage<interaction, symbol<"ds1">, some::item_ref<system>>>(data)[0];
-          auto& ids2s = ground::get<attached_storage<interaction, symbol<"ds2">, some::item_ref<system>>>(data)[0];
+          auto size = std::size(h_matrices);
+          auto& ids1s =
+              ground::get<attached_storage<interaction, symbol<"ds1">,
+                                           some::item_ref<system>>>(data)[0];
+          auto& ids2s =
+              ground::get<attached_storage<interaction, symbol<"ds2">,
+                                           some::item_ref<system>>>(data)[0];
 
           self()->h_matrix_assembled().resize(size, size, false);
-          for (auto [mat, ids1, ids2] : ranges::views::zip(h_matrices, ids1s, ids2s))
-          {
-            auto i = handle(ids1, data).property(symbol<"index">{});
-            auto j = handle(ids2, data).property(symbol<"index">{});
+          for (auto [mat, ids1, ids2] :
+               ranges::views::zip(h_matrices, ids1s, ids2s)) {
+            auto i = handle(ids1, data)
+                         .property(symbol<"index">{});  // involved index
+            auto j = handle(ids2, data)
+                         .property(symbol<"index">{});  // involved index
             self()->h_matrix_assembled()(i, j) = mat;
           }
+        }
+
+        // strategy 2 : assemble the whole matrix (size = number of ds)
+        auto assemble_h_matrix_for_all_ds(auto step)
+        {
+          auto& data = self()->data();
+
+          // size is the number of ds
+          auto size = std::size(memory(step, get_memory<mass_matrix>(data)));
+
+          auto& h_matrices = memory(step, get_memory<h_matrix>(data));
+          auto& ids1s =
+              ground::get<attached_storage<interaction, symbol<"ds1">,
+                                           some::item_ref<system>>>(data)[0];
+          auto& ids2s =
+              ground::get<attached_storage<interaction, symbol<"ds2">,
+                                           some::item_ref<system>>>(data)[0];
+
+          self()->h_matrix_assembled().resize(size, size, false);
+          for (auto [mat, ids1, ids2] :
+               ranges::views::zip(h_matrices, ids1s, ids2s)) {
+            auto i = handle(ids1, data).get();  // global index
+            auto j = handle(ids2, data).get();  // global index
+            self()->h_matrix_assembled()(i, j) = mat;
+          }
+        }
+
+        auto assemble_mass_matrix_for_involved_ds(auto step)
+        {
+          auto& data = self()->data();
+
+          auto size = std::size(memory(step, get_memory<h_matrix>(data)));
+
+          auto& mass_matrices = memory(step, get_memory<mass_matrix>(data));
+          auto& involved_ds = ground::get<attached_storage<interaction, symbol<"involved">,
+                                                         some::item_ref<system>>>(data)[0];
+
+          self()->mass_matrix_assembled().resize(size, size);
+
+          for (auto [i, mat] : ranges::views::enumerate(mass_matrices) |
+                                   ranges::views::filter([](auto k_m) {
+                                     auto [k,_] = k_m;
+                                     return involved_ds[k];
+                                   }))
+          {
+            self()->mass_matrix_assembled()(i, i) = mat;
+          }
+        }
+
+        auto assemble_mass_matrix_for_all_ds(auto step)
+        {
+          auto& data = self()->data();
+
+          // size is the number of ds
+          auto size = std::size(memory(step, get_memory<mass_matrix>(data)));
+
+          auto& mass_matrices = memory(step, get_memory<mass_matrix>(data));
+
+          self()->mass_matrix_assembled().resize(size, size);
+
+          // also mapping block vector -> block diagonal matrix
+          for (auto [i, mat] : ranges::views::enumerate(mass_matrices)) {
+            self()->mass_matrix_assembled()(i,i) = mat;
+          }
+        }
+
+        auto compute_w_matrix(auto step)
+        {
+          auto tmp_matrix = std::decay_t<decltype(w_matrix())> {};
+          solve(mass_matrix_assembled(),
+                h_matrix_assembled(), tmp_matrix);
+          // aliasing ?
+          prod(trans(h_matrix_assembled()), tmp_matrix, w_matrix());
         }
 
         auto compute_iteration_matrix(auto step)
@@ -550,19 +655,20 @@ namespace siconos
 
       decltype(auto) compute_output(auto level)
       {
-        auto& index_set1 = topology().interaction_graphs()[1];
+        auto osi = one_step_integrator();
 
-        for (auto [ui1, ui1end] = index_set1.vertices();
-             ui1 != ui1end; ++ui1)
+        switch (level)
         {
-          auto inter1 = handle(index_set1.bundle(*ui1), self()->data());
-          auto [oei, oeiend] = index_set1.out_edges(*ui1);
-          auto ds1 = handle(index_set1.bundle(*oei), self()->data());
-          // one ds
-          inter1.relation().compute_output(0.,
-                                           ds1,
-                                           inter1,
-                                           level);
+        case 1 :
+          prod(osi.h_matrix_assembled(),
+               osi.velocity_vector_assembled(),
+               osi.y_vector_assembled());
+          break;
+        case 0 :
+          prod(osi.h_matrix_assembled(),
+               osi.q_vector_assembled(),
+               osi.y_vector_assembled());
+          break;
         }
       }
       void compute_one_step()
@@ -731,4 +837,4 @@ namespace siconos
     };
   };
 };
-#endif
+

@@ -1,5 +1,4 @@
-#ifndef SICONOS_STORAGE_HPP
-#define SICONOS_STORAGE_HPP
+#pragma once
 
 #include <cassert>
 #include <concepts>
@@ -7,10 +6,10 @@
 #include <type_traits>
 #include <variant>
 
-#include "siconos_ground.hpp"
-#include "siconos_pattern.hpp"
-#include "siconos_traits.hpp"
-#include "siconos_util.hpp"
+#include "siconos/utils/ground.hpp"
+#include "siconos/utils/pattern.hpp"
+#include "siconos/utils/traits.hpp"
+#include "siconos/utils/utils.hpp"
 
 namespace siconos {
 static constexpr auto memory = []<typename T>(
@@ -18,6 +17,8 @@ static constexpr auto memory = []<typename T>(
                                    T& mem) constexpr -> decltype(auto) {
   return mem[step % std::size(mem)];
 };
+
+
 
 namespace some {
 struct keep : property {};
@@ -39,7 +40,7 @@ struct keep : some::keep {
   static constexpr std::size_t size = N;
 };
 
-template <match::matrix M>
+template <match::abstract_matrix M>
 struct diagonal : some::diagonal {
   using type = M;
   using diagonal_t = void;
@@ -501,5 +502,5 @@ static auto for_each = [](auto m, auto&& fun) constexpr -> void {
   ground::for_each(
       m, ground::dup(ground::lockstep(fun)(ground::first, ground::second)));
 };
+
 }  // namespace siconos
-#endif

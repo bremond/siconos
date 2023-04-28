@@ -1,5 +1,4 @@
-#ifndef SICONOS_UTIL_HPP
-#define SICONOS_UTIL_HPP
+#pragma once
 
 #include <tuple>
 #include <functional>
@@ -156,4 +155,3 @@ namespace siconos
 
 
 }
-#endif

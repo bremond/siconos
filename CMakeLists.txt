@@ -15,7 +15,6 @@ link_directories(${CMAKE_BUILD_DIR})
 add_library(xsiconos SHARED XSiconosVector.cpp)
 add_executable(tbench tbench.cpp)
 #add_executable(tgraph tgraph.cpp)
-add_executable(tnonos tnonos.cpp)
 
 set(flags "-Wall --std=c++20")
 
@@ -29,7 +28,7 @@ endif()
 set_target_properties(xsiconos PROPERTIES COMPILE_FLAGS "${flags}")
 set_target_properties(tbench PROPERTIES COMPILE_FLAGS "${flags}")
 #set_target_properties(tgraph PROPERTIES COMPILE_FLAGS "${flags}")
-set_target_properties(tnonos PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
+
 #set_target_properties(bouncing_ball PROPERTIES COMPILE_FLAGS "-Wall --std=c++20")
 target_link_libraries(xsiconos siconos_kernel fmt)
 target_link_libraries(tbench xsiconos benchmark pthread fmt)

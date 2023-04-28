@@ -1,5 +1,5 @@
-#ifndef SICONOS_GROUND
-#define SICONOS_GROUND
+#pragma once
+
 #include <boost/hana/fwd/type.hpp>
 #define BOOST_HANA_CONFIG_ENABLE_STRING_UDL 1
 #include <algorithm>
@@ -22,9 +22,6 @@
 
 #include "boost/hana/ext/boost/ublas.hpp"
 
-#if defined(__clang__)
-#include <ctti/nameof.hpp>
-#endif
 #include <typeinfo>
 // cf https://www.boost.org/doc/libs/1_80_0/libs/hana/doc/html/structboost_1_1hana_1_1string.html#ad77f7afff008c2ce15739ad16a8bf0a8
 
@@ -263,4 +260,4 @@ namespace siconos
       []<typename T>() consteval { return std::derived_from<T, B>; }>;
   }
 }
-#endif
+
