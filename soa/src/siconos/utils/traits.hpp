@@ -114,5 +114,35 @@ namespace siconos
         using type = decltype(translate(E{}, A{}));
       };
     };
+
+    template<typename T>
+    static constexpr decltype(auto) get_nb_rows(T)
+    {
+      if constexpr (match::scalar<T>)
+      {
+        return 1;
+      }
+      else if constexpr (match::vector<T> || match::matrix<T>)
+      {
+        return std::size(T{});
+      }
+    }
+
+    template<typename T>
+    static constexpr decltype(auto) get_nb_cols(T)
+    {
+      if constexpr (match::scalar<T>)
+      {
+        return 1;
+      }
+      else if constexpr (match::matrix<T>)
+      {
+        return std::size(typename T::value_type{});
+      }
+      else if constexpr (match::vector<T>)
+      {
+        return 1;
+      }
+    }
   }
 }

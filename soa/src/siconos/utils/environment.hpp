@@ -10,6 +10,7 @@
 
 #include "siconos/utils/SiconosGraph.hpp" // modified for std::array
 #include "siconos/utils/pattern.hpp"
+#include "siconos/algebra/numerics.hpp"
 #include "siconos/siconos.hpp"
 
 #include <boost/numeric/ublas/vector.hpp>
@@ -46,22 +47,22 @@ namespace siconos
     using bounded_collection = std::array<S, N>;
 
     template<typename T, indice N>
-    using vector = ublas::fixed_vector<T, N>;
+    using vector = std::array<T, N>;
 
     template<typename T, indice N, indice M>
-    using matrix = ublas::fixed_matrix<T, M, N>;
+    using matrix = std::array<std::array<T, M>, N>; // row major
 
     template<typename T>
-    using unbounded_matrix = ublas::compressed_matrix<T>;
+    using unbounded_matrix = numerics::mat<T>;
 
     template<typename T>
-    using unbounded_vector = ublas::vector<T>;
+    using unbounded_vector = numerics::vec<T>;
 
     template<typename T, indice N>
-    using diagonal_matrix = ublas::diagonal_matrix<T, ublas::row_major, ublas::bounded_array<T, N>>;
+    using diagonal_matrix = std::array<T, N>;
 
     template<typename T>
-    using unbounded_diagonal_matrix = ublas::diagonal_matrix<T, ublas::row_major, ublas::unbounded_array<T>>;
+    using unbounded_diagonal_matrix = std::vector<T>;
 
     template<typename T>
     using item_ref = siconos::index<T, indice>;

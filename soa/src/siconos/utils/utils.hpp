@@ -152,6 +152,4 @@ namespace siconos
       };
       search(search, attributes);
     };
-
-
 }

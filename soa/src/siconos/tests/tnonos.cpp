@@ -305,7 +305,7 @@ int main()
 
    hosi.assemble_h_matrix_for_involved_ds(0);
 
-//   hosi.compute_w_matrix(0);
+   hosi.compute_w_matrix(0);
 
    print("memory_size={}\n", (memory_size<ball::q, decltype(all_properties_as<some::keep>(data))>));
 //   auto& q = siconos::get_memory<ball::q>(data);
@@ -361,10 +361,11 @@ int main()
    auto R = 1.0;
 //   print("mass matrix: {}", get<ball::mass_matrix>(some_iball, ustore5));
    auto ma = some_iball.mass_matrix();//get<ball::mass_matrix>(some_iball, ustore5);
-   ma.resize(3,3);
-   ma(0,0) = m;
-   ma(1,1) = m;
-   ma(2,2) = 2.5*m*R*R;
+//   ma.resize(3,3);
+   ground::type_trace<decltype(ma)>();
+   ma[0] = m;
+   ma[1] = m;
+   ma[2] = 2.5*m*R*R;
 //   print("mass matrix: {}", get<ball::mass_matrix>(some_iball, ustore5));
 
    auto simul = make_full_handle<simulation>(0, ustore5);
@@ -396,15 +397,15 @@ int main()
    auto rel = add<relation>(ustore5);
 
    auto yyv = ground::get<interaction::h_matrix>(ustore5);
-   interaction::h_matrix::at(inter)[0](0,0) = 1;
+   interaction::h_matrix::at(inter)[0][0] = 1;
 
    interaction::relation::at(inter) = rel;
    auto& v = interaction::y::at(inter)[1];
    v = { 1 };
 
-   rel.compute_output(0., some_iball, inter, 1_c);
+//   rel.compute_output(0., some_iball, inter, 1_c);
 
-   rel.compute_input(0., some_iball, inter, 1_c);
+//   rel.compute_input(0., some_iball, inter, 1_c);
    auto hsim = make_full_handle<simulation>(0, data);
 //   hsim.compute_output(1_c);
 

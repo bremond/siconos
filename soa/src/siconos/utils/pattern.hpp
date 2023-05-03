@@ -218,6 +218,12 @@ namespace siconos
       requires (T i) { std::array<double,1>{}[i]; };
 
     template<typename T>
+    concept vector = requires (T m) { m[0]; };
+
+    template<typename T>
+    concept matrix = requires (T m) { m[0][0]; };
+
+    template<typename T>
     concept ublas_matrix = requires (T m) { m(0,0); };
 
     template<typename T>
@@ -278,6 +284,7 @@ namespace siconos
 
   namespace some
   {
+
     template<typename ...Args>
     struct attribute
     {
@@ -306,6 +313,8 @@ namespace siconos
 
     struct indice : attribute<>
     {};
+
+    static constexpr std::size_t dof = 1;
 
     struct undefined_vdescriptor : attribute<> {};
     template<typename T>
@@ -351,6 +360,11 @@ namespace siconos
     template<typename Type, std::size_t N, std::size_t M>
     struct matrix : undefined_matrix,
       with_sizes<N, M>, with_type<Type> {};
+
+    template<typename Mat>
+    struct transposed_matrix : undefined_matrix, with_sizes<std::get<1>(Mat::sizes),
+                                                            std::get<0>(Mat::sizes)>,
+      with_type<typename Mat::type> {};
 
     template<typename Type = some::scalar>
     struct unbounded_matrix : undefined_unbounded_matrix,

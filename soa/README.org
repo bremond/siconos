@@ -52,7 +52,7 @@
 #+header: :dir build-gcc-debug
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
-       environment --pure --ad-hoc siconos benchmark gcc-toolchain boost fmt range-v3 cmake make -- \
+       environment --pure --ad-hoc siconos benchmark gcc-toolchain boost fmt range-v3 cmake make dash -- \
        make VERBOSE=1
 #+end_src
 

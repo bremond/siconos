@@ -19,4 +19,4 @@ endif()
 
 set_target_properties(tnonos PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
 
-target_link_libraries(tnonos benchmark pthread fmt)
+target_link_libraries(tnonos siconos_numerics benchmark pthread fmt)

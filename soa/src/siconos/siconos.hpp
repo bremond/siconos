@@ -98,7 +98,7 @@ namespace siconos
         void compute_output(double time, DynamicalSystem ds,
                             Interaction inter, auto level)
         {
-          auto& y = inter.y()[1][0];
+          auto& y = inter.y()[1];
           auto& H = inter.h_matrix()[0];
 
           auto& x = [&level,&ds]() -> decltype(auto)
@@ -135,8 +135,6 @@ namespace siconos
       struct interface : default_interface<Handle>
       {
         using default_interface<Handle>::self;
-
-
         GET(e)
         GET(mu)
 
@@ -291,14 +289,11 @@ namespace siconos
                            access<relation> {};
 
     struct h_matrix
-        : some::vector<
-              some::matrix<some::scalar, Formulation::dof, Nslaw::size>, 2>,
+      : some::matrix<some::scalar, Nslaw::size, Formulation::dof>,
           access<h_matrix> {};
-    struct lambda
-      : some::vector<some::vector<some::vector<some::scalar, Nslaw::size>, 2>, 2>,
-          access<lambda> {};
-    struct y
-      : some::vector<some::vector<some::vector<some::scalar, Nslaw::size>, 2>, 2>,
+    struct lambda : some::vector<some::scalar, Nslaw::size>, access<lambda>{};
+
+    struct y : some::vector<some::scalar, Nslaw::size>,
           access<y> {};
 
     using attributes = gather<nonsmooth_law, relation, h_matrix, lambda, y>;
@@ -346,6 +341,7 @@ namespace siconos
   {
     using formulation = Form;
     using interaction = Interaction;
+    using nonsmooth_law = typename interaction::nonsmooth_law;
     using system = typename formulation::dynamical_system;
     using y = typename interaction::y;
     using q = typename system::q;
@@ -391,10 +387,12 @@ namespace siconos
 
       struct h_matrix_assembled : some::unbounded_matrix<h_matrix> {};
       struct q_vector_assembled : some::unbounded_vector<q> {};
-      struct velocity_vector_assembled : some::unbounded_matrix<velocity> {};
-      struct y_vector_assembled : some::unbounded_matrix<y> {};
+      struct velocity_vector_assembled : some::unbounded_vector<velocity> {};
+      struct y_vector_assembled : some::unbounded_vector<y> {};
       struct mass_matrix_assembled : some::unbounded_matrix<mass_matrix> {};
-      struct w_matrix : some::unbounded_matrix<mass_matrix> {};
+      struct w_matrix : some::unbounded_matrix<
+        some::matrix<some::scalar,
+                     std::get<0>(h_matrix::sizes), std::get<0>(h_matrix::sizes)>> {};
 
       using attributes = types::attributes<theta,
                                            gamma,
@@ -430,8 +428,8 @@ namespace siconos
           auto h,
           auto i)
         {
-          auto          y = inter.y()[i-1][0][0];
-          const auto ydot = inter.y()[i][0][0];
+          auto          y = inter.y()[i-1];
+          const auto ydot = inter.y()[i];
           const auto& gamma_v = 0.5;
           y += gamma_v * h * ydot ;
 
@@ -460,14 +458,14 @@ namespace siconos
               ground::get<attached_storage<interaction, symbol<"ds2">,
                                            some::item_ref<system>>>(data)[0];
 
-          self()->h_matrix_assembled().resize(size, size, false);
+          resize(self()->h_matrix_assembled(), size, size);
           for (auto [mat, ids1, ids2] :
                ranges::views::zip(h_matrices, ids1s, ids2s)) {
             auto i = handle(ids1, data)
                          .property(symbol<"index">{});  // involved index
             auto j = handle(ids2, data)
                          .property(symbol<"index">{});  // involved index
-            self()->h_matrix_assembled()(i, j) = mat;
+            set_value(self()->h_matrix_assembled(), i, j, mat);
           }
         }
 
@@ -487,12 +485,12 @@ namespace siconos
               ground::get<attached_storage<interaction, symbol<"ds2">,
                                            some::item_ref<system>>>(data)[0];
 
-          self()->h_matrix_assembled().resize(size, size, false);
+          resize(self()->h_matrix_assembled(), size, size);
           for (auto [mat, ids1, ids2] :
                ranges::views::zip(h_matrices, ids1s, ids2s)) {
             auto i = handle(ids1, data).get();  // global index
             auto j = handle(ids2, data).get();  // global index
-            self()->h_matrix_assembled()(i, j) = mat;
+            set_value(self()->h_matrix_assembled(), i, j, mat);
           }
         }
 
@@ -514,7 +512,7 @@ namespace siconos
                                      return involved_ds[k];
                                    }))
           {
-            self()->mass_matrix_assembled()(i, i) = mat;
+            set_value(self()->mass_matrix_assembled(), i, i, mat);
           }
         }
 
@@ -531,17 +529,22 @@ namespace siconos
 
           // also mapping block vector -> block diagonal matrix
           for (auto [i, mat] : ranges::views::enumerate(mass_matrices)) {
-            self()->mass_matrix_assembled()(i,i) = mat;
+            set_value(self()->mass_matrix_assembled(), i,i, mat);
           }
         }
 
         auto compute_w_matrix(auto step)
         {
-          auto tmp_matrix = std::decay_t<decltype(w_matrix())> {};
-          solve(mass_matrix_assembled(),
-                h_matrix_assembled(), tmp_matrix);
+          auto& data = self()->data();
+          using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+          using env = typename info_t::env;
+          auto tmp_matrix = typename traits::config<env>::template convert<some::unbounded_matrix<some::transposed_matrix<h_matrix>>>::type {};
+
+          // M^-1 H^t
+          solvet(mass_matrix_assembled(),
+                 h_matrix_assembled(), tmp_matrix);
           // aliasing ?
-          prod(trans(h_matrix_assembled()), tmp_matrix, w_matrix());
+          prod(h_matrix_assembled(), tmp_matrix, w_matrix());
         }
 
         auto compute_iteration_matrix(auto step)
