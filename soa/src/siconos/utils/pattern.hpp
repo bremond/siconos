@@ -11,6 +11,8 @@
 
 namespace siconos
 {
+  template<size_t N, typename tpl>
+  using nth_t = std::decay_t<decltype(std::get<N>(tpl{}))>;
 
   template<typename ...Args>
   using gather = std::tuple<Args...>;
@@ -314,7 +316,21 @@ namespace siconos
     struct indice : attribute<>
     {};
 
-    static constexpr std::size_t dof = 1;
+    struct undefined_indice_parameter : attribute<>
+    {};
+
+    template<string_literal S>
+    struct indice_parameter : undefined_indice_parameter
+    {
+      static constexpr auto name = S;
+    };
+
+    struct undefined_indice_value : attribute<> {};
+    template<auto I>
+    struct indice_value : undefined_indice_value
+    {
+      static constexpr auto value = I;
+    };
 
     struct undefined_vdescriptor : attribute<> {};
     template<typename T>
@@ -339,10 +355,10 @@ namespace siconos
     struct undefined_unbounded_matrix : unbounded_storage {};
     struct undefined_unbounded_vector : unbounded_storage {};
 
-    template<size_t ...Sizes>
+    template<typename ...Sizes>
     struct with_sizes
     {
-       static constexpr auto sizes = std::tuple {Sizes...};
+      using sizes = std::tuple <Sizes...>;
     };
 
     template<typename Type>
@@ -357,13 +373,13 @@ namespace siconos
       using types = std::tuple<Types...>;
     };
 
-    template<typename Type, std::size_t N, std::size_t M>
+    template<typename Type, typename N, typename M>
     struct matrix : undefined_matrix,
       with_sizes<N, M>, with_type<Type> {};
 
     template<typename Mat>
-    struct transposed_matrix : undefined_matrix, with_sizes<std::get<1>(Mat::sizes),
-                                                            std::get<0>(Mat::sizes)>,
+    struct transposed_matrix : undefined_matrix, with_sizes<nth_t<1, typename Mat::sizes>,
+                                                            nth_t<0, typename Mat::sizes>>,
       with_type<typename Mat::type> {};
 
     template<typename Type = some::scalar>
@@ -376,13 +392,13 @@ namespace siconos
 
     template<typename Type, typename M>
     struct diagonal_matrix : undefined_diagonal_matrix,
-      with_sizes<std::get<0>(M::sizes)>, with_type<Type> {};
+      with_sizes<nth_t<0, typename M::sizes>>, with_type<Type> {};
 
     template<typename Type>
     struct unbounded_diagonal_matrix : unbounded_storage, undefined_diagonal_matrix,
       with_type<Type> {};
 
-    template<typename Type, std::size_t N>
+    template<typename Type, typename N>
     struct vector : undefined_vector, with_sizes<N>, with_type<Type> {};
 
     struct undefined_graph : attribute<> {};
@@ -393,7 +409,7 @@ namespace siconos
     template<typename Type>
     struct unbounded_collection : undefined_unbounded_collection, with_type<Type> {};
 
-    template<typename Type, std::size_t N>
+    template<typename Type, typename N>
     struct bounded_collection : undefined_bounded_collection, with_sizes<N>, with_type<Type> {};
 
     template<match::item T>
@@ -737,5 +753,28 @@ namespace siconos
   struct default_interface
   {
     decltype(auto) self() { return static_cast<Handle*>(this); };
+  };
+
+  template<typename Args>
+  static constexpr decltype(auto) dof()
+  {
+    return ground::find_if(Args{},
+                           []<typename T>(T) { return degrees_of_freedom_p<T>{}; }).
+      value_or([]<bool flag = false>() { static_assert(flag, "need some dof"); }).value;
+  }
+
+  template<string_literal S>
+  struct indice_value : symbol<S>
+  {
+    std::size_t value;
+  };
+
+  template<string_literal S>
+  struct param : symbol<S> {};
+
+  template<auto V>
+  struct param_val
+  {
+    static constexpr auto value = V;
   };
 }

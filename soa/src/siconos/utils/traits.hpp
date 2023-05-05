@@ -27,6 +27,15 @@ namespace siconos
             {
               return typename E::indice{};
             }
+            else if constexpr (std::derived_from<T, some::undefined_indice_parameter>)
+            {
+              return ground::get<param<T::name>> (typename E::params {});
+            }
+            else if constexpr (std::derived_from<T, some::undefined_indice_value>)
+            {
+              return T{};
+            }
+
             else if constexpr (std::derived_from<T,
                                some::undefined_unbounded_collection>)
             {
@@ -36,13 +45,13 @@ namespace siconos
                                some::undefined_bounded_collection>)
             {
               return typename E::template bounded_collection<decltype(translate(E{}, typename T::type{})),
-                                                             std::get<0>(T::sizes)>{};
+                decltype(translate(E{}, nth_t<0, typename T::sizes>{}))::value>{};
             }
             else if constexpr (std::derived_from<T,
                                some::undefined_vector>)
             {
               return typename E::template vector<decltype(translate(E{}, typename T::type{})),
-                                                 std::get<0>(T::sizes)>{};
+                decltype(translate(E{}, nth_t<0, typename T::sizes>{}))::value>{};
             }
             else if constexpr (std::derived_from<T,
                                some::undefined_diagonal_matrix> && std::derived_from<T, some::unbounded_storage>)
@@ -52,15 +61,17 @@ namespace siconos
             else if constexpr (std::derived_from<T, some::undefined_diagonal_matrix>)
             {
               return typename E::template diagonal_matrix<decltype(translate(E{}, typename T::type{})),
-                                                          std::get<0>(T::sizes)>{};
+                decltype(translate(E{}, nth_t<0, typename T::sizes>{}))::value> {};
             }
             else if constexpr (std::derived_from<T,
                                some::undefined_matrix>)
             {
+              using nrows = decltype(translate(E{}, nth_t<0, typename T::sizes>{}));
+              using ncols = decltype(translate(E{}, nth_t<1, typename T::sizes>{}));
               return typename E::template matrix<
                 decltype(translate(E{}, typename T::type{})),
-                std::get<0>(T::sizes),
-                std::get<1>(T::sizes)>{};
+                nrows::value, ncols::value> {};
+
             }
             else if constexpr (std::derived_from<T,
                                some::undefined_unbounded_matrix>)

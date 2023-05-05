@@ -3,6 +3,15 @@
 #include "siconos/utils/ground.hpp"
 #include "siconos/utils/pattern.hpp"
 #include "siconos/algebra/numerics.hpp"
+#include "siconos/model/lagrangian_ds.hpp"
+#include "siconos/model/lagrangian_r.hpp"
+#include "siconos/model/nslaws.hpp"
+#include "siconos/simul/topology.hpp"
+#include "siconos/simul/interaction.hpp"
+#include "siconos/model/one_step_nonsmooth_problem.hpp"
+#include "siconos/simul/one_step_integrator.hpp"
+#include "siconos/simul/time_discretization.hpp"
+#include "siconos/simul/time_stepping.hpp"
 #include <charconv>
 #include <tuple>
 #include <fmt/core.h>
@@ -21,15 +30,14 @@ using env = siconos::standard_environment;
 using namespace boost::hana::literals;
 int main()
 {
-  using formulation = lagrangian<linear, time_invariant, degrees_of_freedom<3>>;
-  using ball = formulation::dynamical_system;
+  using ball = lagrangian_ds;
   using osnspb = one_step_nonsmooth_problem<lcp>;
-  using relation = formulation::relation;
+  using relation = lagrangian_r;
   using nslaw = nonsmooth_law::newton_impact;
-  using interaction = interaction<nslaw, formulation, 1>;
-  using osi = one_step_integrator<formulation, interaction>::moreau_jean;
+  using interaction = interaction<nslaw, relation, 1>;
+  using osi = one_step_integrator<ball, interaction>::moreau_jean;
   using td = time_discretization<>;
-  using topo = topology<formulation, interaction>;
+  using topo = topology<ball, interaction>;
   using simulation = time_stepping<td, osi, osnspb, topo>;
   using siconos::get;
 
@@ -55,8 +63,9 @@ int main()
                        filter<hold<decltype([]<typename T>(T) { return match::item_ref<T>; })>>(typename interaction::attributes{}));
     }()), gather<nslaw, relation>>);
 
+  //ground::type_trace<decltype(all_items(interaction{}))>();
   static_assert(std::is_same_v<decltype(all_items(interaction{})),
-                std::tuple<siconos::interaction<siconos::nonsmooth_law::newton_impact, siconos::lagrangian<linear, time_invariant, degrees_of_freedom<3>>, 1>, siconos::nonsmooth_law::newton_impact, siconos::lagrangian<linear, time_invariant, degrees_of_freedom<3>>::relation>>);
+                std::tuple<interaction, nslaw, relation>>);
 
   //static_assert(must::contains<osnspb, decltype(all_items(simulation{}))>);
 
@@ -83,8 +92,8 @@ int main()
 
 
   static_assert(match::unbounded_storage<some::unbounded_collection<some::scalar>>);
-  static_assert(match::bounded_storage<some::bounded_collection<some::scalar, 1>>);
-  static_assert(!match::unbounded_storage<some::bounded_collection<some::scalar, 1>>);
+  static_assert(match::bounded_storage<some::bounded_collection<some::scalar, some::indice_value<1>>>);
+  static_assert(!match::unbounded_storage<some::bounded_collection<some::scalar, some::indice_value<1>>>);
   static_assert(!match::bounded_storage<some::unbounded_collection<some::scalar>>);
   static_assert(match::unbounded_storage<some::unbounded_diagonal_matrix<some::scalar>>);
 
@@ -312,17 +321,17 @@ int main()
 //   print("q={}\n", q);
 //   print("v={}\n", siconos::get_memory<ball::velocity>(data));
 
-   auto ustore1 = unit_storage<env, some::scalar, some::vector<some::scalar, 3>, some::graph<some::indice, some::indice>>::type {};
+   auto ustore1 = unit_storage<env, some::scalar, some::vector<some::scalar, some::indice_value<3>>, some::graph<some::indice, some::indice>>::type {};
 
 //   ground::find(ustore1, boost::hana::type_c<some::scalar>) = 1.0;
 //   ground::find(ustore1, boost::hana::type_c<some::vector<3>>).value() = { 1.0, 2.0, 3.0 };
 
    ground::get<some::scalar>(ustore1) = 2.0;
-   ground::get<some::vector<some::scalar, 3>>(ustore1) = std::array {1.0, 2.0, 3.0};
+   ground::get<some::vector<some::scalar, some::indice_value<3>>>(ustore1) = std::array {1.0, 2.0, 3.0};
 
    print("ustore1 scalar={}\n", ground::get<some::scalar>(ustore1));
 
-   print("ustore1 vector={}\n", ground::get<some::vector<some::scalar, 3>>(ustore1));
+   print("ustore1 vector={}\n", ground::get<some::vector<some::scalar, some::indice_value<3>>>(ustore1));
 
    auto ustore2 = typename item_storage<env, simulation, ball>::type {};
 
@@ -448,7 +457,7 @@ int main()
   xball2.property("z"_s) = 2.0;
 
 
-  
+
   print("{},{},{},{}\n", xball2.property(symbol<"x">{}), xball2.property("z"_s), xball4.property(symbol<"x">{}), xball4.property("z"_s));
 
    for_each(dd, []<typename Key, typename Value>(Key k, Value v)
@@ -457,4 +466,6 @@ int main()
               print("Value: [{}]\n\n", ground::type_name<Value>());
             });
 //   assert((ground::get<attached_storage<some::unbounded_collection<ball>, internal_index, some::indice>>(dd)[0][1] == 1));
+
+
 }

@@ -79,7 +79,11 @@ namespace siconos
     template<typename T>
     using vdescriptor = typename T::VDescriptor;
 
+    using params = ground::map<ground::pair<param<"dof">, param_val<3>>>;
+
   };
+
+
 }
 
 
