@@ -129,6 +129,7 @@ namespace siconos
 
     static auto second = hana::second;
 
+    static auto front = hana::front;
     // f(T{}, ...) -> f<T>(...)
     template<typename T>
     static auto t_arg = []<typename F>(F&& f) { return ground::partial(f, T{}); };

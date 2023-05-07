@@ -18,12 +18,25 @@ static constexpr auto memory = []<typename T>(
   return mem[step % std::size(mem)];
 };
 
+namespace property {
+struct keep : some::property {};
 
+struct refine : some::property {};
 
-namespace some {
-struct keep : property {};
-struct diagonal : property {};
-}  // namespace some
+struct diagonal : refine {
+  template <match::attribute A>
+  using refine = some::diagonal_matrix<typename A::type, A>;
+};
+  struct unbounded_diagonal : refine {
+  template <match::attribute A>
+  using refine = some::unbounded_diagonal_matrix<typename A::type>;
+};
+}  // namespace property
+
+template <match::attribute A, typename T>
+struct refine_with_type : A {
+  using type = T;
+};
 
 struct info {};
 
@@ -33,7 +46,7 @@ struct with_properties : item<> {
 };
 
 template <match::attribute Attr, std::size_t N>
-struct keep : some::keep {
+struct keep : property::keep {
   using type = Attr;
   using keep_t = void;
   //    using attribute = Attr;
@@ -41,9 +54,15 @@ struct keep : some::keep {
 };
 
 template <match::abstract_matrix M>
-struct diagonal : some::diagonal {
+struct diagonal : property::diagonal {
   using type = M;
   using diagonal_t = void;
+};
+
+template <match::abstract_matrix M>
+struct unbounded_diagonal : property::unbounded_diagonal {
+  using type = M;
+  using unbounded_diagonal_t = void;
 };
 
 template <match::item T, typename R>
@@ -155,8 +174,7 @@ static auto all_properties_as = [](auto& data) constexpr -> auto {
   using info_t = std::decay_t<decltype(ground::get<info>(data))>;
   using all_properties_t = typename info_t::all_properties_t;
 
-  return ground::filter(all_properties_t{},
-                        ground::derive_from<K>);
+  return ground::filter(all_properties_t{}, ground::derive_from<K>);
 };
 
 template <match::attribute Attr>
@@ -170,11 +188,52 @@ static auto attribute_properties = [](auto& data) constexpr -> auto {
 };
 
 template <match::attribute Attr, match::property K>
-static auto has_property = [](const auto& data) constexpr -> bool {
+static auto has_property = [](auto& data) constexpr -> bool {
   return ground::any_of(all_properties_as<K>(data), []<match::property P>(P) {
     return std::derived_from<Attr, typename P::type>;
   });
 };
+
+static auto refine_attribute = []<match::attribute Attr, typename D>(
+                                   const D& data,
+                                   Attr) constexpr -> decltype(auto) {
+  using refines = decltype(filter<hold<decltype([]<match::property P>(P) {
+    return std::derived_from<Attr, typename P::type>;
+  })>>(all_properties_as<property::refine>(data)));
+  if constexpr (std::tuple_size_v<refines> > 0) {
+    return typename nth_t<0, refines>::template refine<Attr>{};
+  }
+  else {
+    // return attribute as it is
+    return Attr{};
+  }
+};
+
+static constexpr auto refine_recursively_attribute =
+    []<match::attribute Attr>(auto& data, Attr) {
+      using data_t = std::decay_t<decltype(data)>;
+      constexpr auto rec_loop = []<typename IAttr>(auto&& loop,
+                                                   IAttr) constexpr {
+        if constexpr (match::attribute_with_internal_type<IAttr>) {
+          // look inside and apply fun
+          if constexpr (match::attribute<typename IAttr::type>) {
+            using r =
+                refine_with_type<IAttr, decltype(loop(
+                                            loop, typename IAttr::type{}))>;
+            return refine_attribute(data_t{}, r{});
+          }
+          else {
+            return refine_attribute(data_t{}, IAttr{});
+          }
+        }
+        else {
+          // terminal attribute
+          return refine_attribute(data_t{}, IAttr{});
+        }
+      };
+
+      return rec_loop(rec_loop, Attr{});
+    };
 
 template <match::attribute T>
 static auto get_memory = [](auto& data) constexpr -> decltype(auto) {
@@ -278,9 +337,10 @@ static auto get = ground::overload(
       using item_t = typename Handle::type;
       using info_t = std::decay_t<decltype(ground::get<info>(data))>;
       constexpr auto tpl = ground::filter(
-        typename info_t::all_properties_t{},
-        ground::is_a_model<[]<typename T>() consteval {
-          return (match::attached_storage<T, item_t> && match::tag<T, A>);}>);
+          typename info_t::all_properties_t{},
+          ground::is_a_model<[]<typename T>() consteval {
+            return (match::attached_storage<T, item_t> && match::tag<T, A>);
+          }>);
 
       //      static_assert (std::tuple_size_v<decltype(tpl)> >= 1, "attached
       //      storage not found");
@@ -294,12 +354,14 @@ static auto get = ground::overload(
       using info_t = std::decay_t<decltype(ground::get<info>(data))>;
 
       constexpr auto tpl = ground::filter(
-        typename info_t::all_properties_t{},
-        ground::is_a_model<[]<typename T>() consteval {
-          return (match::attached_storage<T, item_t> && match::tag<T, A>);}>);
-//      constexpr auto tpl = filter<hold<decltype([]<typename T>(T) {
-//        return (match::attached_storage<T, item_t> && match::tag<T, A>);
-//      })>>(typename info_t::all_properties_t{});
+          typename info_t::all_properties_t{},
+          ground::is_a_model<[]<typename T>() consteval {
+            return (match::attached_storage<T, item_t> && match::tag<T, A>);
+          }>);
+      //      constexpr auto tpl = filter<hold<decltype([]<typename T>(T) {
+      //        return (match::attached_storage<T, item_t> && match::tag<T,
+      //        A>);
+      //      })>>(typename info_t::all_properties_t{});
 
       //      static_assert (std::tuple_size_v<decltype(tpl)> >= 1, "attached
       //      storage not found");
@@ -350,21 +412,13 @@ static auto make_storage = []() constexpr -> decltype(auto) {
           attribute_storage_transform(
               base_storage,
               // attribute level for base storage specifications
-              [&base_storage]<match::attribute Attribute, typename Storage>(
+              []<match::attribute Attribute, typename Storage>(
                   Attribute, Storage& s) -> decltype(auto) {
-                // if attribute is derived from one of diagonal specifications
-                if constexpr (has_property<Attribute, some::diagonal>(
-                                base_storage)) {
-                  // refine attribute specification toward diagonal storage
-                  return typename traits::config<typename info_t::env>::
-                      template convert<some::diagonal_matrix<
-                          typename Attribute::type, Attribute>>::type();
-                }
-                // if constexpr (has_property<Attribute, other>(base_storage))
-                // etc.
-                else {
-                  return s;
-                }
+                // if attribute is derived from one of diagonal
+                // specifications, etc.
+                return typename traits::config<typename info_t::env>::
+                    template convert<decltype(refine_recursively_attribute(
+                        base_storage, Attribute{}))>::type{};
               }),
           // item level: collection depends on item property
           []<match::item Item, match::attribute Attr>(Item item, Attr attr,
@@ -372,24 +426,30 @@ static auto make_storage = []() constexpr -> decltype(auto) {
             using storage_t = std::decay_t<decltype(s)>;
 
             if constexpr (match::wrap<Item>) {
-              if constexpr (match::unbounded_storage<typename Item::template wrapper<some::scalar>>) {
+              if constexpr (match::unbounded_storage<
+                                typename Item::template wrapper<
+                                    some::scalar>>) {
                 return ground::pair<
-                  Attr,
-                  typename traits::config<Env>::template convert<typename Item::template wrapper<
-                    storage_t>>::type>{};
+                    Attr,
+                    typename traits::config<Env>::template convert<
+                        typename Item::template wrapper<storage_t>>::type>{};
               }
-              else if constexpr (match::bounded_storage<typename Item::template wrapper<some::scalar, 1>>) {
+              else if constexpr (match::bounded_storage<
+                                     typename Item::template wrapper<
+                                         some::scalar, 1>>) {
                 return ground::pair<
-                  Attr,
-                  typename traits::config<Env>::template convert<typename Item::template wrapper<
-                    storage_t, std::get<0>(Item::sizes)>>::type>{};  // std::forward<storage_t>(s)};
+                    Attr, typename traits::config<Env>::template convert<
+                              typename Item::template wrapper<
+                                  storage_t, std::get<0>(Item::sizes)>>::
+                              type>{};  // std::forward<storage_t>(s)};
               }
               else {
                 []<typename Attribute = Attr, typename LastItem = Item,
                    bool flag = false>()
-                  {
-                    static_assert(flag, "storage error");
-                  }();
+                {
+                  static_assert(flag, "storage error");
+                }
+                ();
               }
             }
             else  // default storage
@@ -403,7 +463,7 @@ static auto make_storage = []() constexpr -> decltype(auto) {
       []<match::attribute Attribute>(Attribute attr, auto s) {
         using storage_t = std::decay_t<decltype(s)>;
         using all_keeps_t =
-            decltype(all_properties_as<some::keep>(base_storage));
+            decltype(all_properties_as<property::keep>(base_storage));
         return memory_t<storage_t, memory_size<Attribute, all_keeps_t>>{};
       });
 };
@@ -411,7 +471,7 @@ static auto make_storage = []() constexpr -> decltype(auto) {
 static auto remove = [](auto h, auto& data) {
   using item_t = typename std::decay_t<decltype(h)>::type;
   using info_t = std::decay_t<decltype(ground::get<info>(data))>;
-  using all_keeps_t = decltype(all_properties_as<some::keep>(data));
+  using all_keeps_t = decltype(all_properties_as<property::keep>(data));
 
   using indice = typename info_t::env::indice;
 
@@ -435,17 +495,17 @@ template <match::item Item>
 static auto add = [](auto&& data) constexpr -> decltype(auto) {
   using data_t = std::decay_t<decltype(data)>;
   using info_t = std::decay_t<decltype(ground::get<info>(data))>;
-  using all_keeps_t = decltype(all_properties_as<some::keep>(data));
+  using all_keeps_t = decltype(all_properties_as<property::keep>(data));
 
   using indice = typename info_t::env::indice;
   auto attached_storage =
-    ground::filter(typename info_t::all_properties_t{},
-                   ground::is_a_model<[]<typename T>() consteval {
-                     return match::attached_storage<T, Item>;
-                   }>);
+      ground::filter(typename info_t::all_properties_t{},
+                     ground::is_a_model<[]<typename T>() consteval {
+                       return match::attached_storage<T, Item>;
+                     }>);
 
   constexpr auto attrs =
-    flatten(append(attributes(Item{}), attached_storage));
+      flatten(append(attributes(Item{}), attached_storage));
 
   using attrs_t = std::decay_t<decltype(attrs)>;
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "siconos/siconos.hpp"
+#include "siconos/storage/storage.hpp"
 #include "siconos/utils/pattern.hpp"
 
 namespace siconos {
@@ -179,13 +179,13 @@ struct one_step_integrator {
 
         auto &mass_matrices = memory(step, get_memory<mass_matrix>(data));
         auto &involved_ds =
-            ground::get<attached_storage<interaction, symbol<"involved">,
-                                         some::item_ref<system>>>(data)[0];
+          ground::get<attached_storage<system, symbol<"involved">,
+                                       some::boolean>>(data)[0];
 
-        self()->mass_matrix_assembled().resize(size, size);
+        resize(self()->mass_matrix_assembled(), size, size);
 
         for (auto [i, mat] : ranges::views::enumerate(mass_matrices) |
-                                 ranges::views::filter([](auto k_m) {
+                                 ranges::views::filter([&involved_ds](auto k_m) {
                                    auto [k, _] = k_m;
                                    return involved_ds[k];
                                  })) {
@@ -220,7 +220,14 @@ struct one_step_integrator {
             type{};
 
         // M^-1 H^t
+//        if constexpr (has_property<mass_matrix, some::diagonal>) {
+//          prod(inv(mass_matrix_assembled()), trans(h_matrix_assembled(), tmp_matrix));
+//        }
+//        else  // general case
+//        {
         solvet(mass_matrix_assembled(), h_matrix_assembled(), tmp_matrix);
+//        }
+
         // aliasing ?
         prod(h_matrix_assembled(), tmp_matrix, w_matrix());
       }
@@ -238,7 +245,7 @@ struct one_step_integrator {
 
         if constexpr (has_property<mass_matrix, some::time_invariant>(data)) {
           if constexpr (has_property<fext, some::time_invariant>(data)) {
-            if constexpr (has_property<mass_matrix, some::diagonal>(data)) {
+            if constexpr (has_property<mass_matrix, property::diagonal>(data)) {
               for (auto [mat, f] : ranges::views::zip(mats, fs)) {
                 linear_algebra::solve_in_place(mat, f);
               }

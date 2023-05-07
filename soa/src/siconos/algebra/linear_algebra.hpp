@@ -15,8 +15,8 @@ namespace siconos
   template<typename T, size_t N>
   using vector = std::array<T, N>;
 
-  template<typename T, size_t N, size_t M>
-  using matrix = std::array<vector <T, N>, M>;
+  template<typename T, size_t M, size_t N>
+  using matrix = std::array<vector <T, M>, N>;
 
   template<match::matrix A>
   using trans_t = matrix<typename A::value_type::value_type,
@@ -35,7 +35,7 @@ namespace siconos
 
     static auto solve_in_place =
       ground::overload(
-        []<match::abstract_vector V>(V& m, V&x)
+        []<match::vector V>(V& m, V&x)
       constexpr -> decltype(auto)
       {
         for (auto [xi,mi] : ranges::views::zip(x, m))
@@ -54,7 +54,7 @@ namespace siconos
   }
 
   static constexpr decltype(auto) operator -
-    (const match::abstract_vector auto& a, const match::abstract_vector auto& b)
+    (const match::vector auto& a, const match::vector auto& b)
     {
       return ground::itransform(a,
                                 [&b](const auto i,
@@ -63,7 +63,7 @@ namespace siconos
     }
 
   static constexpr decltype(auto) operator -
-    (const match::abstract_vector auto&a)
+    (const match::vector auto&a)
     {
       return ground::itransform(a,
                                 [](const auto i, const auto& ai)
@@ -72,7 +72,7 @@ namespace siconos
 
 
   static constexpr decltype(auto) operator +
-  (const match::abstract_vector auto& a, const match::abstract_vector auto& b)
+  (const match::vector auto& a, const match::vector auto& b)
     {
       return ground::itransform(a,
                                 [&b](const auto i, const auto& ai)
@@ -80,7 +80,7 @@ namespace siconos
     }
 
   static constexpr decltype(auto) operator *
-  (const match::scalar auto& v, const match::abstract_vector auto& a)
+  (const match::scalar auto& v, const match::vector auto& a)
     {
       return ground::itransform(a,
                                 [&v](const auto i, const auto& ai)

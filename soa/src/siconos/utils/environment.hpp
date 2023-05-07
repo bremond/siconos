@@ -62,7 +62,7 @@ namespace siconos
     using diagonal_matrix = std::array<T, N>;
 
     template<typename T>
-    using unbounded_diagonal_matrix = std::vector<T>;
+    using unbounded_diagonal_matrix = numerics::diag_mat<T>;
 
     template<typename T>
     using item_ref = siconos::index<T, indice>;
