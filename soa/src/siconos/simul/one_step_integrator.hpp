@@ -190,7 +190,9 @@ struct one_step_integrator {
                                    return involved_ds[k];
                                  })) {
           set_value(self()->mass_matrix_assembled(), i, i, mat);
+          std::cout << size0(mass_matrix_assembled()) << "," << size1(mass_matrix_assembled()) << std::endl;
         }
+        assert( size0(mass_matrix_assembled()) == size1(mass_matrix_assembled()));
       }
 
       auto assemble_mass_matrix_for_all_ds(auto step)
@@ -219,6 +221,7 @@ struct one_step_integrator {
             some::unbounded_matrix<some::transposed_matrix<h_matrix>>>::
             type{};
 
+        resize(tmp_matrix, size1(h_matrix_assembled()), size0(h_matrix_assembled()));
         // M^-1 H^t
 //        if constexpr (has_property<mass_matrix, some::diagonal>) {
 //          prod(inv(mass_matrix_assembled()), trans(h_matrix_assembled(), tmp_matrix));
@@ -229,7 +232,9 @@ struct one_step_integrator {
 //        }
 
         // aliasing ?
-        prod(h_matrix_assembled(), tmp_matrix, w_matrix());
+        resize(w_matrix(), size0(h_matrix_assembled()), size1(tmp_matrix));
+
+        // prod(h_matrix_assembled(), tmp_matrix, w_matrix());
       }
 
       auto solve_nonsmooth_problem(auto step) {}
@@ -247,7 +252,7 @@ struct one_step_integrator {
           if constexpr (has_property<fext, some::time_invariant>(data)) {
             if constexpr (has_property<mass_matrix, property::diagonal>(data)) {
               for (auto [mat, f] : ranges::views::zip(mats, fs)) {
-                linear_algebra::solve_in_place(mat, f);
+                solve_in_place(mat, f);
               }
             }
           }

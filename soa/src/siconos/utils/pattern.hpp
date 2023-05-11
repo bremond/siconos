@@ -182,11 +182,6 @@ concept indice =
     std::is_scalar_v<T> && requires(T i) { std::array<double, 1>{}[i]; };
 
 
-template <typename T>
-concept matrix = requires(T m) { m[0][0]; };
-
-  template <typename T>
-concept vector = !matrix<T> && requires(T m) { m[0]; };
 
 template <typename T>
 concept ublas_matrix = requires(T m) { m(0, 0); };

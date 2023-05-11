@@ -58,9 +58,9 @@ namespace siconos
 
     // debug (see_below for clang, gcc above...)
 #if defined( __clang__)
-    template <typename ...Ts> constexpr bool type_trace() { std::tuple<Ts...> see_messages_below; return true;};
+    template <typename ...Ts> constexpr bool type_trace() { std::tuple<Ts...> see_messages_below; return false;};
 #else
-    template <typename ...Ts> constexpr bool type_trace() { std::tuple<Ts...> see_messages_above; return true;};
+    template <typename ...Ts> constexpr bool type_trace() { std::tuple<Ts...> see_messages_above; return false;};
 #endif
 
     namespace hana = boost::hana;

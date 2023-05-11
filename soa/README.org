@@ -4,8 +4,10 @@
   (progn
     (mkdir "build-gcc" t)
     (mkdir "build-gcc-debug" t)
+    (mkdir "build-gcc-debug-siconos" t)
     (mkdir "build-clang" t)
     (mkdir "build-clang-debug" t)
+    (mkdir "build-clang-debug-siconos" t)
     (mkdir "build-local-clang-debug" t)
     default-directory)
 #+end_src
@@ -56,6 +58,30 @@
        make VERBOSE=1
 #+end_src
 
+*** debug siconos
+
+#+name: mybenchmarks-cmake-gcc-debug-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-gcc-debug-siconos
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment --pure --ad-hoc benchmark suitesparse gcc-toolchain boost fmt range-v3 cmake make dash -- \
+       dash -c "cmake ${src_dir} -DCMAKE_CXX_STANDARD_LIBRARIES=-L/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 -DSICONOS_INSTALL_DIR=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos -DCMAKE_BUILD_TYPE=Debug" 
+#+end_src
+
+#+name: mybenchmarks-make-gcc-debug-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-gcc-debug-siconos
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment --pure --ad-hoc suitesparse benchmark gcc-toolchain boost fmt range-v3 cmake make dash -- \
+       make VERBOSE=1 && LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 ./src/siconos/tests/tnonos
+#+end_src
+
+
+
+
+
 * clang
 
 ** Release
@@ -98,6 +124,29 @@
        environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt range-v3 cmake make -- \
        make VERBOSE=1
 #+end_src
+
+** DebugSiconos
+
+#+name: mybenchmarks-cmake-clang-debug-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug-siconos
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment --pure --ad-hoc eigen suitesparse benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
+       dash -c "cmake ${src_dir} -DGUIX_ENVIRONMENT=\${GUIX_ENVIRONMENT} -DCMAKE_CXX_STANDARD_LIBRARIES=-L/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 -DSICONOS_INSTALL_DIR=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos -DCMAKE_BUILD_TYPE=Debug" 
+#+end_src
+
+#+name: mybenchmarks-make-clang-debug-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug-siconos
+#+begin_src sh :compile :results output silent
+guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment --pure --ad-hoc eigen suitesparse benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
+       make VERBOSE=1 && LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 ./src/siconos/tests/tnonos
+
+#+end_src
+
+
 
 ** DebugLocal
 

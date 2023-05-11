@@ -10,6 +10,8 @@
 
 #include "siconos/utils/SiconosGraph.hpp" // modified for std::array
 #include "siconos/utils/pattern.hpp"
+#include "siconos/algebra/linear_algebra.hpp"
+#include "siconos/algebra/eigen.hpp"
 #include "siconos/algebra/numerics.hpp"
 #include "siconos/siconos.hpp"
 
@@ -46,11 +48,14 @@ namespace siconos
     template<typename S, std::size_t N>
     using bounded_collection = std::array<S, N>;
 
-    template<typename T, indice N>
-    using vector = std::array<T, N>;
+    template<typename T, indice M>
+    using vector = siconos::vector<T, M>;
 
-    template<typename T, indice N, indice M>
-    using matrix = std::array<std::array<T, M>, N>; // row major
+    template<typename T, indice M, indice N>
+    using matrix = siconos::matrix<T, M, N>;
+
+    template<typename T, indice N>
+    using diagonal_matrix = siconos::diagonal_matrix<T, N>;
 
     template<typename T>
     using unbounded_matrix = numerics::mat<T>;
@@ -58,8 +63,6 @@ namespace siconos
     template<typename T>
     using unbounded_vector = numerics::vec<T>;
 
-    template<typename T, indice N>
-    using diagonal_matrix = std::array<T, N>;
 
     template<typename T>
     using unbounded_diagonal_matrix = numerics::diag_mat<T>;

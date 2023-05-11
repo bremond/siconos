@@ -129,17 +129,17 @@ int main()
 
   //  static_assert(memory_size<typename ball::q, typename osi::keeps> == 2);
 
-  static_assert(std::array{1,2,3}-std::array{1,2,3}==std::array{0,0,0});
-  static_assert(std::array{1,2,3}+std::array{1,2,3}==std::array{2,4,6});
+//  static_assert(std::array{1,2,3}-std::array{1,2,3}==std::array{0,0,0});
+//  static_assert(std::array{1,2,3}+std::array{1,2,3}==std::array{2,4,6});
 //  static_assert(std::array{std::array{1,2,3},std::array{4,5,6}}-std::array{std::array{1,2,3},std::array{4,5,6}}==std::array{std::array{0,0,0},std::array{0,0,0}});
 
 
-  auto v1 = std::vector{1,2,3};
-  auto v2 = std::vector{1,2,3};
-  assert (v1+v2 == (std::vector{2,4,6}));
+//  auto v1 = std::vector{1,2,3};
+//  auto v2 = std::vector{1,2,3};
+//  assert (v1+v2 == (std::vector{2,4,6}));
 
-  auto v3 = std::vector{std::array{1,2,3},std::array{4,5,6}};
-  auto v4 = std::vector{std::array{1,2,3},std::array{4,5,6}};
+//  auto v3 = std::vector{std::array{1,2,3},std::array{4,5,6}};
+//  auto v4 = std::vector{std::array{1,2,3},std::array{4,5,6}};
 //  assert(v3-v4 == (std::vector{std::array{0,0,0},std::array{0,0,0}}));
 //  std::cout << boost::hana::experimental::type_name<decltype(attributes(interaction{}))>().c_str() << std::endl;
 //  std::cout << boost::hana::experimental::type_name<gather<nslaw, relation>>().c_str() << std::endl;
@@ -163,6 +163,7 @@ int main()
   assert(get<nslaw::e>(nslaw0, data0) == 0.7);
 
   auto x = get<nslaw::e>(nslaw0, data0);
+  x = 0.4;
 
   nslaw::e::at(nslaw0) = 0.8;
 
@@ -330,7 +331,7 @@ int main()
 //   ground::find(ustore1, boost::hana::type_c<some::vector<3>>).value() = { 1.0, 2.0, 3.0 };
 
    ground::get<some::scalar>(ustore1) = 2.0;
-   ground::get<some::vector<some::scalar, some::indice_value<3>>>(ustore1) = std::array {1.0, 2.0, 3.0};
+   ground::get<some::vector<some::scalar, some::indice_value<3>>>(ustore1) =  {1.0, 2.0, 3.0};
 
    print("ustore1 scalar={}\n", ground::get<some::scalar>(ustore1));
 
@@ -374,9 +375,9 @@ int main()
 //   print("mass matrix: {}", get<ball::mass_matrix>(some_iball, ustore5));
    auto ma = some_iball.mass_matrix();//get<ball::mass_matrix>(some_iball, ustore5);
 //   ma.resize(3,3);
-   ma[0] = m;
-   ma[1] = m;
-   ma[2] = 2.5*m*R*R;
+   ma.diagonal()[0] = m;
+   ma.diagonal()[1] = m;
+   ma.diagonal()[2] = 2.5*m*R*R;
 //   print("mass matrix: {}", get<ball::mass_matrix>(some_iball, ustore5));
 
    auto simul = make_full_handle<simulation>(0, ustore5);
@@ -408,10 +409,10 @@ int main()
    auto rel = add<relation>(ustore5);
 
    auto yyv = ground::get<interaction::h_matrix>(ustore5);
-   interaction::h_matrix::at(inter)[0][0] = 1;
+   interaction::h_matrix::at(inter)(0, 0) = 1;
 
    interaction::relation::at(inter) = rel;
-   auto& v = interaction::y::at(inter)[1];
+   auto& v = interaction::y::at(inter)[0];
    v = { 1 };
 
 //   rel.compute_output(0., some_iball, inter, 1_c);

@@ -3,6 +3,7 @@ include(CheckCXXCompilerFlag)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(
+  ${GUIX_ENVIRONMENT}/include/eigen3
   ${SICONOS_INSTALL_DIR}/include
   ${SICONOS_INSTALL_DIR}/include/siconos
   ${SICONOS_INSTALL_DIR}/include/siconos/numerics

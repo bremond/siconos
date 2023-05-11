@@ -1,0 +1,60 @@
+#pragma once
+
+#include <Eigen/Dense>
+
+#include "siconos/algebra/linear_algebra.hpp"
+
+namespace siconos {
+namespace match {
+template <typename T>
+concept matrix = requires(T m) { m(0, 0); };
+
+template <typename T>
+concept vector = matrix<T> && T::ColsAtCompilTime == 1;
+
+template <typename T>
+concept diagonal_matrix = !matrix<T> && requires(T m) { m.diagonal()[0]; };
+}  // namespace match
+
+template <typename T, size_t M, size_t N>
+using matrix = Eigen::Matrix<T, M, N>;  // column storage
+
+template <typename T, size_t M>
+using vector = Eigen::Vector<T, M>;  // column vector
+
+template <typename T, size_t M>
+using diagonal_matrix = Eigen::DiagonalMatrix<T, M>;
+
+  template<typename T>
+  struct value_type {};
+
+  template<typename T, size_t M, size_t N>
+  struct value_type<Eigen::Matrix<T, M, N>>
+  {
+    using type = typename Eigen::template Matrix<T, M, N>::value_type;
+  };
+
+  template<typename T, size_t M>
+  struct value_type<Eigen::DiagonalMatrix<T, M>>
+  {
+    using type = typename Eigen::template DiagonalMatrix<T, M>::Scalar;
+  };
+
+template <typename A>
+using trans_t = matrix<typename value_type<A>::type, A::ColsAtCompileTime,
+                       A::RowsAtCompileTime>;
+
+template <typename A, typename B>
+using prod_t = matrix<typename value_type<B>::type, A::RowsAtCompileTime,
+                      B::ColsAtCompileTime>;
+
+static_assert(std::is_same_v<matrix<int, 1, 2>, trans_t<matrix<int, 2, 1>>>);
+static_assert(std::is_same_v<prod_t<matrix<int, 2, 2>, matrix<int, 2, 1>>,
+                             matrix<int, 2, 1>>);
+static_assert(std::is_same_v<prod_t<matrix<int, 1, 2>, matrix<int, 2, 1>>,
+                             matrix<int, 1, 1>>);
+static_assert(
+    std::is_same_v<prod_t<matrix<int, 1, 2>, trans_t<matrix<int, 1, 2>>>,
+                   matrix<int, 1, 1>>);
+
+}  // namespace siconos
