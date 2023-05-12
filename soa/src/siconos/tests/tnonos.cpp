@@ -8,7 +8,7 @@
 #include "siconos/model/nslaws.hpp"
 #include "siconos/simul/topology.hpp"
 #include "siconos/simul/interaction.hpp"
-#include "siconos/model/one_step_nonsmooth_problem.hpp"
+#include "siconos/simul/one_step_nonsmooth_problem.hpp"
 #include "siconos/simul/one_step_integrator.hpp"
 #include "siconos/simul/time_discretization.hpp"
 #include "siconos/simul/time_stepping.hpp"

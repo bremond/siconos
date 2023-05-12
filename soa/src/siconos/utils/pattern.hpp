@@ -8,13 +8,10 @@
 
 #include "siconos/utils/ground.hpp"
 #include "siconos/utils/utils.hpp"
+#include "siconos/utils/some.hpp"
 
 namespace siconos {
-template <size_t N, typename tpl>
-using nth_t = std::decay_t<decltype(std::get<N>(tpl{}))>;
 
-template <typename... Args>
-using gather = std::tuple<Args...>;
 
 struct empty {};
 struct linear {};
@@ -173,73 +170,6 @@ template <typename T, typename Tpl>
 concept contains = contains<T>(instance<Tpl>);
 }
 
-namespace match {
-template <typename T>
-concept scalar = std::is_scalar_v<T>;
-
-template <typename T>
-concept indice =
-    std::is_scalar_v<T> && requires(T i) { std::array<double, 1>{}[i]; };
-
-
-
-template <typename T>
-concept ublas_matrix = requires(T m) { m(0, 0); };
-
-template <typename T>
-concept ublas_sparse_matrix = requires(T m) {
-  m(0, 0);
-  m.index1_data();
-  m.index2_data();
-};
-
-template <typename T>
-concept degrees_of_freedom = requires { typename T::degrees_of_freedom_t; };
-
-template <typename T>
-concept attributes = requires { typename T::attributes; };
-
-template <typename T>
-concept vdescriptor = requires { typename T::vdescriptor_t; };
-
-template <typename T>
-concept item = requires { typename T::item_t; };
-
-template <typename T>
-concept items = item<T> && requires { typename T::items; };
-
-template <typename T>
-concept properties = item<T> && requires { typename T::properties; };
-
-template <typename T>
-concept size = requires(T a) {
-  {
-    std::size(a)
-  };
-};
-
-template <typename T>
-concept push_back = requires(T a) {
-  {
-    a.push_back(typename T::value_type{})
-  };
-};
-
-template <typename T, typename I>
-concept handle = item<I> && std::derived_from<I, typename T::type> &&
-                 requires { typename T::handle_t; };
-
-template <typename T>
-concept any_full_handle = requires { typename T::full_handle_t; };
-
-template <typename T, typename I>
-concept full_handle =
-    any_full_handle<T> && item<I> && std::derived_from<I, typename T::type>;
-
-template <typename T>
-concept wrap = item<T> && requires { typename T::wrap_t; };
-
-}  // namespace match
 
 static_assert(match::size<std::vector<double>>);
 static_assert(match::size<std::array<double, 1>>);
@@ -249,144 +179,6 @@ static_assert(!match::push_back<std::array<double, 3>>);
 namespace property {
 }
 
-namespace some {
-
-template <typename... Args>
-struct attribute {
-  using args = gather<Args...>;
-  using attribute_t = void;
-};
-
-struct property {
-  using property_t = void;
-};
-
-struct attached_storage : property {};
-
-// not here
-struct time_invariant : property {
-  using time_invariant_t = void;
-};
-
-struct boolean : attribute<> {};
-
-struct scalar : attribute<> {};
-
-struct indice : attribute<> {};
-
-struct undefined_indice_parameter : attribute<> {};
-
-template <string_literal S>
-struct indice_parameter : undefined_indice_parameter {
-  static constexpr auto name = S;
-};
-
-struct undefined_indice_value : attribute<> {};
-template <auto I>
-struct indice_value : undefined_indice_value {
-  static constexpr auto value = I;
-};
-
-struct undefined_vdescriptor : attribute<> {};
-template <typename T>
-struct vdescriptor : undefined_vdescriptor {
-  using vdescriptor_t = void;
-  static constexpr bool descriptor = true;
-  using type = T;
-};
-
-struct unbounded_storage : attribute<> {};
-struct bounded_storage : attribute<> {};
-
-struct undefined_unbounded_collection : unbounded_storage {};
-struct undefined_bounded_collection : bounded_storage {};
-
-struct undefined_matrix : bounded_storage {};
-struct undefined_diagonal_matrix : undefined_matrix {};
-struct undefined_vector : bounded_storage {};
-
-struct undefined_unbounded_matrix : unbounded_storage {};
-struct undefined_unbounded_vector : unbounded_storage {};
-
-template <typename... Sizes>
-struct with_sizes {
-  using sizes = std::tuple<Sizes...>;
-};
-
-template <typename Type>
-struct with_type {
-  using type = Type;
-};
-
-template <typename... Types>
-struct with_types {
-  using types = std::tuple<Types...>;
-};
-
-template <typename Type, typename N, typename M>
-struct matrix : undefined_matrix, with_sizes<N, M>, with_type<Type> {
-};
-
-template <typename Mat>
-struct transposed_matrix : undefined_matrix,
-                           with_sizes<nth_t<1, typename Mat::sizes>,
-                                      nth_t<0, typename Mat::sizes>>,
-                           with_type<typename Mat::type> {
-};
-
-template <typename Type = some::scalar>
-struct unbounded_matrix : undefined_unbounded_matrix, with_type<Type> {
-};
-
-template <typename Type = some::scalar>
-struct unbounded_vector : undefined_unbounded_vector, with_type<Type> {
-};
-
-template <typename Type, typename M>
-struct diagonal_matrix : undefined_diagonal_matrix,
-                         with_sizes<nth_t<0, typename M::sizes>>,
-                         with_type<Type> {
-};
-
-template <typename Type>
-struct unbounded_diagonal_matrix : unbounded_storage,
-                                   undefined_diagonal_matrix,
-                                   with_type<Type> {
-};
-
-template <typename Type, typename N>
-struct vector : undefined_vector, with_sizes<N>, with_type<Type> {
-};
-
-struct undefined_graph : attribute<> {};
-
-template <typename Edge, typename Vertice>
-struct graph : undefined_graph, with_types<Edge, Vertice> {
-};
-
-template <typename Type>
-struct unbounded_collection : undefined_unbounded_collection,
-                              with_type<Type> {
-};
-
-template <typename Type, typename N>
-struct bounded_collection : undefined_bounded_collection,
-                            with_sizes<N>,
-                            with_type<Type> {
-};
-
-template <match::item T>
-struct item_ref : attribute<> {
-  using type = T;
-};
-
-struct given_type {};
-
-template <typename T>
-struct specific : given_type, with_type<T> {
-};
-
-}  // namespace some
 
 namespace match {
 template <typename T>
@@ -425,10 +217,13 @@ concept bounded_storage = std::derived_from<T, some::bounded_storage>;
 
 template <typename T>
 concept abstract_vector =
-std::derived_from<T, some::undefined_vector> || std::derived_from<T, some::undefined_unbounded_vector>;
+    std::derived_from<T, some::undefined_vector> ||
+    std::derived_from<T, some::undefined_unbounded_vector>;
 
 template <typename T>
-concept abstract_matrix = std::derived_from<T, some::undefined_matrix> || std::derived_from<T, some::undefined_unbounded_matrix>;
+concept abstract_matrix =
+    std::derived_from<T, some::undefined_matrix> ||
+    std::derived_from<T, some::undefined_unbounded_matrix>;
 
 template <typename T, std::size_t N>
 concept cvector = requires(T a) { a[N - 1]; };
@@ -445,31 +240,6 @@ concept any_of_property = ground::any_of(
 
 }  // namespace match
 
-template <string_literal Text>
-struct text {
-  static constexpr auto data = Text;
-};
-
-template <string_literal Symbol>
-struct symbol : text<Symbol> {
-};
-
-template <size_t N>
-constexpr auto make_string_literal(const string_literal<N>& a)
-{
-  return a;
-}
-
-template <size_t N>
-consteval auto make_symbol(const string_literal<N>& a)
-{
-  symbol s = a;
-  return s;
-};
-
-template <string_literal Descr>
-struct description : text<Descr> {
-};
 
 template <typename T>
 struct tag {
@@ -684,20 +454,7 @@ template <size_t N, typename tpl>
 using nth_t = std::decay_t<decltype(std::get<N>(tpl{}))>;
 }  // namespace types
 
-template <typename Handle>
-struct default_interface {
-  decltype(auto) self() { return static_cast<Handle*>(this); };
-};
 
-template <typename Args>
-static constexpr decltype(auto) dof()
-{
-  return ground::find_if(
-             Args{}, []<typename T>(T) { return degrees_of_freedom_p<T>{}; })
-      .value_or(
-          []<bool flag = false>() { static_assert(flag, "need some dof"); })
-      .value;
-}
 
 template <string_literal S>
 struct indice_value : symbol<S> {

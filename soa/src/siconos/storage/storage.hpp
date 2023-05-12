@@ -82,6 +82,15 @@ struct index {
   friend auto operator<=>(const index<T, R>&, const index<T, R>&) = default;
 };
 
+template <typename Handle>
+struct default_interface {
+  decltype(auto) self()
+  {
+    return static_cast<Handle*>(
+        this);  // handle inherits from default_interface
+  };
+};
+
 template <match::item T, typename R, typename D>
 struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
   using full_handle_t = void;

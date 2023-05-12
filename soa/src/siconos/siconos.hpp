@@ -8,26 +8,9 @@
 #include <range/v3/view/enumerate.hpp>
 #include <range/v3/view/filter.hpp>
 #include <tuple>
-
-#define GET(X) decltype(auto) X()                                       \
-  { return Handle::type::X::at(*self()); }
+#include <memory>
 
 namespace siconos
 {
-
-  decltype(auto) edge1(auto& g, auto& descr)
-  {
-    auto [oei, oee] = g.out_edges(descr);
-    return oei;
-  };
-
-  decltype(auto) edge2(auto& g, auto& descr)
-  {
-    auto [oei, oee] = g.out_edges(descr);
-    return oee;
-  };
-
-
-
 }
 

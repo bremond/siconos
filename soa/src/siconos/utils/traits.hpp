@@ -7,7 +7,11 @@ namespace siconos {
 namespace traits {
 static auto translate = rec([]<typename E, typename T>(auto&& translate, E,
                                                        T) {
-  if constexpr (!match::attribute<T>) {
+  if constexpr (std::derived_from<T, some::given_type>) {
+    // return the embedded type
+    return typename T::type{};
+  }
+  else if constexpr (!match::attribute<T>) {
     // return the type itself
     return T{};
   }
@@ -80,9 +84,6 @@ static auto translate = rec([]<typename E, typename T>(auto&& translate, E,
   else if constexpr (std::derived_from<T, some::item_ref<typename T::type>>) {
     return typename E::template item_ref<typename T::type>{};
   }
-  else if constexpr (std::derived_from<T, some::given_type>) {
-    return typename T::type{};
-  }
   else {
     []<typename Attr = T, bool flag = false>()
     {
@@ -107,12 +108,13 @@ template <typename T>
 static constexpr decltype(auto) nrows(T)
 {
   if constexpr (match::matrix<T> || match::diagonal_matrix<T>) {
-    return T::RowsAtCompileTime; // specific to Eigen
-  } else {
+    return T::RowsAtCompileTime;  // specific to Eigen
+  }
+  else {
     []<typename Attr = T, bool flag = false>()
-      {
-        static_assert(flag, "no value type");
-      }
+    {
+      static_assert(flag, "no value type");
+    }
     ();
   }
 }
@@ -121,18 +123,19 @@ template <typename T>
 static constexpr decltype(auto) ncols(T)
 {
   if constexpr (match::matrix<T> || match::diagonal_matrix<T>) {
-    return T::ColsAtCompileTime; // specific to Eigen
-  } else {
+    return T::ColsAtCompileTime;  // specific to Eigen
+  }
+  else {
     []<typename Attr = T, bool flag = false>()
-      {
-        static_assert(flag, "no value type");
-      }
+    {
+      static_assert(flag, "no value type");
+    }
     ();
   }
 }
 
 template <typename T>
-using value_type = typename T::value_type; // eigen ok.
+using value_type = typename T::value_type;  // eigen ok.
 
 }  // namespace traits
 

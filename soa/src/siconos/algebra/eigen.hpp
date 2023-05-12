@@ -5,7 +5,10 @@
 #include "siconos/algebra/linear_algebra.hpp"
 
 namespace siconos {
+
+// concepts
 namespace match {
+
 template <typename T>
 concept matrix = requires(T m) { m(0, 0); };
 
@@ -14,6 +17,7 @@ concept vector = matrix<T> && T::ColsAtCompilTime == 1;
 
 template <typename T>
 concept diagonal_matrix = !matrix<T> && requires(T m) { m.diagonal()[0]; };
+
 }  // namespace match
 
 template <typename T, size_t M, size_t N>
@@ -25,20 +29,19 @@ using vector = Eigen::Vector<T, M>;  // column vector
 template <typename T, size_t M>
 using diagonal_matrix = Eigen::DiagonalMatrix<T, M>;
 
-  template<typename T>
-  struct value_type {};
+template <typename T>
+struct value_type {
+};
 
-  template<typename T, size_t M, size_t N>
-  struct value_type<Eigen::Matrix<T, M, N>>
-  {
-    using type = typename Eigen::template Matrix<T, M, N>::value_type;
-  };
+template <typename T, size_t M, size_t N>
+struct value_type<Eigen::Matrix<T, M, N>> {
+  using type = typename Eigen::template Matrix<T, M, N>::value_type;
+};
 
-  template<typename T, size_t M>
-  struct value_type<Eigen::DiagonalMatrix<T, M>>
-  {
-    using type = typename Eigen::template DiagonalMatrix<T, M>::Scalar;
-  };
+template <typename T, size_t M>
+struct value_type<Eigen::DiagonalMatrix<T, M>> {
+  using type = typename Eigen::template DiagonalMatrix<T, M>::Scalar;
+};
 
 template <typename A>
 using trans_t = matrix<typename value_type<A>::type, A::ColsAtCompileTime,
