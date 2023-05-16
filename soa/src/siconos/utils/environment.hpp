@@ -1,13 +1,5 @@
 #pragma once
 
-#include <boost/container/vector.hpp>
-#include <cstddef>
-#include <array>
-#include <vector>
-#include <tuple>
-#include <boost/container/static_vector.hpp>
-#include "SolverOptions.h"
-
 #include "siconos/utils/SiconosGraph.hpp" // modified for std::array
 #include "siconos/utils/pattern.hpp"
 #include "siconos/algebra/linear_algebra.hpp"
@@ -15,17 +7,8 @@
 #include "siconos/algebra/numerics.hpp"
 #include "siconos/siconos.hpp"
 
-#include <boost/numeric/ublas/vector.hpp>
-#include <boost/numeric/ublas/matrix.hpp>
-#include <boost/numeric/ublas/matrix_sparse.hpp>
-#include <boost/numeric/ublas/banded.hpp>
-#include <boost/numeric/ublas/functional.hpp>
-#include <boost/numeric/ublas/io.hpp>
-
-
 namespace siconos
 {
-  namespace ublas = boost::numeric::ublas;
   struct standard_environment
   {
 
@@ -85,8 +68,6 @@ namespace siconos
     using params = ground::map<ground::pair<param<"dof">, param_val<3>>>;
 
   };
-
-
 }
 
 

@@ -125,7 +125,7 @@
 #+header: :dir build-clang-debug
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
-       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
+       environment --pure --ad-hoc siconos eigen benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
        dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1" 
 #+end_src
 
@@ -134,7 +134,7 @@
 #+header: :dir build-clang-debug
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
-       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt range-v3 cmake make -- \
+       environment --pure --ad-hoc siconos eigen benchmark clang-toolchain boost fmt range-v3 cmake make -- \
        make VERBOSE=1
 #+end_src
 

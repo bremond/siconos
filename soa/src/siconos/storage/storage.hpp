@@ -27,7 +27,7 @@ struct diagonal : refine {
   template <match::attribute A>
   using refine = some::diagonal_matrix<typename A::type, A>;
 };
-  struct unbounded_diagonal : refine {
+struct unbounded_diagonal : refine {
   template <match::attribute A>
   using refine = some::unbounded_diagonal_matrix<typename A::type>;
 };
@@ -100,12 +100,14 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
       decltype(filter<hold<decltype([]<typename X>(X) {
         return match::attached_storage<X, T>;
       })>>(typename info_t::all_properties_t{}));
+
+
+  D& _data;
+
   decltype(auto) attributes()
   {
     return typename index<T, R>::type::attributes{};
   };
-
-  D& _data;
 
   template <typename A>
   constexpr decltype(auto) property(A, indice step = 0)
@@ -135,6 +137,10 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
 
   handle() : index<T, R>{}, _data{} {};
 
+  handle(const handle& h) : index<T, R>(h.get()), _data(h._data) {};
+  handle(handle&&) = default;
+  handle operator=(const handle& h) { return handle(h); };
+  handle operator=(handle&& h) { return handle(h); };;
   friend auto operator<=>(const handle<T, R, D>&,
                           const handle<T, R, D>&) = default;
 };

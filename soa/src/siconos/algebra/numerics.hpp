@@ -3,6 +3,7 @@
 #include "CSparseMatrix_internal.h"  // for CSparseMatrix
 #include "NumericsMatrix.h"
 #include "NumericsSparseMatrix.h"
+#include "siconos/algebra/eigen.hpp"
 #include "siconos/algebra/linear_algebra.hpp"
 #include "siconos/utils/pattern.hpp"
 #include "siconos/utils/traits.hpp"
@@ -13,14 +14,19 @@ static constexpr auto zero_threshold = 1e-30;
 namespace numerics {
 
 namespace match {
-template <typename T>
-concept any_mat = requires { typename T::any_mat_t; };
 
 template <typename T>
-concept mat = requires { typename T::mat_t; };
+concept vec = requires { typename T::vec_t; };
 
 template <typename T>
-concept diag_mat = requires { typename T::diag_mat_t; };
+concept any_mat = !vec<T> && requires { typename T::any_mat_t; };
+
+template <typename T>
+concept mat = any_mat<T> && requires { typename T::mat_t; };
+
+template <typename T>
+concept diag_mat = any_mat<T> && requires { typename T::diag_mat_t; };
+
 }  // namespace match
 
 struct any_mat {
@@ -56,15 +62,27 @@ struct diag_mat : mat<T> {
 
 template <typename T>
 struct vec {
+  using vec_t = void;
+  static constexpr auto vncols = 1;
   static constexpr auto vnrows = T::RowsAtCompileTime;
 
-  std::vector<T> _data;
+  NumericsMatrix* _v = nullptr;
 
-  ~vec() {}
+  constexpr vec() {}
+
+  ~vec()
+  {
+    if (_v) {
+      _v = NM_free(_v);
+    }
+  }
 };
 
 const auto size0(match::any_mat auto& m) { return m._m->size0 / m.vnrows; };
+const auto size0(match::vec auto& v) { return v._v->size0 / v.vnrows; };
 const auto size1(match::any_mat auto& m) { return m._m->size1 / m.vncols; };
+
+static_assert(vec<vector<int, 2>>::vncols == 1);
 
 void resize(match::any_mat auto& m, siconos::match::indice auto nrows,
             siconos::match::indice auto ncols)
@@ -75,6 +93,15 @@ void resize(match::any_mat auto& m, siconos::match::indice auto nrows,
 
   m._m = NM_create(NM_SPARSE, nrows * m.vnrows, ncols * m.vncols);
   NM_triplet_alloc(m._m, 1);
+}
+
+void resize(match::vec auto& v, siconos::match::indice auto nrows)
+{
+  if (v._v) v._v = NM_free(v._v);
+
+//  static_assert(m.vncols == 1);  // only vector of vectors
+  // dense vector
+  v._v = NM_create(NM_DENSE, nrows * v.vnrows, v.vncols);
 }
 
 void transpose(match::any_mat auto& m)
@@ -109,7 +136,38 @@ void set_value(match::any_mat auto& m, siconos::match::indice auto i,
       }
     }
   }
+  else {
+    []<bool flag = false>()
+    {
+      static_assert(flag, "set_value: cannot insert this value");
+    }
+    ();
+  }
 }
+
+template <typename T>
+void set_value(match::vec auto& m, siconos::match::indice auto i,
+               const T& value)
+{
+  if constexpr (siconos::match::scalar<T>) {
+    NM_zentry(m._m, i * m.vnrows, 0, value, zero_threshold);
+  }
+  // vector block
+  else if constexpr (siconos::match::vector<T>) {
+    for (decltype(i) k = 0; k < traits::nrows(T{}); ++k) {
+      NM_zentry(m._v, i * m.vnrows + k, 0, value(k), zero_threshold);
+    }
+  }
+  // compile time error
+  else {
+    []<bool flag = false>()
+    {
+      static_assert(flag, "set_value: cannot insert this value");
+    }
+    ();
+  }
+}
+
 template <siconos::match::diagonal_matrix A>
 void inverse(diag_mat<A>& a)
 {
@@ -121,10 +179,18 @@ void inverse(diag_mat<A>& a)
 }
 
 // c <- a b
+// Matrix Matrix
 template <typename A, typename B>
 void prod(mat<A>& a, mat<B>& b, mat<prod_t<A, B>>& c)
 {
   NM_gemm(1, a._m, b._m, 1, c._m);
+}
+
+// Matrix Vector
+template <typename A, typename B>
+void prod(mat<A>& a, vec<B>& b, vec<prod_t<A,B>>& c)
+{
+  NM_gemv(1, a._m, b._v->matrix0, 1, c._v->matrix0);
 }
 
 // c <- a b^t

@@ -18,7 +18,7 @@ struct interaction : item<> {
 
   struct y : some::vector<some::scalar, nslaw_size>, access<y> {};
 
-  using attributes = gather<nonsmooth_law, relation, h_matrix, lambda, y>;
+  using attributes = gather<dof, nslaw_size, nonsmooth_law, relation, h_matrix, lambda, y>;
 
   template <typename Handle>
   struct interface : default_interface<Handle> {

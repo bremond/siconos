@@ -181,6 +181,10 @@ namespace property {
 
 
 namespace match {
+
+  template<typename T>
+  concept type_t = requires { typename T::type_t; };
+
 template <typename T>
 concept attribute = requires { typename T::attribute_t; };
 

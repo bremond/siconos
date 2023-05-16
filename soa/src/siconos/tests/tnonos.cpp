@@ -1,3 +1,4 @@
+#include "siconos/utils/check.hpp"
 #include "siconos/utils/environment.hpp"
 #include "siconos/siconos.hpp"
 #include "siconos/utils/ground.hpp"
@@ -31,7 +32,8 @@ using namespace boost::hana::literals;
 int main()
 {
   using ball = lagrangian_ds;
-  using osnspb = one_step_nonsmooth_problem<lcp>;
+  using lcp = numerics::nonsmooth_problem<LinearComplementarityProblem>;
+  using osnspb = numerics::one_step_nonsmooth_problem<lcp>;
   using relation = lagrangian_r;
   using nslaw = nonsmooth_law::newton_impact;
   using interaction = interaction<nslaw, relation, 1>;
@@ -147,13 +149,19 @@ int main()
 //  std::cout << boost::hana::experimental::type_name<decltype(all_attributes(interaction{}))>().c_str() << std::endl;
 
   static_assert(std::is_same_v<decltype(attributes(interaction{})),
-                gather<interaction::nonsmooth_law, interaction::relation, interaction::h_matrix, interaction::lambda, interaction::y>>);
+                gather<some::indice_parameter<"dof">, some::indice_value<1>,interaction::nonsmooth_law, interaction::relation, interaction::h_matrix, interaction::lambda, interaction::y>>);
 
   static_assert(std::is_same_v<decltype(all_attributes(interaction{})),
-                gather<interaction::nonsmooth_law, interaction::relation, interaction::h_matrix,
+                gather<some::indice_parameter<"dof">, some::indice_value<1>,interaction::nonsmooth_law, interaction::relation, interaction::h_matrix,
                 interaction::lambda, interaction::y, nslaw::e>>);
 
   //}
+
+   auto ddd = make_storage<env, bbb>();
+
+   auto bob1 = add<bbb>(ddd);
+
+   bbb::attr::at(bob1).reset(new aaa);
 
   auto data0 = siconos::make_storage<env, nslaw>();
   auto nslaw0 = add<nslaw>(data0);
@@ -270,6 +278,8 @@ int main()
    auto inter1 = add<interaction>(data);
    auto nslaw2 = add<nslaw>(data);
 
+   auto dsimul = add<simulation>(data);
+
    // siconos::set<interaction::nonsmooth_law>(inter1);
    interaction::nonsmooth_law::at(inter1) = nslaw2;
    get<interaction::nonsmooth_law>(inter1, data) = nslaw2;
@@ -287,8 +297,8 @@ int main()
    interaction::nonsmooth_law::at(inter2) = nslaw3;
    nslaw::e::at(interaction::nonsmooth_law::at(inter2), data) = 0.3;
 
-   auto htopo = make_full_handle<topo>(0, data);
-   auto hosi = make_full_handle<osi>(0, data);
+   auto htopo = dsimul.topology();
+   auto hosi = dsimul.one_step_integrator();
    auto ball1 = add<ball>(data);
    auto ball2 = add<ball>(data);
    auto ball3 = add<ball>(data);
@@ -319,8 +329,29 @@ int main()
    hosi.assemble_mass_matrix_for_involved_ds(0);
 
    hosi.compute_w_matrix(0);
+   hosi.compute_q_vector_assembled(0);
+
+   auto so = add<numerics::solver_options>(data);
+   so.create();
+
+   auto xso = so.instance();
+   print("solver options iSize = {}\n", xso->iSize);
+   print("SICONOS_IPARAM_MAX_ITER = {}\n", SICONOS_IPARAM_MAX_ITER);
+   print("iparam[SICONOS_IPARAM_MAX_ITER] = {}\n", xso->iparam[SICONOS_IPARAM_MAX_ITER]);
+
+   so.instance()->iparam[SICONOS_IPARAM_MAX_ITER] = 100;
+
+   auto lcp_1 = add<lcp>(data);
+   lcp_1.create();
+
+   auto osnspb_1 = dsimul.one_step_nonsmooth_problem();
+   osnspb_1.problem() = lcp_1;
+   osnspb_1.options() = so;
 
    print("memory_size={}\n", (memory_size<ball::q, decltype(all_properties_as<property::keep>(data))>));
+
+   hosi.compute_q_vector_assembled(0);
+   dsimul.solve_nonsmooth_problem<LinearComplementarityProblem>();
 //   auto& q = siconos::get_memory<ball::q>(data);
 //   print("q={}\n", q);
 //   print("v={}\n", siconos::get_memory<ball::velocity>(data));
@@ -469,6 +500,5 @@ int main()
               print("Value: [{}]\n\n", ground::type_name<Value>());
             });
 //   assert((ground::get<attached_storage<some::unbounded_collection<ball>, internal_index, some::indice>>(dd)[0][1] == 1));
-
 
 }

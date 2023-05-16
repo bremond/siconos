@@ -44,7 +44,7 @@ struct time_stepping : item<> {
       switch (level) {
         case 1:
           prod(osi.h_matrix_assembled(), osi.velocity_vector_assembled(),
-               osi.y_vector_assembled());
+               osi.ydot_vector_assembled());
           break;
         case 0:
           prod(osi.h_matrix_assembled(), osi.q_vector_assembled(),
@@ -57,6 +57,20 @@ struct time_stepping : item<> {
       self()->one_step_integrator().compute_free_state(current_step(),
                                                        time_step());
       current_step() += 1;
+    }
+
+    template <typename Formulation>
+    void solve_nonsmooth_problem()
+    {  // Mz=w+q
+      resize(self()->one_step_integrator().lambda_vector_assembled(),
+             size0(self()->one_step_integrator().q_vector_assembled()));
+      resize(self()->one_step_integrator().ydot_vector_assembled(),
+             size0(self()->one_step_integrator().q_vector_assembled()));
+      self()->one_step_nonsmooth_problem().template solve<Formulation>(
+          self()->one_step_integrator().w_matrix(),                 // M
+          self()->one_step_integrator().q_vector_assembled(),       // q
+          self()->one_step_integrator().lambda_vector_assembled(),  // z
+          self()->one_step_integrator().ydot_vector_assembled());   // w
     }
 
     void update_indexsets(auto i)

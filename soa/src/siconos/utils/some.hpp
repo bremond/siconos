@@ -136,7 +136,9 @@ struct item_ref : attribute<>, with_type<T> {
 struct given_type {};
 
 template <typename T>
-struct type : given_type, with_type<T> {
+struct specific : given_type {
+  using xtype = T;
+  using type_t = void;
 };
 
 struct given_definition : attribute<> {};

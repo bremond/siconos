@@ -8,8 +8,8 @@
 namespace siconos {
 using size_t = std::size_t;
 
-template <typename T>
-using pointer = std::shared_ptr<T>;
+template <typename ...Ts>
+using pointer = std::shared_ptr<Ts...>;
 
 template <size_t N, typename tpl>
 using nth_t = std::decay_t<decltype(std::get<N>(tpl{}))>;

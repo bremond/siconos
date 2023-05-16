@@ -7,9 +7,9 @@ namespace siconos {
 namespace traits {
 static auto translate = rec([]<typename E, typename T>(auto&& translate, E,
                                                        T) {
-  if constexpr (std::derived_from<T, some::given_type>) {
+  if constexpr (match::type_t<T>) {
     // return the embedded type
-    return typename T::type{};
+    return typename T::xtype{};
   }
   else if constexpr (!match::attribute<T>) {
     // return the type itself

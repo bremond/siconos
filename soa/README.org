@@ -65,8 +65,8 @@
 #+header: :dir build-gcc-debug-siconos
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
-       environment --pure --ad-hoc benchmark suitesparse gcc-toolchain boost fmt range-v3 cmake make dash -- \
-       dash -c "cmake ${src_dir} -DCMAKE_CXX_STANDARD_LIBRARIES=-L/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 -DSICONOS_INSTALL_DIR=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos -DCMAKE_BUILD_TYPE=Debug" 
+       environment --pure --ad-hoc eigen benchmark suitesparse gcc-toolchain boost fmt range-v3 cmake make dash -- \
+       dash -c "cmake ${src_dir} -DGUIX_ENVIRONMENT=\${GUIX_ENVIRONMENT} -DCMAKE_CXX_STANDARD_LIBRARIES=-L/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 -DSICONOS_INSTALL_DIR=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos -DCMAKE_BUILD_TYPE=Debug" 
 #+end_src
 
 #+name: mybenchmarks-make-gcc-debug-siconos
@@ -74,7 +74,7 @@
 #+header: :dir build-gcc-debug-siconos
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
-       environment --pure --ad-hoc suitesparse benchmark gcc-toolchain boost fmt range-v3 cmake make dash -- \
+       environment --pure --ad-hoc eigen benchmark suitesparse gcc-toolchain boost fmt range-v3 cmake make dash -- \
        make VERBOSE=1 && LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 ./src/siconos/tests/tnonos
 #+end_src
 

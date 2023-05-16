@@ -13,7 +13,7 @@ template <typename T>
 concept matrix = requires(T m) { m(0, 0); };
 
 template <typename T>
-concept vector = matrix<T> && T::ColsAtCompilTime == 1;
+concept vector = matrix<T> && T::ColsAtCompileTime == 1;
 
 template <typename T>
 concept diagonal_matrix = !matrix<T> && requires(T m) { m.diagonal()[0]; };
@@ -26,22 +26,34 @@ using matrix = Eigen::Matrix<T, M, N>;  // column storage
 template <typename T, size_t M>
 using vector = Eigen::Vector<T, M>;  // column vector
 
+static_assert(vector<int, 3>::ColsAtCompileTime == 1);
+
 template <typename T, size_t M>
 using diagonal_matrix = Eigen::DiagonalMatrix<T, M>;
 
 template <typename T>
 struct value_type {
+  using type = decltype([]<bool flag = false>() {
+    if constexpr (requires(T m) { typename T::value_type; }) {
+      return typename T::value_type{};  // ok with gcc!
+    }
+    else {
+      static_assert(flag, "no value_type");
+    }
+  }());
 };
 
-template <typename T, size_t M, size_t N>
-struct value_type<Eigen::Matrix<T, M, N>> {
-  using type = typename Eigen::template Matrix<T, M, N>::value_type;
-};
+// template specialization ok with clang, fails with gcc:
+//
+// template <typename T, size_t M, size_t N>
+// struct value_type<Eigen::Matrix<T, M, N>> {
+//   using type = typename Eigen::template Matrix<T, M, N>::value_type;
+// };
 
-template <typename T, size_t M>
-struct value_type<Eigen::DiagonalMatrix<T, M>> {
-  using type = typename Eigen::template DiagonalMatrix<T, M>::Scalar;
-};
+// template <typename T, size_t M>
+// struct value_type<Eigen::DiagonalMatrix<T, M>> {
+//   using type = typename Eigen::template DiagonalMatrix<T, M>::Scalar;
+// };
 
 template <typename A>
 using trans_t = matrix<typename value_type<A>::type, A::ColsAtCompileTime,

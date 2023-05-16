@@ -10,7 +10,10 @@ struct one_step_integrator {
   using interaction = Interaction;
   using nonsmooth_law = typename interaction::nonsmooth_law;
   using system = DynamicalSystem;
+  using dof = typename interaction::dof;
+  using nslaw_size = typename interaction::nslaw_size;
   using y = typename interaction::y;
+  using lambda = typename interaction::lambda;
   using q = typename system::q;
   using velocity = typename system::velocity;
   using mass_matrix = typename system::mass_matrix;
@@ -49,12 +52,23 @@ struct one_step_integrator {
 
     struct h_matrix_assembled : some::unbounded_matrix<h_matrix>,
                                 access<h_matrix_assembled> {};
-    struct q_vector_assembled : some::unbounded_vector<q>,
-                                access<q_vector_assembled> {};
+    struct q_vector_assembled
+        : some::unbounded_vector<some::vector<some::scalar, nslaw_size>>,
+          access<q_vector_assembled> {};
     struct velocity_vector_assembled : some::unbounded_vector<velocity>,
                                        access<velocity_vector_assembled> {};
+    struct free_velocity_vector_assembled
+        : some::unbounded_vector<velocity>,
+          access<free_velocity_vector_assembled> {};
     struct y_vector_assembled : some::unbounded_vector<y>,
                                 access<y_vector_assembled> {};
+
+    struct ydot_vector_assembled : some::unbounded_vector<y>,
+                                   access<ydot_vector_assembled> {};
+
+    struct lambda_vector_assembled : some::unbounded_vector<lambda>,
+                                     access<lambda_vector_assembled> {};
+
     struct mass_matrix_assembled : some::unbounded_matrix<mass_matrix>,
                                    access<mass_matrix_assembled> {};
     struct w_matrix
@@ -63,11 +77,11 @@ struct one_step_integrator {
                            nth_t<0, typename h_matrix::sizes>>>,
           access<w_matrix> {};
 
-    using attributes =
-        types::attributes<theta, gamma, constraint_activation_threshold,
-                          h_matrix_assembled, mass_matrix_assembled, w_matrix,
-                          q_vector_assembled, velocity_vector_assembled,
-                          y_vector_assembled>;
+    using attributes = types::attributes<
+        theta, gamma, constraint_activation_threshold, h_matrix_assembled,
+        mass_matrix_assembled, w_matrix, q_vector_assembled,
+        velocity_vector_assembled, y_vector_assembled, ydot_vector_assembled,
+        free_velocity_vector_assembled, lambda_vector_assembled>;
 
     using properties = gather<keep<typename system::q, 2>,
                               keep<typename system::velocity, 2>>;
@@ -94,10 +108,23 @@ struct one_step_integrator {
       {
         return Handle ::type ::velocity_vector_assembled ::at(*self());
       }
+      decltype(auto) free_velocity_vector_assembled()
+      {
+        return Handle ::type ::free_velocity_vector_assembled ::at(*self());
+      }
+      decltype(auto) lambda_vector_assembled()
+      {
+        return Handle ::type ::lambda_vector_assembled ::at(*self());
+      }
       decltype(auto) y_vector_assembled()
       {
         return Handle ::type ::y_vector_assembled ::at(*self());
       }
+      decltype(auto) ydot_vector_assembled()
+      {
+        return Handle ::type ::ydot_vector_assembled ::at(*self());
+      }
+
       decltype(auto) mass_matrix_assembled()
       {
         return Handle ::type ::mass_matrix_assembled ::at(*self());
@@ -142,8 +169,20 @@ struct one_step_integrator {
                        .property(symbol<"index">{});  // involved index
           auto j = handle(ids2, data)
                        .property(symbol<"index">{});  // involved index
-          set_value(self()->h_matrix_assembled(), i, j, mat);
+          set_value(self()->h_matrix_assembled(), i, j,
+                    mat);  // sparse block matrix
         }
+      }
+
+      auto resize_assembled_vectors(auto step)
+      {
+        auto &data = self()->data();
+        auto &h_matrices = memory(step, get_memory<h_matrix>(data));
+        auto size = std::size(h_matrices);
+
+        resize(self()->y_vector_assembled(), size);
+        resize(self()->ydot_vector_assembled(), size);
+        resize(self()->lambda_vector_assembled(), size);
       }
 
       // strategy 2 : assemble the whole matrix (size = number of ds)
@@ -178,21 +217,27 @@ struct one_step_integrator {
         auto size = std::size(memory(step, get_memory<h_matrix>(data)));
 
         auto &mass_matrices = memory(step, get_memory<mass_matrix>(data));
-        auto &involved_ds =
-          ground::get<attached_storage<system, symbol<"involved">,
-                                       some::boolean>>(data)[0];
+        auto &free_velocities = memory(step + 1, get_memory<velocity>(data));
+        auto &involved_ds = ground::get<
+            attached_storage<system, symbol<"involved">, some::boolean>>(
+            data)[0];
 
         resize(self()->mass_matrix_assembled(), size, size);
+        resize(self()->free_velocity_vector_assembled(), size);
 
-        for (auto [i, mat] : ranges::views::enumerate(mass_matrices) |
-                                 ranges::views::filter([&involved_ds](auto k_m) {
-                                   auto [k, _] = k_m;
-                                   return involved_ds[k];
-                                 })) {
+        for (auto [i, mat_velo] :
+             ranges::views::zip(mass_matrices, free_velocities) |
+                 ranges::views::enumerate |
+                 ranges::views::filter([&involved_ds](auto k_m) {
+                   auto [k, _] = k_m;
+                   return involved_ds[k];
+                 })) {
+          auto &[mat, velo] = mat_velo;
           set_value(self()->mass_matrix_assembled(), i, i, mat);
-          std::cout << size0(mass_matrix_assembled()) << "," << size1(mass_matrix_assembled()) << std::endl;
+          set_value(self()->free_velocity_vector_assembled(), i, velo);
         }
-        assert( size0(mass_matrix_assembled()) == size1(mass_matrix_assembled()));
+        assert(size0(mass_matrix_assembled()) ==
+               size1(mass_matrix_assembled()));
       }
 
       auto assemble_mass_matrix_for_all_ds(auto step)
@@ -212,6 +257,16 @@ struct one_step_integrator {
         }
       }
 
+      // compute H vfree
+      auto compute_q_vector_assembled(auto step)
+      {
+        resize(self()->q_vector_assembled(),
+               size0(self()->free_velocity_vector_assembled()));
+        prod(self()->h_matrix_assembled(),
+             self()->free_velocity_vector_assembled(),
+             self()->q_vector_assembled());
+      }
+      // compute H M^-1 H^t
       auto compute_w_matrix(auto step)
       {
         auto &data = self()->data();
@@ -221,15 +276,17 @@ struct one_step_integrator {
             some::unbounded_matrix<some::transposed_matrix<h_matrix>>>::
             type{};
 
-        resize(tmp_matrix, size1(h_matrix_assembled()), size0(h_matrix_assembled()));
+        resize(tmp_matrix, size1(h_matrix_assembled()),
+               size0(h_matrix_assembled()));
         // M^-1 H^t
-//        if constexpr (has_property<mass_matrix, some::diagonal>) {
-//          prod(inv(mass_matrix_assembled()), trans(h_matrix_assembled(), tmp_matrix));
-//        }
-//        else  // general case
-//        {
+        //        if constexpr (has_property<mass_matrix, some::diagonal>) {
+        //          prod(inv(mass_matrix_assembled()),
+        //          trans(h_matrix_assembled(), tmp_matrix));
+        //        }
+        //        else  // general case
+        //        {
         solvet(mass_matrix_assembled(), h_matrix_assembled(), tmp_matrix);
-//        }
+        //        }
 
         // aliasing ?
         resize(w_matrix(), size0(h_matrix_assembled()), size1(tmp_matrix));
@@ -250,7 +307,8 @@ struct one_step_integrator {
 
         if constexpr (has_property<mass_matrix, some::time_invariant>(data)) {
           if constexpr (has_property<fext, some::time_invariant>(data)) {
-            if constexpr (has_property<mass_matrix, property::diagonal>(data)) {
+            if constexpr (has_property<mass_matrix, property::diagonal>(
+                              data)) {
               for (auto [mat, f] : ranges::views::zip(mats, fs)) {
                 solve_in_place(mat, f);
               }
@@ -262,8 +320,8 @@ struct one_step_integrator {
       {
         auto &data = self()->data();
         auto &velocities = get_memory<velocity>(data);
-        auto fexts = get_memory<fext>(data);
-        auto theta_ = self()->theta();
+        auto &fexts = get_memory<fext>(data);
+        auto &theta_ = self()->theta();
 
         auto &vs = memory(step, velocities);
         auto &vs_next = memory(step + 1, velocities);
