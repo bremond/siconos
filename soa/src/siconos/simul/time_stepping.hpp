@@ -1,5 +1,6 @@
 #pragma once
 
+#include "siconos/storage/storage.hpp"
 #include "siconos/utils/pattern.hpp"
 
 namespace siconos {
@@ -72,23 +73,6 @@ struct time_stepping : item<> {
       prodt1(h_matrix, lambda, p0);
     }
 
-    void update_velocity()
-    {
-      auto osi = self()->one_step_integrator();
-      auto& p0 = osi.p0_vector_assembled();
-      auto& velo = osi.velocity_vector_assembled();
-      auto& freevelo = osi.free_velocity_vector_assembled();
-      auto& mass_matrix = osi.mass_matrix_assembled();
-      auto h = self()->time_discretization().h();
-
-      resize(velo, size0(p0));
-      solve(mass_matrix, p0, velo);
-
-      // velo += freevelo
-      numerics::add(freevelo, velo);
-
-      scal(h, velo);
-    }
 
     template <typename Formulation>
     void solve_nonsmooth_problem()

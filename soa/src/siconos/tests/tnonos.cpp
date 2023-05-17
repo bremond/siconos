@@ -355,7 +355,9 @@ int main()
 
    dsimul.compute_input();
 
-   dsimul.update_velocity();
+   hosi.update_velocity_for_involved_ds();
+   hosi.update_all_velocities(0);
+   hosi.update_positions(0, 0.01);
 //   auto& q = siconos::get_memory<ball::q>(data);
 //   print("q={}\n", q);
 //   print("v={}\n", siconos::get_memory<ball::velocity>(data));

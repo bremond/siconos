@@ -195,6 +195,12 @@ void add(vec<T>& a, vec<T>& b)
   {
     NM_scal(h, v._v);
   }
+
+  template<typename T>
+  const T get_vector(vec<T>& v, siconos::match::indice auto i)
+  {
+    return matrix_view<T>(v._v->matrix0);
+  }
 // c <- a b
 // Matrix Matrix
 template <typename A, typename B>

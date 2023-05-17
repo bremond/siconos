@@ -300,7 +300,50 @@ struct one_step_integrator {
         // aliasing ?
         resize(w_matrix(), size0(h_matrix_assembled()), size1(tmp_matrix));
 
-        // prod(h_matrix_assembled(), tmp_matrix, w_matrix());
+        prod(h_matrix_assembled(), tmp_matrix, w_matrix());
+      }
+
+      void update_velocity_for_involved_ds()
+      {
+        auto &p0 = self()->p0_vector_assembled();
+        auto &velo = self()->velocity_vector_assembled();
+        auto &mass_matrix = self()->mass_matrix_assembled();
+
+        resize(velo, size0(p0));
+        solve(mass_matrix, p0, velo);
+      }
+
+      void update_all_velocities(auto step)
+      {
+        auto &data = self()->data();
+        auto &velo = self()->velocity_vector_assembled();
+        auto &all_vs = memory(step+1, get_memory<velocity>(data));
+        auto &involved_ds = ground::get<
+            attached_storage<system, symbol<"involved">, some::boolean>>(
+            data)[0];
+
+        // involved ds velocities -> ds velocities
+        for (auto [i, v] :
+               all_vs | ranges::views::enumerate |
+                 ranges::views::filter([&involved_ds](auto k_m) {
+                   auto [k, _] = k_m;
+                   return involved_ds[k];
+                 })) {
+          // copy
+          v = get_vector(velo, i);
+        }
+      }
+
+      auto update_positions(auto step, auto h)
+      {
+        auto& data = self()->data();
+        auto &xs = memory(step+1, get_memory<q>(data));
+        auto &vs = memory(step+1, get_memory<velocity>(data));
+
+        for(auto [x, v] : ranges::views::zip(xs, vs))
+        {
+          x += h*v;
+        }
       }
 
       auto solve_nonsmooth_problem(auto step) {}
@@ -337,10 +380,10 @@ struct one_step_integrator {
         auto &minv_fs = memory(step, fexts);
         auto &minv_fs_next = memory(step + 1, fexts);
 
-        // f <- M  f
+        // for all ds
         for (auto [v, v_next, minv_f, minv_f_next] :
              ranges::views::zip(vs, vs_next, minv_fs, minv_fs_next)) {
-          // beware of temporaries...
+          // theta useless if fext is constant
           v_next = v + h * theta_ * minv_f + h * (1 - theta_) * minv_f_next;
         }
       };
