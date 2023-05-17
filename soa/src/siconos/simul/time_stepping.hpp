@@ -59,18 +59,50 @@ struct time_stepping : item<> {
       current_step() += 1;
     }
 
+    void compute_input()
+    {
+      auto osi = self()->one_step_integrator();
+      auto& h_matrix = osi.h_matrix_assembled();
+      auto& lambda = osi.lambda_vector_assembled();
+      auto& p0 = osi.p0_vector_assembled();
+
+      resize(p0, size0(h_matrix));
+      transpose(h_matrix);
+      // p0 <- h_matrix^t * lambda
+      prodt1(h_matrix, lambda, p0);
+    }
+
+    void update_velocity()
+    {
+      auto osi = self()->one_step_integrator();
+      auto& p0 = osi.p0_vector_assembled();
+      auto& velo = osi.velocity_vector_assembled();
+      auto& freevelo = osi.free_velocity_vector_assembled();
+      auto& mass_matrix = osi.mass_matrix_assembled();
+      auto h = self()->time_discretization().h();
+
+      resize(velo, size0(p0));
+      solve(mass_matrix, p0, velo);
+
+      // velo += freevelo
+      numerics::add(freevelo, velo);
+
+      scal(h, velo);
+    }
+
     template <typename Formulation>
     void solve_nonsmooth_problem()
     {  // Mz=w+q
-      resize(self()->one_step_integrator().lambda_vector_assembled(),
-             size0(self()->one_step_integrator().q_vector_assembled()));
-      resize(self()->one_step_integrator().ydot_vector_assembled(),
-             size0(self()->one_step_integrator().q_vector_assembled()));
+      auto osi = self()->one_step_integrator();
+      resize(osi.lambda_vector_assembled(),
+             size0(osi.q_vector_assembled()));
+      resize(osi.ydot_vector_assembled(),
+             size0(osi.q_vector_assembled()));
       self()->one_step_nonsmooth_problem().template solve<Formulation>(
-          self()->one_step_integrator().w_matrix(),                 // M
-          self()->one_step_integrator().q_vector_assembled(),       // q
-          self()->one_step_integrator().lambda_vector_assembled(),  // z
-          self()->one_step_integrator().ydot_vector_assembled());   // w
+          osi.w_matrix(),                 // M
+          osi.q_vector_assembled(),       // q
+          osi.lambda_vector_assembled(),  // z
+          osi.ydot_vector_assembled());   // w
     }
 
     void update_indexsets(auto i)

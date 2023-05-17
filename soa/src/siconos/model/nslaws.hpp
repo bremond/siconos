@@ -8,7 +8,7 @@ struct equality_condition_nsl {};
 struct relay_nsl {};
 struct nonsmooth_law {
   struct newton_impact_friction : item<> {
-    struct e : access<e>, some::scalar {};
+    struct e : some::scalar, access<e> {};
     struct mu : some::scalar, access<mu> {};
 
     static constexpr auto size = 2;

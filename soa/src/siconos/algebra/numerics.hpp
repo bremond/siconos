@@ -99,7 +99,7 @@ void resize(match::vec auto& v, siconos::match::indice auto nrows)
 {
   if (v._v) v._v = NM_free(v._v);
 
-//  static_assert(m.vncols == 1);  // only vector of vectors
+  //  static_assert(m.vncols == 1);  // only vector of vectors
   // dense vector
   v._v = NM_create(NM_DENSE, nrows * v.vnrows, v.vncols);
 }
@@ -178,6 +178,23 @@ void inverse(diag_mat<A>& a)
   a._inversed = true;
 }
 
+// b += a
+template <typename T>
+void add(vec<T>& a, vec<T>& b)
+{
+// improve Numerics  cblas_daxpy(size0(a), 1, a._v->matrix0, 1, b._v->matrix0);
+
+  for (size_t i=0; i<size0(a)*a.vnrows; ++i)
+  {
+    b._v->matrix0[i] += a._v->matrix0[i];
+  }
+}
+
+  template<typename T>
+  void scal(siconos::match::scalar auto h, vec<T>& v)
+  {
+    NM_scal(h, v._v);
+  }
 // c <- a b
 // Matrix Matrix
 template <typename A, typename B>
@@ -188,26 +205,40 @@ void prod(mat<A>& a, mat<B>& b, mat<prod_t<A, B>>& c)
 
 // Matrix Vector
 template <typename A, typename B>
-void prod(mat<A>& a, vec<B>& b, vec<prod_t<A,B>>& c)
+void prod(mat<A>& a, vec<B>& b, vec<prod_t<A, B>>& c)
 {
   NM_gemv(1, a._m, b._v->matrix0, 1, c._v->matrix0);
 }
 
+// c <- a^t b
+template <typename A, typename B>
+void prodt1(mat<A>& a, vec<B>& b, vec<prod_t<trans_t<A>, B>>& c)
+{
+  assert(a._mt);
+  NM_gemv(1, a._mt, b._v->matrix0, 1, c._v->matrix0);
+}
 // c <- a b^t
 template <typename A, typename B>
-void prodt(diag_mat<A>& a, mat<B>& b, mat<prod_t<A, trans_t<B>>>& c)
+void prodt2(diag_mat<A>& a, mat<B>& b, mat<prod_t<A, trans_t<B>>>& c)
 {
   assert(b._mt);
   NM_gemm(1, a._m, b._mt, 1, c._m);
 }
 
-// c <- a^-1 b^t
-template <siconos::match::diagonal_matrix A, siconos::match::matrix B>
+// c <- a^-1 b
+template <siconos::match::diagonal_matrix A, typename B>
+void solve(diag_mat<A>& a, vec<B>& b, vec<B>& c)
+{
+  inverse(a);
+  prod(a, b, c);
+}
+
+  template <siconos::match::diagonal_matrix A, siconos::match::matrix B>
 void solvet(diag_mat<A>& a, mat<B>& b, mat<trans_t<B>>& c)
 {
   inverse(a);
   transpose(b);
-  prodt(a, b, c);
+  prodt2(a, b, c);
 }
 
 }  // namespace numerics

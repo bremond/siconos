@@ -69,6 +69,9 @@ struct one_step_integrator {
     struct lambda_vector_assembled : some::unbounded_vector<lambda>,
                                      access<lambda_vector_assembled> {};
 
+    struct p0_vector_assembled
+        : some::unbounded_vector<some::vector<some::scalar, dof>>,
+          access<p0_vector_assembled> {};
     struct mass_matrix_assembled : some::unbounded_matrix<mass_matrix>,
                                    access<mass_matrix_assembled> {};
     struct w_matrix
@@ -77,11 +80,13 @@ struct one_step_integrator {
                            nth_t<0, typename h_matrix::sizes>>>,
           access<w_matrix> {};
 
-    using attributes = types::attributes<
-        theta, gamma, constraint_activation_threshold, h_matrix_assembled,
-        mass_matrix_assembled, w_matrix, q_vector_assembled,
-        velocity_vector_assembled, y_vector_assembled, ydot_vector_assembled,
-        free_velocity_vector_assembled, lambda_vector_assembled>;
+    using attributes =
+        types::attributes<theta, gamma, constraint_activation_threshold,
+                          h_matrix_assembled, mass_matrix_assembled, w_matrix,
+                          q_vector_assembled, velocity_vector_assembled,
+                          y_vector_assembled, ydot_vector_assembled,
+                          free_velocity_vector_assembled,
+                          lambda_vector_assembled, p0_vector_assembled>;
 
     using properties = gather<keep<typename system::q, 2>,
                               keep<typename system::velocity, 2>>;
@@ -115,6 +120,10 @@ struct one_step_integrator {
       decltype(auto) lambda_vector_assembled()
       {
         return Handle ::type ::lambda_vector_assembled ::at(*self());
+      }
+      decltype(auto) p0_vector_assembled()
+      {
+        return Handle ::type ::p0_vector_assembled ::at(*self());
       }
       decltype(auto) y_vector_assembled()
       {

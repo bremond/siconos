@@ -352,6 +352,10 @@ int main()
 
    hosi.compute_q_vector_assembled(0);
    dsimul.solve_nonsmooth_problem<LinearComplementarityProblem>();
+
+   dsimul.compute_input();
+
+   dsimul.update_velocity();
 //   auto& q = siconos::get_memory<ball::q>(data);
 //   print("q={}\n", q);
 //   print("v={}\n", siconos::get_memory<ball::velocity>(data));
