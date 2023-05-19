@@ -12,6 +12,8 @@ struct time_stepping : item<> {
   using one_step_nonsmooth_problem_t = types::nth_t<2, items>;
   using topology_t = types::nth_t<3, items>;
 
+  using formulation_t =
+      typename one_step_nonsmooth_problem_t::problem_t::formulation_t;
   using attributes = types::attributes_of_items<Items...>;
 
   template <typename Handle>
@@ -55,8 +57,30 @@ struct time_stepping : item<> {
     }
     void compute_one_step()
     {
-      self()->one_step_integrator().compute_free_state(current_step(),
-                                                       time_step());
+      auto osi = self()->one_step_integrator();
+
+      // just once if fext constant!
+      //osi.compute_iteration_matrix(current_step());  // fext <- just M-1 fext
+
+      osi.compute_free_state(current_step(), time_step());
+
+      self()->update_indexsets(0);
+
+      osi.assemble_h_matrix_for_involved_ds(current_step());
+      osi.assemble_mass_matrix_for_involved_ds(current_step());
+
+      osi.resize_assembled_vectors(current_step());
+      osi.compute_q_vector_assembled(current_step());
+      osi.compute_w_matrix(current_step());
+
+      self()->template solve_nonsmooth_problem <formulation_t>();
+
+      self()->compute_input();
+
+      osi.update_velocity_for_involved_ds();
+      osi.update_all_velocities(current_step());
+      osi.update_positions(current_step(), time_step());
+
       current_step() += 1;
     }
 
@@ -73,15 +97,12 @@ struct time_stepping : item<> {
       prodt1(h_matrix, lambda, p0);
     }
 
-
     template <typename Formulation>
     void solve_nonsmooth_problem()
     {  // Mz=w+q
       auto osi = self()->one_step_integrator();
-      resize(osi.lambda_vector_assembled(),
-             size0(osi.q_vector_assembled()));
-      resize(osi.ydot_vector_assembled(),
-             size0(osi.q_vector_assembled()));
+      resize(osi.lambda_vector_assembled(), size0(osi.q_vector_assembled()));
+      resize(osi.ydot_vector_assembled(), size0(osi.q_vector_assembled()));
       self()->one_step_nonsmooth_problem().template solve<Formulation>(
           osi.w_matrix(),                 // M
           osi.q_vector_assembled(),       // q
@@ -89,18 +110,25 @@ struct time_stepping : item<> {
           osi.ydot_vector_assembled());   // w
     }
 
+    bool has_next_event()
+    {
+      return current_step()*time_discretization().h() <= time_discretization().tmax();
+    }
     void update_indexsets(auto i)
     {
-      auto &data = self()->data();
+      auto& data = self()->data();
       using info_t = std::decay_t<decltype(ground::get<info>(data))>;
       using env = typename info_t::env;
 
       auto osi = self()->one_step_integrator();
       auto topo = self()->topology();
 
-      auto &index_set0 = topo.interaction_graphs()[0];
-      auto &index_set1 = topo.interaction_graphs()[1];
+      auto& index_set0 = topo.interaction_graphs()[0];
+      auto& index_set1 = topo.interaction_graphs()[1];
       //        auto& dsg0 = topo.dynamical_system_graphs()[0];
+
+      // compute active interactions
+      osi.compute_active_interactions(current_step(), time_step());
 
       // Check index_set1
       auto [ui1, ui1end] = index_set1.vertices();
@@ -128,8 +156,8 @@ struct time_stepping : item<> {
             //              dsg0.properties(dsg0.descriptor(ds1)).osi;
 
             //              //if(predictorDeactivate(inter1,i))
-            if (osi.remove_interaction_from_index_set(
-                    inter1, self()->time_step(), i)) {
+            //            if (osi.remove_interaction_from_index_set(
+            if (!inter1.property(symbol<"activation">{})) {
               //                // Interaction is not active
               //                // ui1 becomes invalid
               index_set0.color(inter1_descr0) = env::black_color;
@@ -221,8 +249,9 @@ struct time_stepping : item<> {
               //           OneStepIntegrator& osi =
               //           *DSG0.properties(DSG0.descriptor(ds1)).osi;
 
-              activate =
-                  osi.add_interaction_in_index_set(inter0, time_step(), i);
+              activate = inter0.property(symbol<"activation">{});
+              //                  osi.add_interaction_in_index_set(inter0,
+              //                  time_step(), i);
             }
             if (activate) {
               assert(!index_set1.is_vertex(inter0));

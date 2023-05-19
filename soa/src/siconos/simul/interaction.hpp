@@ -6,6 +6,10 @@
 namespace siconos {
 template <typename Nslaw, typename Relation, std::size_t K = 2>
 struct interaction : item<> {
+
+  using nslaw_t = Nslaw;
+  using relation_t = Relation;
+
   using dof = some::indice_parameter<"dof">;
   using nslaw_size = some::indice_value<Nslaw::size>;
 
@@ -17,8 +21,9 @@ struct interaction : item<> {
   struct lambda : some::vector<some::scalar, nslaw_size>, access<lambda> {};
 
   struct y : some::vector<some::scalar, nslaw_size>, access<y> {};
+  struct ydot : some::vector<some::scalar, nslaw_size>, access<ydot> {};
 
-  using attributes = gather<dof, nslaw_size, nonsmooth_law, relation, h_matrix, lambda, y>;
+  using attributes = gather<dof, nslaw_size, nonsmooth_law, relation, h_matrix, lambda, y, ydot>;
 
   template <typename Handle>
   struct interface : default_interface<Handle> {
@@ -37,6 +42,7 @@ struct interaction : item<> {
     decltype(auto) h_matrix() { return Handle::type::h_matrix::at(*self()); }
 
     decltype(auto) y() { return Handle ::type ::y ::at(*self()); }
+    decltype(auto) ydot() { return Handle ::type ::y ::at(*self()); }
   };
 };
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "siconos/utils/pattern.hpp"
+#include "siconos/storage/storage.hpp"
 
 namespace siconos {
 

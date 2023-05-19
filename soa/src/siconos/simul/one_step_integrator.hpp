@@ -3,6 +3,10 @@
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/pattern.hpp"
 
+#include <range/v3/view/zip.hpp>
+#include <range/v3/view/enumerate.hpp>
+#include <range/v3/view/filter.hpp>
+
 namespace siconos {
 
 template <typename DynamicalSystem, typename Interaction>
@@ -13,6 +17,7 @@ struct one_step_integrator {
   using dof = typename interaction::dof;
   using nslaw_size = typename interaction::nslaw_size;
   using y = typename interaction::y;
+  using ydot = typename interaction::ydot;
   using lambda = typename interaction::lambda;
   using q = typename system::q;
   using velocity = typename system::velocity;
@@ -63,7 +68,7 @@ struct one_step_integrator {
     struct y_vector_assembled : some::unbounded_vector<y>,
                                 access<y_vector_assembled> {};
 
-    struct ydot_vector_assembled : some::unbounded_vector<y>,
+    struct ydot_vector_assembled : some::unbounded_vector<ydot>,
                                    access<ydot_vector_assembled> {};
 
     struct lambda_vector_assembled : some::unbounded_vector<lambda>,
@@ -143,19 +148,25 @@ struct one_step_integrator {
         return Handle ::type ::w_matrix ::at(*self());
       }
 
-      bool add_interaction_in_index_set(auto inter, auto h, auto i)
+      void compute_active_interactions(auto step, auto h)
       {
-        auto y = inter.y()[i - 1];
-        const auto ydot = inter.y()[i];
-        const auto &gamma_v = 0.5;
-        y += gamma_v * h * ydot;
+        auto &data = self()->data();
 
-        return y <= self()->constraint_activation_threshold();
-      };
+        auto &ys = memory(step, get_memory<y>(data));
+        auto &ydots = memory(step, get_memory<ydot>(data));
 
-      bool remove_interaction_from_index_set(auto inter, auto h, auto i)
-      {
-        return !add_interaction_in_index_set(inter, h, i);
+        auto &activations =
+            ground::get<attached_storage<interaction, symbol<"activation">,
+                                         some::boolean>>(data)[0];
+
+        auto gamma_v = 0.5;
+
+        for (auto [y, ydot, activation] :
+             ranges::views::zip(ys, ydots, activations)) {
+          // on normal component
+          activation = ((y + gamma_v * h * ydot)(0) <=
+                        self()->constraint_activation_threshold());
+        }
       }
 
       // strategy 1 : assemble the matrix for involved ds only
@@ -317,14 +328,14 @@ struct one_step_integrator {
       {
         auto &data = self()->data();
         auto &velo = self()->velocity_vector_assembled();
-        auto &all_vs = memory(step+1, get_memory<velocity>(data));
+        auto &all_vs = memory(step + 1, get_memory<velocity>(data));
         auto &involved_ds = ground::get<
             attached_storage<system, symbol<"involved">, some::boolean>>(
             data)[0];
 
         // involved ds velocities -> ds velocities
         for (auto [i, v] :
-               all_vs | ranges::views::enumerate |
+             all_vs | ranges::views::enumerate |
                  ranges::views::filter([&involved_ds](auto k_m) {
                    auto [k, _] = k_m;
                    return involved_ds[k];
@@ -336,17 +347,14 @@ struct one_step_integrator {
 
       auto update_positions(auto step, auto h)
       {
-        auto& data = self()->data();
-        auto &xs = memory(step+1, get_memory<q>(data));
-        auto &vs = memory(step+1, get_memory<velocity>(data));
+        auto &data = self()->data();
+        auto &xs = memory(step, get_memory<q>(data));
+        auto &vs = memory(step + 1, get_memory<velocity>(data));
 
-        for(auto [x, v] : ranges::views::zip(xs, vs))
-        {
-          x += h*v;
+        for (auto [x, v] : ranges::views::zip(xs, vs)) {
+          x += h * v;
         }
       }
-
-      auto solve_nonsmooth_problem(auto step) {}
 
       auto compute_iteration_matrix(auto step)
       {
@@ -357,17 +365,18 @@ struct one_step_integrator {
         auto &mats = memory(step, mass_matrices);
         auto &fs = memory(step, external_forces);
 
-        if constexpr (has_property<mass_matrix, some::time_invariant>(data)) {
-          if constexpr (has_property<fext, some::time_invariant>(data)) {
-            if constexpr (has_property<mass_matrix, property::diagonal>(
-                              data)) {
+//        if constexpr (has_property<mass_matrix, some::time_invariant>(data)) {
+//          if constexpr (has_property<fext, some::time_invariant>(data)) {
+//            if constexpr (has_property<mass_matrix, property::diagonal>(
+//                              data)) {
               for (auto [mat, f] : ranges::views::zip(mats, fs)) {
-                solve_in_place(mat, f);
+                f = mat.inverse() * f;
               }
-            }
-          }
-        }
-      };
+//            }
+//          }
+//      }
+      }
+      
       auto compute_free_state(auto step, auto h)
       {
         auto &data = self()->data();

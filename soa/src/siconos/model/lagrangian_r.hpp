@@ -5,6 +5,8 @@
 namespace siconos {
 
 struct lagrangian_r : item<> {
+
+  
   using attributes = types::attributes<>;
 
   template <typename Handle>

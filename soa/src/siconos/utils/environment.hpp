@@ -2,10 +2,11 @@
 
 #include "siconos/utils/SiconosGraph.hpp" // modified for std::array
 #include "siconos/utils/pattern.hpp"
+#include "siconos/storage/storage.hpp"
 #include "siconos/algebra/linear_algebra.hpp"
 #include "siconos/algebra/eigen.hpp"
 #include "siconos/algebra/numerics.hpp"
-#include "siconos/siconos.hpp"
+
 
 namespace siconos
 {

@@ -48,6 +48,7 @@ struct topology : item<> {
                        some::item_ref<dynamical_system> >,
       attached_storage<interaction, symbol<"ds2">,
                        some::item_ref<dynamical_system> >,
+    attached_storage<interaction, symbol<"activation">, some::boolean>,
       attached_storage<
           dynamical_system, symbol<"vd">,
           some::vdescriptor<typename dynamical_system_graphs::type> >,

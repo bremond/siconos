@@ -182,25 +182,25 @@ void inverse(diag_mat<A>& a)
 template <typename T>
 void add(vec<T>& a, vec<T>& b)
 {
-// improve Numerics  cblas_daxpy(size0(a), 1, a._v->matrix0, 1, b._v->matrix0);
+  // improve Numerics  cblas_daxpy(size0(a), 1, a._v->matrix0, 1,
+  // b._v->matrix0);
 
-  for (size_t i=0; i<size0(a)*a.vnrows; ++i)
-  {
+  for (size_t i = 0; i < size0(a) * a.vnrows; ++i) {
     b._v->matrix0[i] += a._v->matrix0[i];
   }
 }
 
-  template<typename T>
-  void scal(siconos::match::scalar auto h, vec<T>& v)
-  {
-    NM_scal(h, v._v);
-  }
+template <typename T>
+void scal(siconos::match::scalar auto h, vec<T>& v)
+{
+  NM_scal(h, v._v);
+}
 
-  template<typename T>
-  const T get_vector(vec<T>& v, siconos::match::indice auto i)
-  {
-    return matrix_view<T>(v._v->matrix0);
-  }
+template <typename T>
+const T get_vector(vec<T>& v, siconos::match::indice auto i)
+{
+  return matrix_view<T>(v._v->matrix0);
+}
 // c <- a b
 // Matrix Matrix
 template <typename A, typename B>
@@ -239,7 +239,7 @@ void solve(diag_mat<A>& a, vec<B>& b, vec<B>& c)
   prod(a, b, c);
 }
 
-  template <siconos::match::diagonal_matrix A, siconos::match::matrix B>
+template <siconos::match::diagonal_matrix A, siconos::match::matrix B>
 void solvet(diag_mat<A>& a, mat<B>& b, mat<trans_t<B>>& c)
 {
   inverse(a);

@@ -49,6 +49,7 @@ template <typename Formulation>
 struct nonsmooth_problem : data_holder<Formulation> {
   using attributes = typename data_holder<Formulation>::attributes;
 
+  using formulation_t = Formulation;
   template <typename Handle>
   struct interface : data_holder<Formulation>::template interface<Handle> {
     using default_interface<Handle>::self;
@@ -68,6 +69,7 @@ struct one_step_nonsmooth_problem : item<> {
   struct problem : some::item_ref<NonsmoothProblem>, access<problem> {};
   struct level : some::indice, access<level> {};
 
+  using problem_t = NonsmoothProblem;
   using attributes = gather<level, options, problem>;
 
   template <typename Handle>
