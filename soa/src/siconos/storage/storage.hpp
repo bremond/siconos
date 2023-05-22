@@ -101,7 +101,6 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
         return match::attached_storage<X, T>;
       })>>(typename info_t::all_properties_t{}));
 
-
   D& _data;
 
   decltype(auto) attributes()
@@ -129,6 +128,11 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
   {
     return property(symbol<S>{}, step);
   }
+
+  template <string_literal S>
+  constexpr decltype(auto) attr(indice step = 0)
+  {
+  }
   decltype(auto) data() { return _data; };
 
   explicit handle(R& ref, D& data) : index<T, R>{ref}, _data{data} {};
@@ -137,10 +141,11 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
 
   handle() : index<T, R>{}, _data{} {};
 
-  handle(const handle& h) : index<T, R>(h.get()), _data(h._data) {};
+  handle(const handle& h) : index<T, R>(h.get()), _data(h._data){};
   handle(handle&&) = default;
   handle operator=(const handle& h) { return handle(h); };
-  handle operator=(handle&& h) { return handle(h); };;
+  handle operator=(handle&& h) { return handle(h); };
+  ;
   friend auto operator<=>(const handle<T, R, D>&,
                           const handle<T, R, D>&) = default;
 };
@@ -339,14 +344,17 @@ decltype(auto) make_handle(auto& h)
 
 template <typename A>
 static auto get = ground::overload(
+    // get<Attr>(step, handle, data)
     []<match::handle_attribute<A> Handle, typename Data>(
         auto step, Handle& handle, Data& data) constexpr -> decltype(auto) {
       return memory(step, ground::get<A>(data))[handle.get()];
     },
+    // get<Attr>(handle, data)
     []<match::handle_attribute<A> Handle, typename Data>(
         Handle& handle, Data& data) constexpr -> decltype(auto) {
       return memory(0, ground::get<A>(data))[handle.get()];
     },
+    // get<Attached_storage>(step,h, data)
     []<match::handle_attached_storage<A> Handle, typename Data>(
         auto step, Handle& handle, Data& data) constexpr -> decltype(auto) {
       using item_t = typename Handle::type;
@@ -363,6 +371,7 @@ static auto get = ground::overload(
       return memory(step,
                     ground::get<attached_storage_t>(data))[handle.get()];
     },
+    // get<Attached_storage>(h, data)
     []<match::handle_attached_storage<A> Handle, typename Data>(
         Handle& handle, Data& data) constexpr -> decltype(auto) {
       using item_t = typename Handle::type;
@@ -570,7 +579,10 @@ struct access {
           ->decltype(auto) { return siconos::get<U>(h, data); },
       []<typename U = T, typename FullHandle>(FullHandle h)->decltype(auto) {
         return siconos::get<U>(h, h.data());
-      });
+      },
+      []<typename U = T, typename FullHandle>(
+          FullHandle h, typename FullHandle::indice step)
+          ->decltype(auto) { return siconos::get<U>(step, h, h.data()); });
 };
 
 static auto for_each = [](auto m, auto&& fun) constexpr -> void {

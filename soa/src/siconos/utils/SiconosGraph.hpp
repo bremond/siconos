@@ -14,7 +14,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
-*/
+ */
 
 /*! \file SiconosGraph.hpp
   Template class to define a graph of Siconos object.
@@ -30,23 +30,23 @@
 #define BOOST_NO_HASH
 #endif
 
+#include <SiconosConfig.h>
+
 #include <boost/config.hpp>
 #include <boost/version.hpp>
-
-#include <SiconosConfig.h>
 #if !defined(SICONOS_USE_MAP_FOR_HASH)
 #include <unordered_map>
 #else
 #include <map>
 #endif
 
-#include <limits>
-#include <boost/graph/graph_utility.hpp>
 #include <boost/graph/adjacency_list.hpp>
-#include <boost/graph/graph_concepts.hpp>
 #include <boost/graph/directed_graph.hpp>
+#include <boost/graph/graph_concepts.hpp>
+#include <boost/graph/graph_utility.hpp>
 #include <boost/property_map/property_map.hpp>
 #include <boost/static_assert.hpp>
+#include <limits>
 
 #include "SiconosSerialization.hpp"
 
@@ -60,71 +60,57 @@ enum graph_properties_t { graph_properties };
 enum vertex_siconos_bundle_t { vertex_siconos_bundle };
 enum edge_siconos_bundle_t { edge_siconos_bundle };
 
-namespace boost
-{
-  using std::size_t;
+namespace boost {
+using std::size_t;
 
-  BOOST_INSTALL_PROPERTY(vertex, properties);
-  BOOST_INSTALL_PROPERTY(edge, properties);
-  BOOST_INSTALL_PROPERTY(graph, properties);
-  BOOST_INSTALL_PROPERTY(vertex, siconos_bundle);
-  BOOST_INSTALL_PROPERTY(edge, siconos_bundle);
-}
+BOOST_INSTALL_PROPERTY(vertex, properties);
+BOOST_INSTALL_PROPERTY(edge, properties);
+BOOST_INSTALL_PROPERTY(graph, properties);
+BOOST_INSTALL_PROPERTY(vertex, siconos_bundle);
+BOOST_INSTALL_PROPERTY(edge, siconos_bundle);
+}  // namespace boost
 
-
-
-template < class V, class E, class VProperties,
-         class EProperties, class GProperties >
-class SiconosGraph
-{
-public:
-
+template <class V, class E, class VProperties, class EProperties,
+          class GProperties>
+class SiconosGraph {
+ public:
   /* note : OutEdgeList as multisetS => cannot compile remove_out_edge_if :
-     /usr/include/boost/graph/detail/adjacency_list.hpp:440: error: passing 'const ... */
-  typedef boost::adjacency_list < boost::listS, boost::listS,
-          boost::undirectedS > proxy_graph_t;
+     /usr/include/boost/graph/detail/adjacency_list.hpp:440: error: passing
+     'const ... */
+  typedef boost::adjacency_list<boost::listS, boost::listS,
+                                boost::undirectedS>
+      proxy_graph_t;
 
-  typedef typename
-  boost::graph_traits<proxy_graph_t>::edge_descriptor EDescriptor;
+  typedef typename boost::graph_traits<proxy_graph_t>::edge_descriptor
+      EDescriptor;
 
-  typedef typename
-  boost::graph_traits<proxy_graph_t>::vertex_descriptor VDescriptor;
+  typedef typename boost::graph_traits<proxy_graph_t>::vertex_descriptor
+      VDescriptor;
 
-
-  typedef boost::adjacency_list <
-    boost::listS, boost::listS, boost::undirectedS,
-    boost::property
-    < vertex_siconos_bundle_t, V,
-      boost::property <
-        boost::vertex_color_t ,
-        boost::default_color_type ,
-        boost::property < boost::vertex_index_t,
-                          size_t,
-                          boost::property < vertex_properties_t,
-                                            VProperties
-                                            > > > > ,
-    boost::property
-    < edge_siconos_bundle_t, E,
-      boost::property <
-        boost::edge_color_t ,
-        boost::default_color_type ,
-        boost::property < boost::edge_index_t,
-                          size_t,
-                          boost::property < edge_properties_t ,
-                                            EProperties
-                                            > > > > ,
-    boost::property < graph_properties_t, GProperties > >
-    graph_t;
+  typedef boost::adjacency_list<
+      boost::listS, boost::listS, boost::undirectedS,
+      boost::property<
+          vertex_siconos_bundle_t, V,
+          boost::property<boost::vertex_color_t, boost::default_color_type,
+                          boost::property<boost::vertex_index_t, size_t,
+                                          boost::property<vertex_properties_t,
+                                                          VProperties> > > >,
+      boost::property<
+          edge_siconos_bundle_t, E,
+          boost::property<boost::edge_color_t, boost::default_color_type,
+                          boost::property<boost::edge_index_t, size_t,
+                                          boost::property<edge_properties_t,
+                                                          EProperties> > > >,
+      boost::property<graph_properties_t, GProperties> >
+      graph_t;
 
   typedef V vertex_t;
 
   typedef E edge_t;
 
-  typedef typename
-  boost::graph_traits<graph_t>::edge_iterator EIterator;
+  typedef typename boost::graph_traits<graph_t>::edge_iterator EIterator;
 
-  typedef typename
-  boost::graph_traits<graph_t>::vertex_iterator VIterator;
+  typedef typename boost::graph_traits<graph_t>::vertex_iterator VIterator;
 
   //  typedef typename
   //  graph_traits<graph_t>::edge_descriptor EDescriptor;
@@ -132,39 +118,39 @@ public:
   //  typedef typename
   //  graph_traits<graph_t>::vertex_descriptor VDescriptor;
 
-  typedef typename
-  boost::graph_traits<graph_t>::out_edge_iterator OEIterator;
+  typedef typename boost::graph_traits<graph_t>::out_edge_iterator OEIterator;
 
-  typedef typename
-  boost::graph_traits<graph_t>::adjacency_iterator AVIterator;
+  typedef
+      typename boost::graph_traits<graph_t>::adjacency_iterator AVIterator;
 
-  typedef typename
-  boost::property_map<graph_t, edge_siconos_bundle_t >::type EBundleAccess;
+  typedef typename boost::property_map<graph_t, edge_siconos_bundle_t>::type
+      EBundleAccess;
 
-  typedef typename
-  boost::property_map<graph_t, vertex_siconos_bundle_t >::type VBundleAccess;
+  typedef typename boost::property_map<graph_t, vertex_siconos_bundle_t>::type
+      VBundleAccess;
 
-  typedef typename
-  boost::property_map<graph_t, boost::edge_color_t >::type EColorAccess;
+  typedef typename boost::property_map<graph_t, boost::edge_color_t>::type
+      EColorAccess;
 
-  typedef typename
-  boost::property_map<graph_t, boost::vertex_color_t >::type VColorAccess;
+  typedef typename boost::property_map<graph_t, boost::vertex_color_t>::type
+      VColorAccess;
 
-  typedef typename
-  boost::property_map<graph_t, boost::edge_index_t >::type EIndexAccess;
+  typedef typename boost::property_map<graph_t, boost::edge_index_t>::type
+      EIndexAccess;
 
-  typedef typename
-  boost::property_map<graph_t, boost::vertex_index_t >::type VIndexAccess;
+  typedef typename boost::property_map<graph_t, boost::vertex_index_t>::type
+      VIndexAccess;
 
-  typedef typename
-  boost::property_map<graph_t, edge_properties_t >::type EPropertiesAccess;
+  typedef typename boost::property_map<graph_t, edge_properties_t>::type
+      EPropertiesAccess;
 
-  typedef typename
-  boost::property_map<graph_t, vertex_properties_t >::type VPropertiesAccess;
+  typedef typename boost::property_map<graph_t, vertex_properties_t>::type
+      VPropertiesAccess;
 
   // Need some Base, otherwise, we have a compile error with boost >= 1.51
   //  typedef typename
-  //  boost::property_map<graph_t, graph_properties_t >::type GraphPropertiesAccess;
+  //  boost::property_map<graph_t, graph_properties_t >::type
+  //  GraphPropertiesAccess;
 
 #if !defined(SICONOS_USE_MAP_FOR_HASH)
   typedef typename std::unordered_map<V, VDescriptor> VMap;
@@ -172,46 +158,33 @@ public:
   typedef typename std::map<V, VDescriptor> VMap;
 #endif
 
-
   int _stamp;
   VMap vertex_descriptor;
 
-public:
-  
+ public:
   typedef void serializable;
-  template<typename Archive>
-  friend void siconos_io(Archive&, SiconosGraph < V, E, VProperties, EProperties,
-                         GProperties > &,
-                         const unsigned int);
+  template <typename Archive>
+  friend void siconos_io(
+      Archive&, SiconosGraph<V, E, VProperties, EProperties, GProperties>&,
+      const unsigned int);
   friend class boost::serialization::access;
 
   graph_t g;
 
-//private:
+  // private:
 
   // SiconosGraph(const SiconosGraph&);
 
-public:
-
+ public:
   /** default constructor
    */
-  SiconosGraph() : _stamp(0)
-  {
-  };
+  SiconosGraph() : _stamp(0){};
 
-  ~SiconosGraph()
-  {
-    g.clear();
-  };
+  ~SiconosGraph() { g.clear(); };
 
-  const graph_t& storage() const
-  {
-    return g;
-  }
+  const graph_t& storage() const { return g; }
 
-
-  std::pair<EDescriptor, bool>
-  edge(VDescriptor u, VDescriptor v) const
+  std::pair<EDescriptor, bool> edge(VDescriptor u, VDescriptor v) const
   {
     return boost::edge(u, v, g);
   }
@@ -225,11 +198,9 @@ public:
 #ifndef NDEBUG
     bool check_ret = false;
     AVIterator avi, aviend;
-    for (std::tie(avi, aviend) = adjacent_vertices(vd1);
-         avi != aviend; ++avi)
-    {
-      if (*avi == vd2)
-      {
+    for (std::tie(avi, aviend) = adjacent_vertices(vd1); avi != aviend;
+         ++avi) {
+      if (*avi == vd2) {
         check_ret = true;
         break;
       }
@@ -248,8 +219,8 @@ public:
      This is only needed for AdjointGraph where only 2 edges may be in
      common which correspond to the source and target in primal graph
    */
-  std::pair<EDescriptor, EDescriptor>
-  edges(VDescriptor u, VDescriptor v) const
+  std::pair<EDescriptor, EDescriptor> edges(VDescriptor u,
+                                            VDescriptor v) const
   {
     //    BOOST_STATIC_ASSERT((GProperties::is_adjoint_graph));
 
@@ -257,17 +228,13 @@ public:
     bool ifirst = false;
     bool isecond = false;
     EDescriptor first, second;
-    for (std::tie(oei, oeiend) = out_edges(u); oei != oeiend; ++oei)
-    {
-      if (target(*oei) == v)
-      {
-        if (!ifirst)
-        {
+    for (std::tie(oei, oeiend) = out_edges(u); oei != oeiend; ++oei) {
+      if (target(*oei) == v) {
+        if (!ifirst) {
           ifirst = true;
           first = *oei;
         }
-        else
-        {
+        else {
           isecond = true;
           second = *oei;
           break;
@@ -275,38 +242,29 @@ public:
       }
     }
 
-    if (ifirst && isecond)
-    {
-      if (index(first) < index(second))
-      {
+    if (ifirst && isecond) {
+      if (index(first) < index(second)) {
         return std::pair<EDescriptor, EDescriptor>(first, second);
       }
-      else
-      {
+      else {
         return std::pair<EDescriptor, EDescriptor>(second, first);
       }
     }
-    else if (ifirst)
-    {
+    else if (ifirst) {
       return std::pair<EDescriptor, EDescriptor>(first, first);
     }
-    else
-    {
+    else {
       throw(1);
     }
-
   }
 
-  bool is_edge(const VDescriptor& vd1, const VDescriptor& vd2, 
+  bool is_edge(const VDescriptor& vd1, const VDescriptor& vd2,
                const E& e_bundle) const
   {
     bool found = false;
     OEIterator oei, oeiend;
-    for (std::tie(oei, oeiend) = out_edges(vd1);
-         oei != oeiend; ++oei)
-    {
-      if (target(*oei) == vd2 && bundle(*oei) == e_bundle)
-      {
+    for (std::tie(oei, oeiend) = out_edges(vd1); oei != oeiend; ++oei) {
+      if (target(*oei) == vd2 && bundle(*oei) == e_bundle) {
         found = true;
         break;
       }
@@ -318,8 +276,7 @@ public:
   {
     bool ret = false;
     VIterator vi, viend;
-    for (std::tie(vi, viend) = vertices(); vi != viend; ++vi)
-    {
+    for (std::tie(vi, viend) = vertices(); vi != viend; ++vi) {
       assert(is_vertex(bundle(*vi)));
       assert(bundle(descriptor(bundle(*vi))) == bundle(*vi));
 
@@ -329,21 +286,11 @@ public:
     return ret;
   }
 
+  size_t size() const { return boost::num_vertices(g); };
 
-  size_t size() const
-  {
-    return boost::num_vertices(g);
-  };
+  size_t vertices_number() const { return boost::num_vertices(g); };
 
-  size_t vertices_number() const
-  {
-    return boost::num_vertices(g);
-  };
-
-  size_t edges_number() const
-  {
-    return boost::num_edges(g);
-  };
+  size_t edges_number() const { return boost::num_edges(g); };
 
   inline V& bundle(const VDescriptor& vd)
   {
@@ -359,7 +306,7 @@ public:
   {
     return boost::get(edge_siconos_bundle, g)[ed];
   };
-  
+
   inline const E& bundle(const EDescriptor& ed) const
   {
     return boost::get(edge_siconos_bundle, g)[ed];
@@ -461,7 +408,8 @@ public:
     return viend;
   }
 
-  inline std::pair<AVIterator, AVIterator> adjacent_vertices(const VDescriptor& vd) const
+  inline std::pair<AVIterator, AVIterator> adjacent_vertices(
+      const VDescriptor& vd) const
   {
     return boost::adjacent_vertices(vd, g);
   };
@@ -471,7 +419,8 @@ public:
     return boost::edges(g);
   };
 
-  inline std::pair<OEIterator, OEIterator> out_edges(const VDescriptor& vd) const
+  inline std::pair<OEIterator, OEIterator> out_edges(
+      const VDescriptor& vd) const
   {
     return boost::out_edges(vd, g);
   };
@@ -486,17 +435,15 @@ public:
     return boost::source(ed, g);
   };
 
-
   VDescriptor add_vertex(const V& vertex_bundle)
   {
-    assert(vertex_descriptor.size() == size()) ;
+    assert(vertex_descriptor.size() == size());
 
     VDescriptor new_vertex_descriptor;
     typename VMap::iterator current_vertex_iterator =
-      vertex_descriptor.find(vertex_bundle);
+        vertex_descriptor.find(vertex_bundle);
 
-    if (current_vertex_iterator == vertex_descriptor.end())
-    {
+    if (current_vertex_iterator == vertex_descriptor.end()) {
       new_vertex_descriptor = boost::add_vertex(g);
 
       assert(vertex(size() - 1, g) == new_vertex_descriptor);
@@ -510,28 +457,26 @@ public:
       assert(descriptor(vertex_bundle) == new_vertex_descriptor);
       assert(bundle(descriptor(vertex_bundle)) == vertex_bundle);
 
-      index(new_vertex_descriptor) = std::numeric_limits<size_t>::max() ;
+      index(new_vertex_descriptor) = std::numeric_limits<size_t>::max();
       return new_vertex_descriptor;
     }
-    else
-    {
+    else {
       assert(descriptor(vertex_bundle) == current_vertex_iterator->second);
       assert(bundle(descriptor(vertex_bundle)) == vertex_bundle);
       return current_vertex_iterator->second;
     }
 
-
-    assert(false) ;
+    assert(false);
   }
 
-  template<class G> void copy_vertex(const V& vertex_bundle, G& og)
+  template <class G>
+  void copy_vertex(const V& vertex_bundle, G& og)
   {
-
     // is G similar ?
-    BOOST_STATIC_ASSERT((boost::is_same
-                         <typename G::vertex_t, vertex_t>::value));
-    BOOST_STATIC_ASSERT((boost::is_same
-                         <typename G::edge_t, edge_t>::value));
+    BOOST_STATIC_ASSERT(
+        (boost::is_same<typename G::vertex_t, vertex_t>::value));
+    static_assert((boost ::is_same<typename G ::edge_t, edge_t>::value),
+                  "(boost::is_same <typename G::edge_t, edge_t>::value)");
 
     assert(og.is_vertex(vertex_bundle));
 
@@ -544,27 +489,24 @@ public:
     // edges copy as in boost::subgraph
     typename G::OEIterator ogoei, ogoeiend;
     for (std::tie(ogoei, ogoeiend) =
-           og.out_edges(og.descriptor(vertex_bundle));
-         ogoei != ogoeiend; ++ogoei)
-    {
+             og.out_edges(og.descriptor(vertex_bundle));
+         ogoei != ogoeiend; ++ogoei) {
       typename G::VDescriptor ognext_descr = og.target(*ogoei);
 
       assert(og.is_vertex(og.bundle(ognext_descr)));
 
       // target in graph ?
-      if (is_vertex(og.bundle(ognext_descr)))
-      {
-        assert(bundle(descriptor(og.bundle(ognext_descr)))
-               == og.bundle(ognext_descr));
+      if (is_vertex(og.bundle(ognext_descr))) {
+        assert(bundle(descriptor(og.bundle(ognext_descr))) ==
+               og.bundle(ognext_descr));
 
-        EDescriptor edescr =
-          add_edge(descr, descriptor(og.bundle(ognext_descr)),
-                   og.bundle(*ogoei));
+        EDescriptor edescr = add_edge(
+            descr, descriptor(og.bundle(ognext_descr)), og.bundle(*ogoei));
 
         properties(edescr) = og.properties(*ogoei);
         //        descriptor0(edescr) = *ogoei;
 
-        assert(bundle(edescr) == og.bundle(*ogoei));
+//        assert(bundle(edescr) == og.bundle(*ogoei));
       }
     }
   }
@@ -581,7 +523,6 @@ public:
     assert(is_vertex(vertex_bundle));
     assert(vertex_descriptor.size() == size());
     assert(bundle(descriptor(vertex_bundle)) == vertex_bundle);
-
 
     VDescriptor vd = descriptor(vertex_bundle);
     /*   debug */
@@ -609,12 +550,9 @@ public:
 #endif
   }
 
-
-  EDescriptor add_edge(const VDescriptor& vd1,
-                       const VDescriptor& vd2,
+  EDescriptor add_edge(const VDescriptor& vd1, const VDescriptor& vd2,
                        const E& e_bundle)
   {
-
     EDescriptor new_edge;
     bool inserted;
 
@@ -624,17 +562,17 @@ public:
     assert(descriptor(bundle(vd1)) == vd1);
     assert(descriptor(bundle(vd2)) == vd2);
 
-    assert(!is_edge(vd1, vd2, e_bundle));
+    if (!is_edge(vd1, vd2, e_bundle)) {
+      std::tie(new_edge, inserted) = boost::add_edge(vd1, vd2, g);
 
-    std::tie(new_edge, inserted) = boost::add_edge(vd1, vd2, g);
+      // During a gdb session, I saw that inserted is always going to be true
+      // ... This check is therefore unnecessary.
+      assert(inserted);
 
-    // During a gdb session, I saw that inserted is always going to be true ...
-    // This check is therefore unnecessary.
-    assert(inserted);
+      index(new_edge) = std::numeric_limits<size_t>::max();
 
-    index(new_edge) = std::numeric_limits<size_t>::max();
-
-    bundle(new_edge) = e_bundle;
+      bundle(new_edge) = e_bundle;
+    }
 
     assert(is_edge(vd1, vd2, e_bundle));
 
@@ -653,33 +591,32 @@ public:
 
   */
 
-
-  template<class AdjointG>
-  std::pair<EDescriptor, typename AdjointG::VDescriptor>
-  add_edge(const VDescriptor& vd1,
-           const VDescriptor& vd2,
-           const E& e_bundle,
-           AdjointG& ag)
+  template <class AdjointG>
+  std::pair<EDescriptor, typename AdjointG::VDescriptor> add_edge(
+      const VDescriptor& vd1, const VDescriptor& vd2, const E& e_bundle,
+      AdjointG& ag)
   {
-
     // adjoint static assertions
-    BOOST_STATIC_ASSERT((boost::is_same
-                         <typename AdjointG::vertex_t, edge_t>::value));
-    BOOST_STATIC_ASSERT((boost::is_same
-                         <typename AdjointG::edge_t, vertex_t>::value));
-
+    BOOST_STATIC_ASSERT(
+        (boost::is_same<typename AdjointG::vertex_t, edge_t>::value));
+    BOOST_STATIC_ASSERT(
+        (boost::is_same<typename AdjointG::edge_t, vertex_t>::value));
 
     EDescriptor new_ed = add_edge(vd1, vd2, e_bundle);
 
     typename AdjointG::VDescriptor new_ve = ag.add_vertex(e_bundle);
 
+    if (vd1 == vd2) {
+      // self edge
+      typename AdjointG::EDescriptor aed =
+          ag.add_edge(new_ve, new_ve, bundle(vd1));
+    }
     assert(bundle(new_ed) == ag.bundle(new_ve));
     assert(ag.size() == edges_number());
 
     // better to build a range [vd1,vd2] or [vd1]...
     bool endl = false;
-    for (VDescriptor vdx = vd1; !endl; vdx = vd2)
-    {
+    for (VDescriptor vdx = vd1; !endl; vdx = vd2) {
       assert(vdx == vd1 || vdx == vd2);
 
       if (vdx == vd2) endl = true;
@@ -690,19 +627,15 @@ public:
       std::map<E, EDescriptor> Edone;
 #endif
 
-
       OEIterator ied, iedend;
-      for (std::tie(ied, iedend) = out_edges(vdx);
-           ied != iedend; ++ied)
-      {
-        if (Edone.find(bundle(*ied)) == Edone.end())
-        {
+      for (std::tie(ied, iedend) = out_edges(vdx); ied != iedend; ++ied) {
+        if (Edone.find(bundle(*ied)) == Edone.end()) {
           Edone[bundle(*ied)] = *ied;
 
           assert(source(*ied) == vdx);
 
           if (*ied != new_ed)
-            // so this is another edge
+          // so this is another edge
           {
             assert(bundle(*ied) != e_bundle);
 
@@ -714,21 +647,21 @@ public:
 
             assert(!ag.is_edge(new_ve, ag.descriptor(bundle(*ied)),
                                bundle(vdx)));
-	    
-	    typename AdjointG::EDescriptor aed =
-	      ag.add_edge(new_ve, ag.descriptor(bundle(*ied)),
-                          bundle(vdx));
 
-	    assert(ag.bundle(aed) == bundle(vdx));
-	    //            assert(ag.bundle(ag.add_edge(new_ve, ag.descriptor(bundle(*ied)), bundle(vdx))) == bundle(vdx));
+            typename AdjointG::EDescriptor aed =
+                ag.add_edge(new_ve, ag.descriptor(bundle(*ied)), bundle(vdx));
+
+            assert(ag.bundle(aed) == bundle(vdx));
+            //            assert(ag.bundle(ag.add_edge(new_ve,
+            //            ag.descriptor(bundle(*ied)), bundle(vdx))) ==
+            //            bundle(vdx));
           }
         }
-
       }
     }
     assert(ag.size() == edges_number());
     return std::pair<EDescriptor, typename AdjointG::VDescriptor>(new_ed,
-           new_ve);
+                                                                  new_ve);
   }
 
   void remove_edge(const EDescriptor& ed)
@@ -743,16 +676,14 @@ public:
 #endif
   }
 
-  template<class AdjointG>
+  template <class AdjointG>
   void remove_edge(const EDescriptor& ed, AdjointG& ag)
   {
-
     // adjoint static assertions
-    BOOST_STATIC_ASSERT((boost::is_same
-                         <typename AdjointG::vertex_t, edge_t>::value));
-    BOOST_STATIC_ASSERT((boost::is_same
-                         <typename AdjointG::edge_t, vertex_t>::value));
-
+    BOOST_STATIC_ASSERT(
+        (boost::is_same<typename AdjointG::vertex_t, edge_t>::value));
+    BOOST_STATIC_ASSERT(
+        (boost::is_same<typename AdjointG::edge_t, vertex_t>::value));
 
     assert(ag.size() == edges_number());
 
@@ -772,12 +703,10 @@ public:
    * returns true. This expression is only required when the graph
    * also models IncidenceGraph.
    */
-  template<class Predicate>
-  void remove_out_edge_if(const VDescriptor& vd,
-                          const Predicate& pred)
+  template <class Predicate>
+  void remove_out_edge_if(const VDescriptor& vd, const Predicate& pred)
   //                      Predicate pred)
   {
-
     BOOST_CONCEPT_ASSERT((boost::IncidenceGraphConcept<graph_t>));
     BOOST_CONCEPT_ASSERT((boost::MutableGraphConcept<graph_t>));
 
@@ -800,17 +729,14 @@ public:
 #endif
   }
 
-
   /** Remove all the in-edges of vertex u for which the predicate p
    * returns true. This expression is only required when the graph
    * also models IncidenceGraph.
    */
-  template<class Predicate>
-  void remove_in_edge_if(const VDescriptor& vd,
-                          const Predicate& pred)
+  template <class Predicate>
+  void remove_in_edge_if(const VDescriptor& vd, const Predicate& pred)
   //                      Predicate pred)
   {
-
     BOOST_CONCEPT_ASSERT((boost::IncidenceGraphConcept<graph_t>));
     BOOST_CONCEPT_ASSERT((boost::MutableGraphConcept<graph_t>));
 
@@ -825,12 +751,10 @@ public:
    * returns true. This expression is only required when the graph
    * also models IncidenceGraph.
    */
-  template<class Predicate>
-  void remove_edge_if(const VDescriptor& vd,
-                      const Predicate& pred)
+  template <class Predicate>
+  void remove_edge_if(const VDescriptor& vd, const Predicate& pred)
   //                  Predicate pred)
   {
-
     BOOST_CONCEPT_ASSERT((boost::IncidenceGraphConcept<graph_t>));
     BOOST_CONCEPT_ASSERT((boost::MutableGraphConcept<graph_t>));
 
@@ -841,19 +765,14 @@ public:
 #endif
   }
 
-
-  int stamp() const
-  {
-    return _stamp;
-  }
+  int stamp() const { return _stamp; }
 
   void update_vertices_indices()
   {
     VIterator vi, viend;
     size_t i;
-    for (std::tie(vi, viend) = boost::vertices(g), i = 0;
-         vi != viend; ++vi, ++i)
-    {
+    for (std::tie(vi, viend) = boost::vertices(g), i = 0; vi != viend;
+         ++vi, ++i) {
       index(*vi) = i;
     }
     _stamp++;
@@ -863,55 +782,36 @@ public:
   {
     EIterator ei, eiend;
     size_t i;
-    for (std::tie(ei, eiend) = boost::edges(g), i = 0;
-         ei != eiend; ++ei, ++i)
-    {
+    for (std::tie(ei, eiend) = boost::edges(g), i = 0; ei != eiend;
+         ++ei, ++i) {
       index(*ei) = i;
     }
     _stamp++;
   };
-  
+
   void clear()
   {
     g.clear();
     vertex_descriptor.clear();
   };
 
-  VMap vertex_descriptor_map() const
-  {
-    return vertex_descriptor;
-  };
+  VMap vertex_descriptor_map() const { return vertex_descriptor; };
 
   void display() const
   {
     std::cout << "vertices number :" << vertices_number() << std::endl;
-        
+
     std::cout << "edges number :" << edges_number() << std::endl;
     VIterator vi, viend;
-    for (std::tie(vi, viend) = vertices();
-         vi != viend; ++vi)
-    {
-      std::cout << "vertex :"
-                << *vi
-                << ", bundle :"
-                << bundle(*vi)
-                << ", index : "
-                << index(*vi)
-                << ", color : "
-                << color(*vi);
+    for (std::tie(vi, viend) = vertices(); vi != viend; ++vi) {
+      std::cout << "vertex :" << *vi << ", bundle :" << bundle(*vi)
+                << ", index : " << index(*vi) << ", color : " << color(*vi);
       OEIterator oei, oeiend, next;
-      for (std::tie(oei, oeiend) = out_edges(*vi);
-           oei != oeiend; ++oei)
-      {
-        std::cout << "---"
-                  << bundle(*oei)
-                  << "-->"
-                  << "bundle : "
-                  << bundle(target(*oei))
-                  << ", index : "
-                  << index(target(*oei))
-                  << ", color : "
-                  << color(target(*oei));
+      for (std::tie(oei, oeiend) = out_edges(*vi); oei != oeiend; ++oei) {
+        std::cout << "---" << bundle(*oei) << "-->"
+                  << "bundle : " << bundle(target(*oei))
+                  << ", index : " << index(target(*oei))
+                  << ", color : " << color(target(*oei));
       }
       std::cout << std::endl;
     }
@@ -923,43 +823,35 @@ public:
   bool state_assert() const
   {
     VIterator vi, viend;
-    for (std::tie(vi, viend) = vertices(); vi != viend; ++vi)
-    {
+    for (std::tie(vi, viend) = vertices(); vi != viend; ++vi) {
       assert(is_vertex(bundle(*vi)));
       assert(bundle(descriptor(bundle(*vi))) == bundle(*vi));
 
       OEIterator ei, eiend;
-      for (std::tie(ei, eiend) = out_edges(*vi);
-           ei != eiend; ++ei)
-      {
+      for (std::tie(ei, eiend) = out_edges(*vi); ei != eiend; ++ei) {
         assert(is_vertex(bundle(target(*ei))));
         assert(source(*ei) == *vi);
       }
       AVIterator avi, aviend;
-      for (std::tie(avi, aviend) = adjacent_vertices(*vi);
-           avi != aviend; ++avi)
-      {
+      for (std::tie(avi, aviend) = adjacent_vertices(*vi); avi != aviend;
+           ++avi) {
         assert(is_vertex(bundle(*avi)));
         assert(bundle(descriptor(bundle(*avi))) == bundle(*avi));
       }
     }
     return true;
-
   }
 
   bool adjacent_vertices_ok() const
   {
-
     VIterator vi, viend;
-    for (std::tie(vi, viend) = vertices(); vi != viend; ++vi)
-    {
+    for (std::tie(vi, viend) = vertices(); vi != viend; ++vi) {
       assert(is_vertex(bundle(*vi)));
       assert(bundle(descriptor(bundle(*vi))) == bundle(*vi));
 
       AVIterator avi, aviend;
-      for (std::tie(avi, aviend) = adjacent_vertices(*vi);
-           avi != aviend; ++avi)
-      {
+      for (std::tie(avi, aviend) = adjacent_vertices(*vi); avi != aviend;
+           ++avi) {
         assert(is_vertex(bundle(*avi)));
         assert(bundle(descriptor(bundle(*avi))) == bundle(*avi));
       }
@@ -968,11 +860,6 @@ public:
   }
 #endif
 #endif
-
-
 };
 
-
 #endif
-
-

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "siconos/utils/pattern.hpp"
 #include "siconos/storage/storage.hpp"
+#include "siconos/utils/pattern.hpp"
 
 namespace siconos {
 
@@ -10,6 +10,7 @@ struct lagrangian_ds
   using dof = some::indice_parameter<"dof">;
 
   struct mass_matrix : some::matrix<some::scalar, dof, dof>,
+                       name<"mass_matrix">,
                        access<mass_matrix> {};
 
   struct q : some::vector<some::scalar, dof>, access<q> {};
@@ -20,7 +21,7 @@ struct lagrangian_ds
   struct fext : some::vector<some::scalar, dof>,  // some::function<...>
                 access<fext> {};
 
-  using attributes = types::attributes<mass_matrix, q, velocity, fext>;
+  using attributes = types::attributes<mass_matrix, q, velocity, fext, attribute<"mass_matrix", some::matrix<some::scalar, dof, dof>>>;
 
   template <typename Handle>
   struct interface : default_interface<Handle> {

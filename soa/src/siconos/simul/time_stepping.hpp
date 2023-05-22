@@ -60,25 +60,33 @@ struct time_stepping : item<> {
       auto osi = self()->one_step_integrator();
 
       // just once if fext constant!
-      //osi.compute_iteration_matrix(current_step());  // fext <- just M-1 fext
+      // osi.compute_iteration_matrix(current_step());  // fext <- just M-1
+      // fext
+
+      osi.compute_output(current_step());
 
       osi.compute_free_state(current_step(), time_step());
 
-      self()->update_indexsets(0);
+      update_indexsets(0);
+      topology().make_index();
 
-      osi.assemble_h_matrix_for_involved_ds(current_step());
-      osi.assemble_mass_matrix_for_involved_ds(current_step());
+      if (topology().ninvds() > 0) {
+        osi.assemble_h_matrix_for_involved_ds(current_step(),
+                                              topology().ninvds());
+        osi.assemble_mass_matrix_for_involved_ds(current_step(),
+                                                 topology().ninvds());
 
-      osi.resize_assembled_vectors(current_step());
-      osi.compute_q_vector_assembled(current_step());
-      osi.compute_w_matrix(current_step());
+        osi.resize_assembled_vectors(current_step());
+        osi.compute_q_vector_assembled(current_step());
+        osi.compute_w_matrix(current_step());
 
-      self()->template solve_nonsmooth_problem <formulation_t>();
+        self()->template solve_nonsmooth_problem<formulation_t>();
 
-      self()->compute_input();
+        self()->compute_input();
 
-      osi.update_velocity_for_involved_ds();
-      osi.update_all_velocities(current_step());
+        osi.update_velocity_for_involved_ds();
+        osi.update_all_velocities(current_step());
+      }
       osi.update_positions(current_step(), time_step());
 
       current_step() += 1;
@@ -112,7 +120,8 @@ struct time_stepping : item<> {
 
     bool has_next_event()
     {
-      return current_step()*time_discretization().h() <= time_discretization().tmax();
+      return current_step() * time_discretization().h() <=
+             time_discretization().tmax();
     }
     void update_indexsets(auto i)
     {
@@ -180,7 +189,7 @@ struct time_stepping : item<> {
               //           /* \warning V.A. 25/05/2012 : Multiplier lambda are
               //           only set to zero if they are removed from the
               //           IndexSet*/
-              inter1.lambda()[1] = {};
+              inter1.lambda() = {};
               //                topo->setHasChanged(true);
             }
           }
@@ -248,7 +257,10 @@ struct time_stepping : item<> {
               //              auto&& ds1 = edge1(index_set1, *ui0);
               //           OneStepIntegrator& osi =
               //           *DSG0.properties(DSG0.descriptor(ds1)).osi;
-
+              auto& activations = ground::get<
+                  attached_storage<typename topology_t::interaction,
+                                   symbol<"activation">, some::boolean>>(
+                  data)[0];
               activate = inter0.property(symbol<"activation">{});
               //                  osi.add_interaction_in_index_set(inter0,
               //                  time_step(), i);

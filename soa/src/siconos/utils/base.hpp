@@ -54,6 +54,10 @@ template <string_literal Symbol>
 struct symbol : text<Symbol> {
 };
 
+template <string_literal Symbol>
+struct name : text<Symbol> {
+};
+
 template <size_t N>
 constexpr auto make_string_literal(const string_literal<N>& a)
 {

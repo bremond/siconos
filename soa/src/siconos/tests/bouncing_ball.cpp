@@ -72,6 +72,7 @@ int main(int argc, char* argv[])
   // ------------------
   auto the_simulation = add<simulation>(data);
 
+  the_simulation.one_step_integrator().constraint_activation_threshold() = 0.;
   the_simulation.time_discretization().t0() = t0;
   the_simulation.time_discretization().h() = h;
 
@@ -104,7 +105,9 @@ int main(int argc, char* argv[])
 
   while (the_simulation.has_next_event()) {
     the_simulation.compute_one_step();
-    print("step {}:{}\n", the_simulation.current_step(), the_ball.velocity());
+    print("step {}:{}, {}\n", the_simulation.current_step(),
+          ball::q::at(the_ball, the_simulation.current_step()),
+          ball::velocity::at(the_ball, the_simulation.current_step()));
   }
   //  io::close(fd);
 }

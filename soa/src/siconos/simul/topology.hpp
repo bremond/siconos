@@ -1,7 +1,10 @@
 #pragma once
 
-#include "siconos/siconos.hpp"
 #include "siconos/utils/pattern.hpp"
+
+#include <fmt/core.h>
+#include <fmt/ranges.h>
+using fmt::print;
 
 namespace siconos {
 
@@ -26,10 +29,10 @@ struct topology : item<> {
         access<interaction_graphs> {};
 
   // number of involved ds
-  struct nids : some::indice, access<nids> {};
+  struct ninvds : some::indice, access<ninvds> {};
 
   using attributes =
-      gather<dynamical_system_graphs, interaction_graphs, nids>;
+      gather<dynamical_system_graphs, interaction_graphs, ninvds>;
 
   using properties = gather<
       attached_storage<dynamical_system, symbol<"involved">, some::boolean>,
@@ -66,7 +69,7 @@ struct topology : item<> {
     {
       return Handle ::type ::interaction_graphs ::at(*self());
     };
-    decltype(auto) nids() { return Handle ::type ::nids ::at(*self()); };
+    decltype(auto) ninvds() { return Handle ::type ::ninvds ::at(*self()); };
 
     using default_interface<Handle>::self;
 
@@ -85,6 +88,21 @@ struct topology : item<> {
       inter.property(symbol<"vd">{}) = ig0_vd;
       inter.property(symbol<"nds">{}) = 1;
       inter.template property<"ds1">() = ds;
+
+      for (auto [ied, iedend] = dsg0.out_edges(dsgv); ied!=iedend; ++ied)
+      {
+        print("AAA out edge: {}\n", dsg0.bundle(*ied).get());
+      }
+
+      for (auto [iint, iintend] = dsg0.edges(); iint != iintend; ++iint)
+      {
+        print("XXX edge: {}\n", dsg0.bundle(*iint).get());
+      }
+
+      for (auto [ids, idsend] = ig0.edges(); ids != idsend; ++ids)
+      {
+        print("YYY edge: {}\n", ig0.bundle(*ids).get());
+      }
 
       return inter;
     };
@@ -120,25 +138,18 @@ struct topology : item<> {
       using info_t = std::decay_t<decltype(ground::get<info>(data))>;
       using env = typename info_t::env;
       using indice = typename env::indice;
-      auto &dsg0 = self()->dynamical_system_graphs()[0];
+      auto &index_set1 = self()->interaction_graphs()[1];
       indice counter = 0;
-      for (auto [dsi, dsiend] = dsg0.vertices(); dsi != dsiend; ++dsi) {
+      for (auto [dsi, dsiend] = index_set1.edges(); dsi != dsiend; ++dsi) {
         indice &prop =
-            handle(dsg0.bundle(*dsi), data).property(symbol<"index">{});
+            handle(index_set1.bundle(*dsi), data).property(symbol<"index">{});
         auto &&involved =
-            handle(dsg0.bundle(*dsi), data).property(symbol<"involved">{});
-        auto [oei, oeiend] = dsg0.out_edges(*dsi);
-        if (oeiend != oei)  // ds is involved in some interaction
-        {
-          involved = true;
-          prop = counter++;
-        }
-        else {
-          involved = false;
-          prop = 0;
-        }
+            handle(index_set1.bundle(*dsi), data).property(symbol<"involved">{});
+        // ds is involved in some interaction
+        involved = true;
+        prop = counter++;
       }
-      self()->nids() = counter;
+      self()->ninvds() = counter;
     };
   };
 };

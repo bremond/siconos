@@ -1,11 +1,15 @@
 #pragma once
 
-#include "siconos/storage/storage.hpp"
-#include "siconos/utils/pattern.hpp"
+#include <fmt/core.h>
+#include <fmt/ranges.h>
 
-#include <range/v3/view/zip.hpp>
 #include <range/v3/view/enumerate.hpp>
 #include <range/v3/view/filter.hpp>
+#include <range/v3/view/zip.hpp>
+
+#include "siconos/storage/storage.hpp"
+#include "siconos/utils/pattern.hpp"
+using fmt::print;
 
 namespace siconos {
 
@@ -138,7 +142,6 @@ struct one_step_integrator {
       {
         return Handle ::type ::ydot_vector_assembled ::at(*self());
       }
-
       decltype(auto) mass_matrix_assembled()
       {
         return Handle ::type ::mass_matrix_assembled ::at(*self());
@@ -148,6 +151,32 @@ struct one_step_integrator {
         return Handle ::type ::w_matrix ::at(*self());
       }
 
+      void compute_output(auto step)
+      {
+        auto &data = self()->data();
+
+        auto &ys = memory(step, get_memory<y>(data));
+        auto &ydots = memory(step, get_memory<ydot>(data));
+        auto &h_matrices = memory(step, get_memory<h_matrix>(data));
+
+        auto &qs = memory(step, get_memory<q>(data));
+        auto &velocities = memory(step, get_memory<velocity>(data));
+
+        auto &ids1s =
+            ground::get<attached_storage<interaction, symbol<"ds1">,
+                                         some::item_ref<system>>>(data)[0];
+        auto &ids2s =
+            ground::get<attached_storage<interaction, symbol<"ds2">,
+                                         some::item_ref<system>>>(data)[0];
+
+        for (auto [y, ydot, hm, ids1, jds2] :
+             ranges::views::zip(ys, ydots, h_matrices, ids1s, ids2s)) {
+          auto i = handle(ids1, data).property(symbol<"index">{});
+          y = hm * qs[i];
+          ydot = hm * velocities[i];
+          // fix for second ds
+        }
+      }
       void compute_active_interactions(auto step, auto h)
       {
         auto &data = self()->data();
@@ -170,11 +199,10 @@ struct one_step_integrator {
       }
 
       // strategy 1 : assemble the matrix for involved ds only
-      auto assemble_h_matrix_for_involved_ds(auto step)
+      auto assemble_h_matrix_for_involved_ds(auto step, auto size)
       {
         auto &data = self()->data();
         auto &h_matrices = memory(step, get_memory<h_matrix>(data));
-        auto size = std::size(h_matrices);
         auto &ids1s =
             ground::get<attached_storage<interaction, symbol<"ds1">,
                                          some::item_ref<system>>>(data)[0];
@@ -230,11 +258,9 @@ struct one_step_integrator {
         }
       }
 
-      auto assemble_mass_matrix_for_involved_ds(auto step)
+      auto assemble_mass_matrix_for_involved_ds(auto step, auto size)
       {
         auto &data = self()->data();
-
-        auto size = std::size(memory(step, get_memory<h_matrix>(data)));
 
         auto &mass_matrices = memory(step, get_memory<mass_matrix>(data));
         auto &free_velocities = memory(step + 1, get_memory<velocity>(data));
@@ -242,6 +268,7 @@ struct one_step_integrator {
             attached_storage<system, symbol<"involved">, some::boolean>>(
             data)[0];
 
+        // size may be 0
         resize(self()->mass_matrix_assembled(), size, size);
         resize(self()->free_velocity_vector_assembled(), size);
 
@@ -253,6 +280,7 @@ struct one_step_integrator {
                    return involved_ds[k];
                  })) {
           auto &[mat, velo] = mat_velo;
+          print("velo {}\n", velo);
           set_value(self()->mass_matrix_assembled(), i, i, mat);
           set_value(self()->free_velocity_vector_assembled(), i, velo);
         }
@@ -324,6 +352,30 @@ struct one_step_integrator {
         solve(mass_matrix, p0, velo);
       }
 
+      void apply_nonsmooth_law_effect()
+      {
+        // auto &data = self()->data();
+        // auto &velo = self()->velocity_vector_assembled();
+        // auto &all_vs = memory(step, get_memory<velocity>(data));
+        // auto &all_next_vs = memory(step + 1, get_memory<velocity>(data));
+        // auto &nslaws = memory(step, get_memory<typename interaction::nonsmooth_law>(data));
+        // auto &involved_ds = ground::get<
+        //     attached_storage<system, symbol<"involved">, some::boolean>>(
+        //       data)[0];
+
+        // // involved ds velocities -> ds velocities
+        // for (auto [i, v_vn] :
+        //        ranges::view::zip(all_vs, all_next_vs) | ranges::views::enumerate |
+        //        ranges::views::filter([&involved_ds](auto k_m) {
+        //            auto [k, _] = k_m;
+        //            return involved_ds[k];
+        //        })) {
+        //   // copy
+        //   v += get_vector(velo, i);
+        // }
+
+      }
+
       void update_all_velocities(auto step)
       {
         auto &data = self()->data();
@@ -341,7 +393,7 @@ struct one_step_integrator {
                    return involved_ds[k];
                  })) {
           // copy
-          v = get_vector(velo, i);
+          v += get_vector(velo, i);
         }
       }
 
@@ -349,10 +401,11 @@ struct one_step_integrator {
       {
         auto &data = self()->data();
         auto &xs = memory(step, get_memory<q>(data));
+        auto &xs_next = memory(step + 1, get_memory<q>(data));
         auto &vs = memory(step + 1, get_memory<velocity>(data));
 
-        for (auto [x, v] : ranges::views::zip(xs, vs)) {
-          x += h * v;
+        for (auto [x, x_next, v] : ranges::views::zip(xs, xs_next, vs)) {
+          x_next = x + h * v;
         }
       }
 
@@ -365,18 +418,21 @@ struct one_step_integrator {
         auto &mats = memory(step, mass_matrices);
         auto &fs = memory(step, external_forces);
 
-//        if constexpr (has_property<mass_matrix, some::time_invariant>(data)) {
-//          if constexpr (has_property<fext, some::time_invariant>(data)) {
-//            if constexpr (has_property<mass_matrix, property::diagonal>(
-//                              data)) {
-              for (auto [mat, f] : ranges::views::zip(mats, fs)) {
-                f = mat.inverse() * f;
-              }
-//            }
-//          }
-//      }
+        //        if constexpr (has_property<mass_matrix,
+        //        some::time_invariant>(data)) {
+        //          if constexpr (has_property<fext,
+        //          some::time_invariant>(data)) {
+        //            if constexpr (has_property<mass_matrix,
+        //            property::diagonal>(
+        //                              data)) {
+        for (auto [mat, f] : ranges::views::zip(mats, fs)) {
+          f = mat.inverse() * f;
+        }
+        //            }
+        //          }
+        //      }
       }
-      
+
       auto compute_free_state(auto step, auto h)
       {
         auto &data = self()->data();

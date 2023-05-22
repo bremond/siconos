@@ -7,11 +7,10 @@
 #include <utility>
 
 #include "siconos/utils/ground.hpp"
-#include "siconos/utils/utils.hpp"
 #include "siconos/utils/some.hpp"
+#include "siconos/utils/utils.hpp"
 
 namespace siconos {
-
 
 struct empty {};
 struct linear {};
@@ -170,7 +169,6 @@ template <typename T, typename Tpl>
 concept contains = contains<T>(instance<Tpl>);
 }
 
-
 static_assert(match::size<std::vector<double>>);
 static_assert(match::size<std::array<double, 1>>);
 static_assert(match::push_back<std::vector<double>>);
@@ -179,11 +177,10 @@ static_assert(!match::push_back<std::array<double, 3>>);
 namespace property {
 }
 
-
 namespace match {
 
-  template<typename T>
-  concept type_t = requires { typename T::type_t; };
+template <typename T>
+concept type_t = requires { typename T::type_t; };
 
 template <typename T>
 concept attribute = requires { typename T::attribute_t; };
@@ -243,7 +240,6 @@ concept any_of_property = ground::any_of(
     Ks{}, []<match::property K>(K) { return std::derived_from<T, K>; });
 
 }  // namespace match
-
 
 template <typename T>
 struct tag {
@@ -458,8 +454,6 @@ template <size_t N, typename tpl>
 using nth_t = std::decay_t<decltype(std::get<N>(tpl{}))>;
 }  // namespace types
 
-
-
 template <string_literal S>
 struct indice_value : symbol<S> {
   std::size_t value;
@@ -472,5 +466,9 @@ struct param : symbol<S> {
 template <auto V>
 struct param_val {
   static constexpr auto value = V;
+};
+
+template <string_literal Name, match::attribute A>
+struct attribute : A, name<Name> {
 };
 }  // namespace siconos

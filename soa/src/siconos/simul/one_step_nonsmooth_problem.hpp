@@ -4,9 +4,11 @@
 #include <lcp_cst.h>
 
 #include "SolverOptions.h"
-#include "siconos/siconos.hpp"
 #include "siconos/utils/pattern.hpp"
 #include "siconos/utils/some.hpp"
+
+#include <fmt/core.h>
+#include <fmt/ranges.h>
 
 namespace siconos {
 
@@ -90,16 +92,22 @@ struct one_step_nonsmooth_problem : item<> {
               siconos::match::vector V>
     void solve(mat<W>& w_mat, vec<V>& q_vec, vec<V>& z_vec, vec<V>& w_vec)
     {
+      using fmt::print;
       if constexpr (std::derived_from<Formulation,
                                       LinearComplementarityProblem>) {
-        NM_to_dense(w_mat._m, w_mat._m);
+        // w_mat cannot be sparse
+        auto w_mat_dense = NM_create(NM_DENSE, size0(w_mat), size1(w_mat));
+        NM_to_dense(w_mat._m, w_mat_dense);
         self()->problem().instance()->size = size0(w_mat);
-        self()->problem().instance()->M = w_mat._m;
+        self()->problem().instance()->M = w_mat_dense;
         self()->problem().instance()->q = q_vec._v->matrix0;
 
         linearComplementarity_driver(&*self()->problem().instance(),
                                      z_vec._v->matrix0, w_vec._v->matrix0,
                                      &*options().instance());
+
+        print("q:{}, z:{}, w:{}\n", *q_vec._v->matrix0, *z_vec._v->matrix0, *w_vec._v->matrix0);
+        NM_free(w_mat_dense);
       }
     }
   };
