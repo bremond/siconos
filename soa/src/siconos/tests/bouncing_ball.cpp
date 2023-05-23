@@ -18,10 +18,10 @@ using simulation = simul::time_stepping<td, osi, osnspb, topo>;
 int main(int argc, char* argv[])
 {
   using namespace siconos;
-  auto data = make_storage<
+  auto data = storage::make_storage<
     standard_environment, data::simulation, data::ball, data::relation, data::interaction,
-    with_properties<diagonal<data::ball::mass_matrix>,
-                    unbounded_diagonal<data::osi::mass_matrix_assembled>>>();
+    storage::with_properties<storage::diagonal<data::ball::mass_matrix>,
+                    storage::unbounded_diagonal<data::osi::mass_matrix_assembled>>>();
 
   // unsigned int nDof = 3;         // degrees of freedom for the ball
   double t0 = 0;               // initial computation time
@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
   // --------------------------
   // -- The dynamical_system --
   // --------------------------
-  auto ball = add<data::ball>(data);
+  auto ball = storage::add<data::ball>(data);
 
   ball.q() = {position_init, 0, 0};
   ball.velocity() = {velocity_init, 0, 0};
@@ -53,21 +53,21 @@ int main(int argc, char* argv[])
   // ------------------
 
   // -- Lagrangian relation --
-  auto relation = add<data::relation>(data);
+  auto relation = storage::add<data::relation>(data);
   //  the_relation.h_matrix() = {1.0, 0., 0.};
 
   // -- nslaw --
   double e = 0.9;
-  auto nslaw = add<data::nslaw>(data);
+  auto nslaw = storage::add<data::nslaw>(data);
   nslaw.e() = e;
 
-  auto lcp = add<data::lcp>(data);
+  auto lcp = storage::add<data::lcp>(data);
   lcp.create();
 
   // ------------------
   // --- Simulation ---
   // ------------------
-  auto simulation = add<data::simulation>(data);
+  auto simulation = storage::add<data::simulation>(data);
 
   simulation.one_step_integrator().theta() = theta;
   simulation.one_step_integrator().constraint_activation_threshold() = 0.;
@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
   osnspb.problem() = lcp;
 
   // -- set the options --
-  auto so = add<numerics::solver_options>(data);
+  auto so = storage::add<numerics::solver_options>(data);
   so.create();
   osnspb.options() = so;
 
@@ -118,7 +118,7 @@ int main(int argc, char* argv[])
       lambda = 0;
     }
 
-    out.print("{} {} {} {} {}\n",
+    out.print("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
               simulation.current_step() * simulation.time_step(),
               data::ball::q::at(ball, simulation.current_step())(0),
               data::ball::velocity::at(ball, simulation.current_step())(0),

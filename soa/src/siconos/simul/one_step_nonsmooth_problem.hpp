@@ -1,14 +1,13 @@
 #pragma once
 #include <LinearComplementarityProblem.h>
 #include <NonSmoothDrivers.h>
+#include <fmt/core.h>
+#include <fmt/ranges.h>
 #include <lcp_cst.h>
 
 #include "SolverOptions.h"
 #include "siconos/utils/pattern.hpp"
 #include "siconos/utils/some.hpp"
-
-#include <fmt/core.h>
-#include <fmt/ranges.h>
 
 namespace siconos {
 
@@ -80,11 +79,13 @@ struct one_step_nonsmooth_problem : item<> {
 
     decltype(auto) options()
     {
-      return handle(Handle::type::options::at(*self()), self()->data());
+      return storage::handle(Handle::type::options::at(*self()),
+                             self()->data());
     };
     decltype(auto) problem()
     {
-      return handle(Handle::type::problem::at(*self()), self()->data());
+      return storage::handle(Handle::type::problem::at(*self()),
+                             self()->data());
     };
     decltype(auto) level() { return Handle ::type ::level ::at(*self()); };
 
@@ -106,7 +107,8 @@ struct one_step_nonsmooth_problem : item<> {
                                      z_vec._v->matrix0, w_vec._v->matrix0,
                                      &*options().instance());
 
-        print("q:{}, z:{}, w:{}\n", *q_vec._v->matrix0, *z_vec._v->matrix0, *w_vec._v->matrix0);
+        print("q:{}, z:{}, w:{}\n", *q_vec._v->matrix0, *z_vec._v->matrix0,
+              *w_vec._v->matrix0);
         NM_free(w_mat_dense);
       }
     }

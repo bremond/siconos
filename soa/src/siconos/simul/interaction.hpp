@@ -36,7 +36,8 @@ struct interaction : item<> {
     decltype(auto) lambda() { return Handle ::type ::lambda ::at(*self()); }
     decltype(auto) relation()
     {
-      return handle(Handle::type::relation::at(*self()), self()->data());
+      return storage::handle(Handle::type::relation::at(*self()),
+                             self()->data());
     }
 
     decltype(auto) h_matrix() { return Handle::type::h_matrix::at(*self()); }

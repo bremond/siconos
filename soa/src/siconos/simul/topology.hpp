@@ -31,27 +31,27 @@ struct topology : item<> {
       gather<dynamical_system_graphs, interaction_graphs, ninvds>;
 
   using properties = gather<
-      attached_storage<dynamical_system, symbol<"involved">, some::boolean>,
-      attached_storage<dynamical_system, symbol<"index">, some::indice>,
-      attached_storage<dynamical_system, symbol<"p0">,
-                       some::vector<some::vector<some::scalar, dof>,
-                                    std::integral_constant<int, 2> > >,
-      attached_storage<dynamical_system, symbol<"velocity">,
-                       some::vector<some::vector<some::scalar, dof>,
-                                    std::integral_constant<int, 2> > >,
-      attached_storage<dynamical_system, symbol<"q">,
-                       some::vector<some::vector<some::scalar, dof>,
-                                    std::integral_constant<int, 2> > >,
-      attached_storage<interaction, symbol<"nds">, some::indice>,
-      attached_storage<interaction, symbol<"ds1">,
-                       some::item_ref<dynamical_system> >,
-      attached_storage<interaction, symbol<"ds2">,
-                       some::item_ref<dynamical_system> >,
-    attached_storage<interaction, symbol<"activation">, some::boolean>,
-      attached_storage<
+      storage::attached<dynamical_system, symbol<"involved">, some::boolean>,
+      storage::attached<dynamical_system, symbol<"index">, some::indice>,
+      storage::attached<dynamical_system, symbol<"p0">,
+                        some::vector<some::vector<some::scalar, dof>,
+                                     std::integral_constant<int, 2> > >,
+      storage::attached<dynamical_system, symbol<"velocity">,
+                        some::vector<some::vector<some::scalar, dof>,
+                                     std::integral_constant<int, 2> > >,
+      storage::attached<dynamical_system, symbol<"q">,
+                        some::vector<some::vector<some::scalar, dof>,
+                                     std::integral_constant<int, 2> > >,
+      storage::attached<interaction, symbol<"nds">, some::indice>,
+      storage::attached<interaction, symbol<"ds1">,
+                        some::item_ref<dynamical_system> >,
+      storage::attached<interaction, symbol<"ds2">,
+                        some::item_ref<dynamical_system> >,
+      storage::attached<interaction, symbol<"activation">, some::boolean>,
+      storage::attached<
           dynamical_system, symbol<"vd">,
           some::vdescriptor<typename dynamical_system_graphs::type> >,
-      attached_storage<
+      storage::attached<
           interaction, symbol<"vd">,
           some::vdescriptor<typename interaction_graphs::type> > >;
 
@@ -77,7 +77,7 @@ struct topology : item<> {
       auto &ig0 = self()->interaction_graphs()[0];
       ;
 
-      auto inter = add<interaction>(data);
+      auto inter = storage::add<interaction>(data);
       auto dsgv = dsg0.add_vertex(ds);
       auto [dsg0_ed, ig0_vd] = dsg0.add_edge(dsgv, dsgv, inter, ig0);
       ds.property(symbol<"vd">{}) = dsgv;
@@ -116,16 +116,16 @@ struct topology : item<> {
     auto make_index()
     {
       auto &data = self()->data();
-      using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+      using info_t = std::decay_t<decltype(ground::get<storage::info>(data))>;
       using env = typename info_t::env;
       using indice = typename env::indice;
       auto &index_set1 = self()->interaction_graphs()[1];
       indice counter = 0;
       for (auto [dsi, dsiend] = index_set1.edges(); dsi != dsiend; ++dsi) {
-        indice &prop =
-            handle(index_set1.bundle(*dsi), data).property(symbol<"index">{});
-        auto &&involved =
-            handle(index_set1.bundle(*dsi), data).property(symbol<"involved">{});
+        indice &prop = storage::handle(index_set1.bundle(*dsi), data)
+                           .property(symbol<"index">{});
+        auto &&involved = storage::handle(index_set1.bundle(*dsi), data)
+                              .property(symbol<"involved">{});
         // ds is involved in some interaction
         involved = true;
         prop = counter++;
@@ -134,4 +134,4 @@ struct topology : item<> {
     };
   };
 };
-}  // namespace siconos
+}  // namespace siconos::simul

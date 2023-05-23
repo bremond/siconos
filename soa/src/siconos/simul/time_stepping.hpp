@@ -98,7 +98,7 @@ struct time_stepping : item<> {
     void update_indexsets(auto i)
     {
       auto& data = self()->data();
-      using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+      using info_t = std::decay_t<decltype(ground::get<storage::info>(data))>;
       using env = typename info_t::env;
 
       auto osi = self()->one_step_integrator();
@@ -117,7 +117,7 @@ struct time_stepping : item<> {
       // Remove interactions from the index_set1
       for (auto v1next = ui1; ui1 != ui1end; ui1 = v1next) {
         ++v1next;
-        auto inter1 = handle(index_set1.bundle(*ui1),
+        auto inter1 = storage::handle(index_set1.bundle(*ui1),
                              self()->data());  // get inter handle
         //          auto rel1 = inter1.relation();
 
@@ -211,7 +211,7 @@ struct time_stepping : item<> {
           else {
             assert(index_set0.color(*ui0) == env::white_color);
 
-            auto inter0 = handle(index_set0.bundle(*ui0), self()->data());
+            auto inter0 = storage::handle(index_set0.bundle(*ui0), self()->data());
             assert(!index_set1.is_vertex(inter0));
             bool activate = true;
             if constexpr (!std::derived_from<

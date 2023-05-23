@@ -52,7 +52,7 @@ namespace siconos
     using unbounded_diagonal_matrix = numerics::diag_mat<T>;
 
     template<typename T>
-    using item_ref = siconos::index<T, indice>;
+    using item_ref = siconos::storage::index<T, indice>;
 
     template<typename T>
     using default_storage = std::array<T, 1>;

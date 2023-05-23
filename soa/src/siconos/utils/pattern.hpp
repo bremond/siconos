@@ -299,12 +299,6 @@ struct wrap : item<>, any_wrapper {
   using type = Item;
 };
 
-template <match::item I, typename Tag, match::attribute DataSpec>
-struct attached_storage : DataSpec, some::attached_storage {
-  using item = I;
-  using tag = Tag;
-  using data_spec = DataSpec;
-};
 
 template <typename T>
 struct place_holder {

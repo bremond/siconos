@@ -8,10 +8,19 @@
 
 #include "siconos/utils/ground.hpp"
 #include "siconos/utils/pattern.hpp"
+#include "siconos/utils/some.hpp"
 #include "siconos/utils/traits.hpp"
 #include "siconos/utils/utils.hpp"
 
-namespace siconos {
+namespace siconos::storage {
+
+template <match::item I, typename Tag, match::attribute DataSpec>
+struct attached : DataSpec, some::attached_storage {
+  using item = I;
+  using tag = Tag;
+  using data_spec = DataSpec;
+};
+
 static constexpr auto memory = []<typename T>(
                                    typename T::size_type step,
                                    T& mem) constexpr -> decltype(auto) {
@@ -576,13 +585,15 @@ struct access {
              typename std::decay_t<decltype(ground::get<info>(
                  Data{}))>::all_items_t{}))>
              Handle>(Handle h, Data& data)
-          ->decltype(auto) { return siconos::get<U>(h, data); },
+          ->decltype(auto) { return siconos::storage::get<U>(h, data); },
       []<typename U = T, typename FullHandle>(FullHandle h)->decltype(auto) {
-        return siconos::get<U>(h, h.data());
+        return siconos::storage::get<U>(h, h.data());
       },
       []<typename U = T, typename FullHandle>(
           FullHandle h, typename FullHandle::indice step)
-          ->decltype(auto) { return siconos::get<U>(step, h, h.data()); });
+          ->decltype(auto) {
+            return siconos::storage::get<U>(step, h, h.data());
+          });
 };
 
 static auto for_each = [](auto m, auto&& fun) constexpr -> void {
@@ -590,4 +601,9 @@ static auto for_each = [](auto m, auto&& fun) constexpr -> void {
       m, ground::dup(ground::lockstep(fun)(ground::first, ground::second)));
 };
 
+}  // namespace siconos::storage
+
+namespace siconos {
+using siconos::storage::access;
+using siconos::storage::default_interface;
 }  // namespace siconos
