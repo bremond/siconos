@@ -3,7 +3,7 @@
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/pattern.hpp"
 
-namespace siconos {
+namespace siconos::model {
 
 struct lagrangian_ds
     : item<description<"A lagrangian dynamical system [...]">> {

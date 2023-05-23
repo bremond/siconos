@@ -3,7 +3,7 @@
 #include "siconos/siconos.hpp"
 #include "siconos/utils/pattern.hpp"
 
-namespace siconos {
+namespace siconos::simul {
 
 template <typename... Params>
 struct time_discretization : item<> {

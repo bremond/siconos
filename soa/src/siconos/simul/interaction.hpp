@@ -3,10 +3,9 @@
 #include "siconos/siconos.hpp"
 #include "siconos/utils/pattern.hpp"
 
-namespace siconos {
+namespace siconos::simul {
 template <typename Nslaw, typename Relation, std::size_t K = 2>
 struct interaction : item<> {
-
   using nslaw_t = Nslaw;
   using relation_t = Relation;
 
@@ -23,7 +22,8 @@ struct interaction : item<> {
   struct y : some::vector<some::scalar, nslaw_size>, access<y> {};
   struct ydot : some::vector<some::scalar, nslaw_size>, access<ydot> {};
 
-  using attributes = gather<dof, nslaw_size, nonsmooth_law, relation, h_matrix, lambda, y, ydot>;
+  using attributes = gather<dof, nslaw_size, nonsmooth_law, relation,
+                            h_matrix, lambda, y, ydot>;
 
   template <typename Handle>
   struct interface : default_interface<Handle> {
@@ -46,4 +46,4 @@ struct interaction : item<> {
   };
 };
 
-}  // namespace siconos
+}  // namespace siconos::simul

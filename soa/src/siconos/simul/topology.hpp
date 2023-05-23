@@ -2,11 +2,7 @@
 
 #include "siconos/utils/pattern.hpp"
 
-#include <fmt/core.h>
-#include <fmt/ranges.h>
-using fmt::print;
-
-namespace siconos {
+namespace siconos::simul {
 
 template <typename DynamicalSystem, typename Interaction>
 struct topology : item<> {
@@ -88,21 +84,6 @@ struct topology : item<> {
       inter.property(symbol<"vd">{}) = ig0_vd;
       inter.property(symbol<"nds">{}) = 1;
       inter.template property<"ds1">() = ds;
-
-      for (auto [ied, iedend] = dsg0.out_edges(dsgv); ied!=iedend; ++ied)
-      {
-        print("AAA out edge: {}\n", dsg0.bundle(*ied).get());
-      }
-
-      for (auto [iint, iintend] = dsg0.edges(); iint != iintend; ++iint)
-      {
-        print("XXX edge: {}\n", dsg0.bundle(*iint).get());
-      }
-
-      for (auto [ids, idsend] = ig0.edges(); ids != idsend; ++ids)
-      {
-        print("YYY edge: {}\n", ig0.bundle(*ids).get());
-      }
 
       return inter;
     };

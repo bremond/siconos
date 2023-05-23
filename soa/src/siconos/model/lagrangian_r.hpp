@@ -2,11 +2,9 @@
 
 #include "siconos/utils/pattern.hpp"
 
-namespace siconos {
+namespace siconos::model {
 
 struct lagrangian_r : item<> {
-
-  
   using attributes = types::attributes<>;
 
   template <typename Handle>
@@ -46,4 +44,4 @@ struct lagrangian_r : item<> {
     };
   };
 };
-}  // namespace siconos
+}  // namespace siconos::model

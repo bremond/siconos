@@ -3,7 +3,7 @@
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/pattern.hpp"
 
-namespace siconos {
+namespace siconos::simul {
 template <match::item... Items>
 struct time_stepping : item<> {
   using items = gather<Items...>;
@@ -128,7 +128,7 @@ struct time_stepping : item<> {
           index_set0.color(inter1_descr0) = env::gray_color;
           if constexpr (!std::derived_from<
                             typename topology_t::interaction::nonsmooth_law,
-                            equality_condition_nsl>) {
+                            model::equality_condition_nsl>) {
             // We assume that the integrator of the ds1 drive the update of
             // the index set SP::OneStepIntegrator Osi =
             // index_set1.properties(*ui1).osi;
@@ -216,10 +216,10 @@ struct time_stepping : item<> {
             bool activate = true;
             if constexpr (!std::derived_from<
                               typename topology_t::interaction::nonsmooth_law,
-                              equality_condition_nsl> &&
+                              model::equality_condition_nsl> &&
                           !std::derived_from<
                               typename topology_t::interaction::nonsmooth_law,
-                              relay_nsl>)
+                              model::relay_nsl>)
             //             && Type::value(*(inter0->nonSmoothLaw())) !=
             //             Type::RelayNSL)
             {
@@ -229,10 +229,6 @@ struct time_stepping : item<> {
               //              auto&& ds1 = edge1(index_set1, *ui0);
               //           OneStepIntegrator& osi =
               //           *DSG0.properties(DSG0.descriptor(ds1)).osi;
-              auto& activations = ground::get<
-                  attached_storage<typename topology_t::interaction,
-                                   symbol<"activation">, some::boolean>>(
-                  data)[0];
               activate = inter0.property(symbol<"activation">{});
               //                  osi.add_interaction_in_index_set(inter0,
               //                  time_step(), i);
@@ -260,4 +256,4 @@ struct time_stepping : item<> {
   };
 };
 
-}  // namespace siconos
+}  // namespace siconos::simul

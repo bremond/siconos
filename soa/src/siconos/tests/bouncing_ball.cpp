@@ -1,30 +1,27 @@
-#include <fmt/core.h>
-#include <fmt/ranges.h>
 
 #include "siconos/siconos.hpp"
+#include "siconos/utils/print.hpp"
 
-using namespace siconos;
-using env = standard_environment;
+namespace siconos::data {
+using ball = model::lagrangian_ds;
+using lcp = numerics::nonsmooth_problem<LinearComplementarityProblem>;
+using osnspb = numerics::one_step_nonsmooth_problem<lcp>;
+using relation = model::lagrangian_r;
+using nslaw = model::nonsmooth_law::newton_impact;
+using interaction = simul::interaction<nslaw, relation, 1>;
+using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
+using td = simul::time_discretization<>;
+using topo = simul::topology<ball, interaction>;
+using simulation = simul::time_stepping<td, osi, osnspb, topo>;
+}  // namespace siconos
 
-using fmt::print;
 int main(int argc, char* argv[])
 {
-  using ball = lagrangian_ds;
-  using lcp = numerics::nonsmooth_problem<LinearComplementarityProblem>;
-  using osnspb = numerics::one_step_nonsmooth_problem<lcp>;
-  using relation = lagrangian_r;
-  using nslaw = nonsmooth_law::newton_impact;
-  using interaction = interaction<nslaw, relation, 1>;
-  using osi = one_step_integrator<ball, interaction>::moreau_jean;
-  using td = time_discretization<>;
-  using topo = topology<ball, interaction>;
-  using simulation = time_stepping<td, osi, osnspb, topo>;
-  using siconos::get;
-
+  using namespace siconos;
   auto data = make_storage<
-      standard_environment, simulation, ball, relation, interaction,
-      with_properties<diagonal<ball::mass_matrix>,
-                      unbounded_diagonal<osi::mass_matrix_assembled>>>();
+    standard_environment, data::simulation, data::ball, data::relation, data::interaction,
+    with_properties<diagonal<data::ball::mass_matrix>,
+                    unbounded_diagonal<data::osi::mass_matrix_assembled>>>();
 
   // unsigned int nDof = 3;         // degrees of freedom for the ball
   double t0 = 0;               // initial computation time
@@ -42,55 +39,56 @@ int main(int argc, char* argv[])
   // --------------------------
   // -- The dynamical_system --
   // --------------------------
-  auto the_ball = add<ball>(data);
+  auto ball = add<data::ball>(data);
 
-  the_ball.q() = {position_init, 0, 0};
-  the_ball.velocity() = {velocity_init, 0, 0};
-  the_ball.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
+  ball.q() = {position_init, 0, 0};
+  ball.velocity() = {velocity_init, 0, 0};
+  ball.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
 
   // -- Set external forces (weight) --
-  the_ball.fext() = {-m * g, 0., 0.};
+  ball.fext() = {-m * g, 0., 0.};
 
   // ------------------
   // -- The relation --
   // ------------------
 
   // -- Lagrangian relation --
-  auto the_relation = add<relation>(data);
+  auto relation = add<data::relation>(data);
   //  the_relation.h_matrix() = {1.0, 0., 0.};
 
   // -- nslaw --
   double e = 0.9;
-  auto the_nslaw = add<nslaw>(data);
-  the_nslaw.e() = e;
+  auto nslaw = add<data::nslaw>(data);
+  nslaw.e() = e;
 
-  auto the_lcp = add<lcp>(data);
-  the_lcp.create();
+  auto lcp = add<data::lcp>(data);
+  lcp.create();
 
   // ------------------
   // --- Simulation ---
   // ------------------
-  auto the_simulation = add<simulation>(data);
+  auto simulation = add<data::simulation>(data);
 
-  the_simulation.one_step_integrator().constraint_activation_threshold() = 0.;
-  the_simulation.time_discretization().t0() = t0;
-  the_simulation.time_discretization().h() = h;
+  simulation.one_step_integrator().theta() = theta;
+  simulation.one_step_integrator().constraint_activation_threshold() = 0.;
+  simulation.time_discretization().t0() = t0;
+  simulation.time_discretization().h() = h;
 
-  the_simulation.time_discretization().tmax() = tmax;
+  simulation.time_discretization().tmax() = tmax;
   // -- set the formulation for the one step nonsmooth problem --
-  auto the_osnspb = the_simulation.one_step_nonsmooth_problem();
-  the_osnspb.problem() = the_lcp;
+  auto osnspb = simulation.one_step_nonsmooth_problem();
+  osnspb.problem() = lcp;
 
   // -- set the options --
   auto so = add<numerics::solver_options>(data);
   so.create();
-  the_osnspb.options() = so;
+  osnspb.options() = so;
 
   // Interaction ball-floor
-  auto the_interaction = the_simulation.topology().link(the_ball);
-  the_interaction.h_matrix() = {1., 0., 0.};
-  the_interaction.relation() = the_relation;
-  the_interaction.nonsmooth_law() = the_nslaw;
+  auto interaction = simulation.topology().link(ball);
+  interaction.h_matrix() = {1., 0., 0.};
+  interaction.relation() = relation;
+  interaction.nonsmooth_law() = nslaw;
 
   // =========================== End of model definition
   // ===========================
@@ -100,19 +98,19 @@ int main(int argc, char* argv[])
   //  auto fd = io::open<ascii>("result.dat");
 
   // fix this for constant fext
-  the_simulation.one_step_integrator().compute_iteration_matrix(
-      the_simulation.current_step());
+  simulation.one_step_integrator().compute_iteration_matrix(
+      simulation.current_step());
 
   auto out = fmt::output_file("result.dat");
-  while (the_simulation.has_next_event()) {
-    the_simulation.compute_one_step();
+  while (simulation.has_next_event()) {
+    simulation.compute_one_step();
 
     double p0, lambda;
-    if (the_simulation.topology().ninvds() > 0) {
+    if (simulation.topology().ninvds() > 0) {
       p0 = get_vector(
-          the_simulation.one_step_integrator().p0_vector_assembled(), 0)(0);
+          simulation.one_step_integrator().p0_vector_assembled(), 0)(0);
       lambda = get_vector(
-          the_simulation.one_step_integrator().lambda_vector_assembled(),
+          simulation.one_step_integrator().lambda_vector_assembled(),
           0)(0);
     }
     else {
@@ -121,9 +119,9 @@ int main(int argc, char* argv[])
     }
 
     out.print("{} {} {} {} {}\n",
-              the_simulation.current_step() * the_simulation.time_step(),
-              ball::q::at(the_ball, the_simulation.current_step())(0),
-              ball::velocity::at(the_ball, the_simulation.current_step())(0),
+              simulation.current_step() * simulation.time_step(),
+              data::ball::q::at(ball, simulation.current_step())(0),
+              data::ball::velocity::at(ball, simulation.current_step())(0),
               p0, lambda);
   }
   //  io::close(fd);

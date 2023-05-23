@@ -3,7 +3,7 @@
 #include "siconos/siconos.hpp"
 #include "siconos/utils/pattern.hpp"
 
-namespace siconos {
+namespace siconos::model {
 struct equality_condition_nsl {};
 struct relay_nsl {};
 struct nonsmooth_law {
@@ -35,4 +35,4 @@ struct nonsmooth_law {
   };
 };
 
-}  // namespace siconos
+}  // namespace siconos::model

@@ -5,7 +5,7 @@
 #include "siconos/utils/print.hpp"
 #include "siconos/utils/range.hpp"
 
-namespace siconos {
+namespace siconos::simul {
 
 template <typename DynamicalSystem, typename Interaction>
 struct one_step_integrator {
@@ -368,7 +368,7 @@ struct one_step_integrator {
 
         for (auto [i, ydot_inslaw] :
              views::zip(ydots, inslaws) | views::enumerate) {
-          auto& [ydot, inslaw] = ydot_inslaw;
+          auto &[ydot, inslaw] = ydot_inslaw;
 
           get_vector(ydot_next, i) = -handle(inslaw, data).e() * ydot;
         }
@@ -453,4 +453,4 @@ struct one_step_integrator {
     };
   };
 };
-}  // namespace siconos
+}  // namespace siconos::simul
