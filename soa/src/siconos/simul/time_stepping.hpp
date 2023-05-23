@@ -40,21 +40,6 @@ struct time_stepping : item<> {
 
     decltype(auto) time_step() { return self()->time_discretization().h(); }
 
-    decltype(auto) compute_output(auto level)
-    {
-      auto osi = one_step_integrator();
-
-      switch (level) {
-        case 1:
-          prod(osi.h_matrix_assembled(), osi.velocity_vector_assembled(),
-               osi.ydot_vector_assembled());
-          break;
-        case 0:
-          prod(osi.h_matrix_assembled(), osi.q_vector_assembled(),
-               osi.y_vector_assembled());
-          break;
-      }
-    }
     void compute_one_step()
     {
       auto osi = self()->one_step_integrator();
@@ -63,9 +48,8 @@ struct time_stepping : item<> {
       // osi.compute_iteration_matrix(current_step());  // fext <- just M-1
       // fext
 
-      osi.compute_output(current_step());
-
       osi.compute_free_state(current_step(), time_step());
+      osi.compute_output(current_step());
 
       update_indexsets(0);
       topology().make_index();
@@ -82,27 +66,15 @@ struct time_stepping : item<> {
 
         self()->template solve_nonsmooth_problem<formulation_t>();
 
-        self()->compute_input();
+        osi.apply_nonsmooth_law_effect(current_step());
 
-        osi.update_velocity_for_involved_ds();
+        osi.compute_input();
+
         osi.update_all_velocities(current_step());
       }
       osi.update_positions(current_step(), time_step());
 
       current_step() += 1;
-    }
-
-    void compute_input()
-    {
-      auto osi = self()->one_step_integrator();
-      auto& h_matrix = osi.h_matrix_assembled();
-      auto& lambda = osi.lambda_vector_assembled();
-      auto& p0 = osi.p0_vector_assembled();
-
-      resize(p0, size0(h_matrix));
-      transpose(h_matrix);
-      // p0 <- h_matrix^t * lambda
-      prodt1(h_matrix, lambda, p0);
     }
 
     template <typename Formulation>

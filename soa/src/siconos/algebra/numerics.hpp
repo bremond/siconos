@@ -197,10 +197,13 @@ void scal(siconos::match::scalar auto h, vec<T>& v)
 }
 
 template <typename T>
-const T get_vector(vec<T>& v, siconos::match::indice auto i)
+decltype(auto) get_vector(vec<T>& v, siconos::match::indice auto i)
 {
-  return matrix_view<T>(v._v->matrix0);
+  return matrix_view<T>(v._v->matrix0+i*v.vncols);
 }
+
+
+//
 // c <- a b
 // Matrix Matrix
 template <typename A, typename B>

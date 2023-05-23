@@ -1,15 +1,9 @@
 #pragma once
 
-#include <fmt/core.h>
-#include <fmt/ranges.h>
-
-#include <range/v3/view/enumerate.hpp>
-#include <range/v3/view/filter.hpp>
-#include <range/v3/view/zip.hpp>
-
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/pattern.hpp"
-using fmt::print;
+#include "siconos/utils/print.hpp"
+#include "siconos/utils/range.hpp"
 
 namespace siconos {
 
@@ -20,6 +14,7 @@ struct one_step_integrator {
   using system = DynamicalSystem;
   using dof = typename interaction::dof;
   using nslaw_size = typename interaction::nslaw_size;
+  using nslaw = typename interaction::nslaw_t;
   using y = typename interaction::y;
   using ydot = typename interaction::ydot;
   using lambda = typename interaction::lambda;
@@ -177,6 +172,26 @@ struct one_step_integrator {
           // fix for second ds
         }
       }
+
+      void compute_input()
+      {
+        auto &h_matrix = h_matrix_assembled();
+        auto &lambda = lambda_vector_assembled();
+        auto &ydot = ydot_vector_assembled();
+        auto &p0 = p0_vector_assembled();
+        auto &velo = velocity_vector_assembled();
+        auto &mass_matrix = self()->mass_matrix_assembled();
+
+        resize(p0, size0(h_matrix));
+        resize(velo, size0(h_matrix));
+
+        transpose(h_matrix);
+        // p0 <- h_matrix^t * lambda
+        prodt1(h_matrix, lambda, p0);
+        solve(mass_matrix, p0, velo);
+        prodt1(h_matrix, ydot, velo);
+      }
+
       void compute_active_interactions(auto step, auto h)
       {
         auto &data = self()->data();
@@ -272,13 +287,12 @@ struct one_step_integrator {
         resize(self()->mass_matrix_assembled(), size, size);
         resize(self()->free_velocity_vector_assembled(), size);
 
-        for (auto [i, mat_velo] :
-             ranges::views::zip(mass_matrices, free_velocities) |
-                 ranges::views::enumerate |
-                 ranges::views::filter([&involved_ds](auto k_m) {
-                   auto [k, _] = k_m;
-                   return involved_ds[k];
-                 })) {
+        for (auto [i, mat_velo] : views::zip(mass_matrices, free_velocities) |
+                                      views::enumerate |
+                                      views::filter([&involved_ds](auto k_m) {
+                                        auto [k, _] = k_m;
+                                        return involved_ds[k];
+                                      })) {
           auto &[mat, velo] = mat_velo;
           print("velo {}\n", velo);
           set_value(self()->mass_matrix_assembled(), i, i, mat);
@@ -342,38 +356,22 @@ struct one_step_integrator {
         prod(h_matrix_assembled(), tmp_matrix, w_matrix());
       }
 
-      void update_velocity_for_involved_ds()
+      void update_velocity_for_involved_ds() {}
+
+      void apply_nonsmooth_law_effect(auto step)
       {
-        auto &p0 = self()->p0_vector_assembled();
-        auto &velo = self()->velocity_vector_assembled();
-        auto &mass_matrix = self()->mass_matrix_assembled();
+        auto &data = self()->data();
+        auto &ydots = memory(step, get_memory<ydot>(data));
+        auto &ydot_next = ydot_vector_assembled();
+        auto &inslaws = memory(
+            step, get_memory<typename interaction::nonsmooth_law>(data));
 
-        resize(velo, size0(p0));
-        solve(mass_matrix, p0, velo);
-      }
+        for (auto [i, ydot_inslaw] :
+             views::zip(ydots, inslaws) | views::enumerate) {
+          auto& [ydot, inslaw] = ydot_inslaw;
 
-      void apply_nonsmooth_law_effect()
-      {
-        // auto &data = self()->data();
-        // auto &velo = self()->velocity_vector_assembled();
-        // auto &all_vs = memory(step, get_memory<velocity>(data));
-        // auto &all_next_vs = memory(step + 1, get_memory<velocity>(data));
-        // auto &nslaws = memory(step, get_memory<typename interaction::nonsmooth_law>(data));
-        // auto &involved_ds = ground::get<
-        //     attached_storage<system, symbol<"involved">, some::boolean>>(
-        //       data)[0];
-
-        // // involved ds velocities -> ds velocities
-        // for (auto [i, v_vn] :
-        //        ranges::view::zip(all_vs, all_next_vs) | ranges::views::enumerate |
-        //        ranges::views::filter([&involved_ds](auto k_m) {
-        //            auto [k, _] = k_m;
-        //            return involved_ds[k];
-        //        })) {
-        //   // copy
-        //   v += get_vector(velo, i);
-        // }
-
+          get_vector(ydot_next, i) = -handle(inslaw, data).e() * ydot;
+        }
       }
 
       void update_all_velocities(auto step)

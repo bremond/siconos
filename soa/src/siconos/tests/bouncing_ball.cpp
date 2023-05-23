@@ -103,11 +103,28 @@ int main(int argc, char* argv[])
   the_simulation.one_step_integrator().compute_iteration_matrix(
       the_simulation.current_step());
 
+  auto out = fmt::output_file("result.dat");
   while (the_simulation.has_next_event()) {
     the_simulation.compute_one_step();
-    print("step {}:{}, {}\n", the_simulation.current_step(),
-          ball::q::at(the_ball, the_simulation.current_step()),
-          ball::velocity::at(the_ball, the_simulation.current_step()));
+
+    double p0, lambda;
+    if (the_simulation.topology().ninvds() > 0) {
+      p0 = get_vector(
+          the_simulation.one_step_integrator().p0_vector_assembled(), 0)(0);
+      lambda = get_vector(
+          the_simulation.one_step_integrator().lambda_vector_assembled(),
+          0)(0);
+    }
+    else {
+      p0 = 0;
+      lambda = 0;
+    }
+
+    out.print("{} {} {} {} {}\n",
+              the_simulation.current_step() * the_simulation.time_step(),
+              ball::q::at(the_ball, the_simulation.current_step())(0),
+              ball::velocity::at(the_ball, the_simulation.current_step())(0),
+              p0, lambda);
   }
   //  io::close(fd);
 }
