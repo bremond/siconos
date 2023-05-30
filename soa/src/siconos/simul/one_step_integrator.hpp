@@ -57,9 +57,9 @@ struct one_step_integrator {
 
     struct h_matrix_assembled : some::unbounded_matrix<h_matrix>,
                                 access<h_matrix_assembled> {};
-    struct q_vector_assembled
+    struct q_nsp_vector_assembled
         : some::unbounded_vector<some::vector<some::scalar, nslaw_size>>,
-          access<q_vector_assembled> {};
+          access<q_nsp_vector_assembled> {};
     struct velocity_vector_assembled : some::unbounded_vector<velocity>,
                                        access<velocity_vector_assembled> {};
     struct free_velocity_vector_assembled
@@ -88,13 +88,14 @@ struct one_step_integrator {
     using attributes =
         types::attributes<theta, gamma, constraint_activation_threshold,
                           h_matrix_assembled, mass_matrix_assembled, w_matrix,
-                          q_vector_assembled, velocity_vector_assembled,
+                          q_nsp_vector_assembled, velocity_vector_assembled,
                           y_vector_assembled, ydot_vector_assembled,
                           free_velocity_vector_assembled,
                           lambda_vector_assembled, p0_vector_assembled>;
 
     using properties = gather<storage::keep<typename system::q, 2>,
-                              storage::keep<typename system::velocity, 2>>;
+                              storage::keep<typename system::velocity, 2>,
+                              storage::keep<y, 2>, storage::keep<ydot, 2>>;
 
     template <typename Handle>
     struct interface : default_interface<Handle> {
@@ -110,9 +111,9 @@ struct one_step_integrator {
       {
         return Handle ::type ::h_matrix_assembled ::at(*self());
       }
-      decltype(auto) q_vector_assembled()
+      decltype(auto) q_nsp_vector_assembled()
       {
-        return Handle ::type ::q_vector_assembled ::at(*self());
+        return Handle ::type ::q_nsp_vector_assembled ::at(*self());
       }
       decltype(auto) velocity_vector_assembled()
       {
@@ -151,25 +152,22 @@ struct one_step_integrator {
       {
         auto &data = self()->data();
 
-        auto &ys = storage::memory(step, storage::get_memory<y>(data));
-        auto &ydots = storage::memory(step, storage::get_memory<ydot>(data));
-        auto &h_matrices =
-            storage::memory(step, storage::get_memory<h_matrix>(data));
+        auto &ys = storage::attr_values<y>(data, step);
+        auto &ydots = storage::attr_values<ydot>(data, step);
+        auto &h_matrices = storage::attr_values<h_matrix>(data, step);
 
-        auto &qs = storage::memory(step, storage::get_memory<q>(data));
-        auto &velocities =
-            storage::memory(step, storage::get_memory<velocity>(data));
+        auto &qs = storage::attr_values<q>(data, step);
 
-        auto &ids1s =
-            ground::get<storage::attached<interaction, symbol<"ds1">,
-                                          some::item_ref<system>>>(data)[0];
-        auto &ids2s =
-            ground::get<storage::attached<interaction, symbol<"ds2">,
-                                          some::item_ref<system>>>(data)[0];
+        auto &velocities = storage::attr_values<velocity>(data, step);
+
+        auto &ids1s = storage::prop_values<interaction, "ds1">(data, step);
+        auto &ids2s = storage::prop_values<interaction, "ds2">(data, step);
 
         for (auto [y, ydot, hm, ids1, jds2] :
              views::zip(ys, ydots, h_matrices, ids1s, ids2s)) {
-          auto i = storage::handle(ids1, data).property(symbol<"index">{});
+          // only one ds a the moment
+          auto i = prop<"index">(storage::handle(ids1, data));
+
           y = hm * qs[i];
           ydot = hm * velocities[i];
           // fix for second ds
@@ -183,28 +181,37 @@ struct one_step_integrator {
         auto &ydot = ydot_vector_assembled();
         auto &p0 = p0_vector_assembled();
         auto &velo = velocity_vector_assembled();
-        auto &mass_matrix = self()->mass_matrix_assembled();
+        auto &mass_matrix = mass_matrix_assembled();
 
         resize(p0, size0(h_matrix));
         resize(velo, size0(h_matrix));
 
         transpose(h_matrix);
-        // p0 <- h_matrix^t * lambda
+
+        // p0 += h_matrix^t * lambda
         prodt1(h_matrix, lambda, p0);
+
+        // velo <- mass_matrix^-1 * p0
         solve(mass_matrix, p0, velo);
+
+        // velo += h_matrix^t * ydot
         prodt1(h_matrix, ydot, velo);
+
+        print("ydot assembled:{}\n", get_vector(ydot, 0));
+        print("lambda assembled:{}\n", get_vector(lambda, 0));
+        print("p0 assembled:{}\n", get_vector(p0, 0));
+        print("velo assembled:{}\n", get_vector(velo, 0));
       }
 
       void compute_active_interactions(auto step, auto h)
       {
         auto &data = self()->data();
 
-        auto &ys = storage::memory(step, storage::get_memory<y>(data));
-        auto &ydots = storage::memory(step, storage::get_memory<ydot>(data));
+        auto &ys = storage::attr_values<y>(data, step + 1);
+        auto &ydots = storage::attr_values<ydot>(data, step + 1);
 
         auto &activations =
-            ground::get<storage::attached<interaction, symbol<"activation">,
-                                          some::boolean>>(data)[0];
+            storage::prop_values<interaction, "activation">(data, step);
 
         auto gamma_v = 0.5;
 
@@ -213,6 +220,11 @@ struct one_step_integrator {
           // on normal component
           activation = ((y + gamma_v * h * ydot)(0) <=
                         self()->constraint_activation_threshold());
+
+          if (activation) {
+            print("\nstep: {}, time: {} => ACTIVATION!\ny:{}, ydot:{}\n",
+                  step, step * h, y, ydot);
+          }
         }
       }
 
@@ -221,7 +233,7 @@ struct one_step_integrator {
       {
         auto &data = self()->data();
         auto &h_matrices =
-            storage::memory(step, storage::get_memory<h_matrix>(data));
+            storage::memory(step, storage::attr_memory<h_matrix>(data));
         auto &ids1s =
             ground::get<storage::attached<interaction, symbol<"ds1">,
                                           some::item_ref<system>>>(data)[0];
@@ -244,7 +256,7 @@ struct one_step_integrator {
       {
         auto &data = self()->data();
         auto &h_matrices =
-            storage::memory(step, storage::get_memory<h_matrix>(data));
+            storage::memory(step, storage::attr_memory<h_matrix>(data));
         auto size = std::size(h_matrices);
 
         resize(self()->y_vector_assembled(), size);
@@ -259,10 +271,10 @@ struct one_step_integrator {
 
         // size is the number of ds
         auto size = std::size(
-            storage::memory(step, storage::get_memory<mass_matrix>(data)));
+            storage::memory(step, storage::attr_memory<mass_matrix>(data)));
 
         auto &h_matrices =
-            storage::memory(step, storage::get_memory<h_matrix>(data));
+            storage::memory(step, storage::attr_memory<h_matrix>(data));
         auto &ids1s =
             ground::get<storage::attached<interaction, symbol<"ds1">,
                                           some::item_ref<system>>>(data)[0];
@@ -283,16 +295,16 @@ struct one_step_integrator {
         auto &data = self()->data();
 
         auto &mass_matrices =
-            storage::memory(step, storage::get_memory<mass_matrix>(data));
+            storage::memory(step, storage::attr_memory<mass_matrix>(data));
         auto &free_velocities =
-            storage::memory(step + 1, storage::get_memory<velocity>(data));
+            storage::memory(step + 1, storage::attr_memory<velocity>(data));
         auto &involved_ds = ground::get<
             storage::attached<system, symbol<"involved">, some::boolean>>(
             data)[0];
 
         // size may be 0
-        resize(self()->mass_matrix_assembled(), size, size);
-        resize(self()->free_velocity_vector_assembled(), size);
+        resize(mass_matrix_assembled(), size, size);
+        resize(free_velocity_vector_assembled(), size);
 
         for (auto [i, mat_velo] : views::zip(mass_matrices, free_velocities) |
                                       views::enumerate |
@@ -303,7 +315,8 @@ struct one_step_integrator {
           auto &[mat, velo] = mat_velo;
           print("velo {}\n", velo);
           set_value(self()->mass_matrix_assembled(), i, i, mat);
-          set_value(self()->free_velocity_vector_assembled(), i, velo);
+          //          set_value(self()->free_velocity_vector_assembled(), i,
+          //          velo);
         }
         assert(size0(mass_matrix_assembled()) ==
                size1(mass_matrix_assembled()));
@@ -315,10 +328,10 @@ struct one_step_integrator {
 
         // size is the number of ds
         auto size = std::size(
-            storage::memory(step, storage::get_memory<mass_matrix>(data)));
+            storage::memory(step, storage::attr_memory<mass_matrix>(data)));
 
         auto &mass_matrices =
-            storage::memory(step, storage::get_memory<mass_matrix>(data));
+            storage::memory(step, storage::attr_memory<mass_matrix>(data));
 
         self()->mass_matrix_assembled().resize(size, size);
 
@@ -329,13 +342,18 @@ struct one_step_integrator {
       }
 
       // compute H vfree
-      auto compute_q_vector_assembled(auto step)
+      auto compute_q_nsp_vector_assembled(auto step)
       {
-        resize(self()->q_vector_assembled(),
-               size0(self()->free_velocity_vector_assembled()));
-        prod(self()->h_matrix_assembled(),
-             self()->free_velocity_vector_assembled(),
-             self()->q_vector_assembled());
+        auto &data = self()->data();
+
+        resize(q_nsp_vector_assembled(),
+               size0(free_velocity_vector_assembled()));
+
+        auto &ydots = storage::attr_values<ydot>(data, step + 1);
+
+        for (auto [i, ydot] : ydots | views::enumerate) {
+          set_value(q_nsp_vector_assembled(), i, ydot);
+        }
       }
       // compute H M^-1 H^t
       auto compute_w_matrix(auto step)
@@ -368,33 +386,29 @@ struct one_step_integrator {
 
       void update_velocity_for_involved_ds() {}
 
-      void apply_nonsmooth_law_effect(auto step)
+      void nsl_effect_on_free_output(auto step)
       {
         auto &data = self()->data();
-        auto &ydots = storage::memory(step, storage::get_memory<ydot>(data));
-        auto &ydot_next = ydot_vector_assembled();
-        auto &inslaws = storage::memory(
-            step,
-            storage::get_memory<typename interaction::nonsmooth_law>(data));
+        auto &ydots = storage::attr_values<ydot>(data, step);
+        auto &ydots_next = storage::attr_values<ydot>(data, step + 1);
 
-        for (auto [i, ydot_inslaw] :
-             views::zip(ydots, inslaws) | views::enumerate) {
-          auto &[ydot, inslaw] = ydot_inslaw;
+        auto &inslaws =
+            storage::attr_values<typename interaction::nonsmooth_law>(data,
+                                                                      step);
 
-          get_vector(ydot_next, i) =
-              -storage::handle(inslaw, data).e() * ydot;
+        for (auto [ydot, ydot_next, inslaw] :
+             views::zip(ydots, ydots_next, inslaws)) {
+          ydot_next += storage::handle(inslaw, data).e() * ydot;
         }
       }
 
       void update_all_velocities(auto step)
       {
         auto &data = self()->data();
-        auto &velo = self()->velocity_vector_assembled();
-        auto &all_vs =
-            storage::memory(step + 1, storage::get_memory<velocity>(data));
-        auto &involved_ds = ground::get<
-            storage::attached<system, symbol<"involved">, some::boolean>>(
-            data)[0];
+        auto &velo = velocity_vector_assembled();
+        auto &all_vs = storage::attr_values<velocity>(data, step + 1);
+        auto &involved_ds =
+            storage::prop_values<system, "involved">(data, step);
 
         // involved ds velocities -> ds velocities
         for (auto [i, v] : all_vs | views::enumerate |
@@ -410,22 +424,23 @@ struct one_step_integrator {
       auto update_positions(auto step, auto h)
       {
         auto &data = self()->data();
-        auto &xs = storage::memory(step, storage::get_memory<q>(data));
-        auto &xs_next =
-            storage::memory(step + 1, storage::get_memory<q>(data));
-        auto &vs =
-            storage::memory(step + 1, storage::get_memory<velocity>(data));
 
-        for (auto [x, x_next, v] : views::zip(xs, xs_next, vs)) {
-          x_next = x + h * v;
+        auto &xs = storage::attr_values<q>(data, step);
+        auto &xs_next = storage::attr_values<q>(data, step + 1);
+        auto &vs = storage::attr_values<velocity>(data, step);
+        auto &vs_next = storage::attr_values<velocity>(data, step + 1);
+
+        for (auto [x, x_next, v, v_next] :
+             views::zip(xs, xs_next, vs, vs_next)) {
+          x_next = x + h * (theta() * v + (1.0 - theta()) * v_next);
         }
       }
 
       auto compute_iteration_matrix(auto step)
       {
         auto &data = self()->data();
-        auto &mass_matrices = storage::get_memory<mass_matrix>(data);
-        auto &external_forces = storage::get_memory<fext>(data);
+        auto &mass_matrices = storage::attr_memory<mass_matrix>(data);
+        auto &external_forces = storage::attr_memory<fext>(data);
 
         auto &mats = storage::memory(step, mass_matrices);
         auto &fs = storage::memory(step, external_forces);
@@ -448,8 +463,8 @@ struct one_step_integrator {
       auto compute_free_state(auto step, auto h)
       {
         auto &data = self()->data();
-        auto &velocities = storage::get_memory<velocity>(data);
-        auto &fexts = storage::get_memory<fext>(data);
+        auto &velocities = storage::attr_memory<velocity>(data);
+        auto &fexts = storage::attr_memory<fext>(data);
         auto &theta_ = self()->theta();
 
         auto &vs = storage::memory(step, velocities);
@@ -460,7 +475,7 @@ struct one_step_integrator {
         // for all ds
         for (auto [v, v_next, minv_f, minv_f_next] :
              views::zip(vs, vs_next, minv_fs, minv_fs_next)) {
-          // theta useless if fext is constant
+          // note: theta useless if fext is constant
           v_next = v + h * theta_ * minv_f + h * (1 - theta_) * minv_f_next;
         }
       };

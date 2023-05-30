@@ -1,5 +1,6 @@
 #pragma once
 
+#include "siconos/storage/storage.hpp"
 #include "siconos/utils/pattern.hpp"
 
 namespace siconos::simul {
@@ -80,10 +81,11 @@ struct topology : item<> {
       auto inter = storage::add<interaction>(data);
       auto dsgv = dsg0.add_vertex(ds);
       auto [dsg0_ed, ig0_vd] = dsg0.add_edge(dsgv, dsgv, inter, ig0);
-      ds.property(symbol<"vd">{}) = dsgv;
-      inter.property(symbol<"vd">{}) = ig0_vd;
-      inter.property(symbol<"nds">{}) = 1;
-      inter.template property<"ds1">() = ds;
+      prop<"vd">(ds) = dsgv;
+      prop<"vd">(inter) = ig0_vd;
+      prop<"nds">(inter) = 1;
+      prop<"ds1">(inter) = ds;
+      prop<"ds2">(inter) = ds;
 
       return inter;
     };

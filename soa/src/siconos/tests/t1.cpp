@@ -44,7 +44,7 @@ int main()
   using lcp = numerics::nonsmooth_problem<LinearComplementarityProblem>;
   using osnspb = numerics::one_step_nonsmooth_problem<lcp>;
   using relation = model::lagrangian_r;
-  using nslaw = model::nonsmooth_law::newton_impact;
+  using nslaw = model::nsl::newton_impact;
   using interaction = simul::interaction<nslaw, relation, 1>;
   using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
   using td = simul::time_discretization<>;
@@ -68,7 +68,7 @@ int main()
                 std::tuple<int, int, int>{});
   static_assert(
       std::is_same_v<decltype(all_items(nslaw{})),
-                     gather<siconos::model::nonsmooth_law::newton_impact>>);
+                     gather<siconos::model::nsl::newton_impact>>);
   static_assert(
       std::is_same_v<decltype([]() {
                        return transform(
@@ -176,4 +176,11 @@ int main()
   auto bob1 = storage::add<bbb>(ddd);
 
   bbb::attr::at(bob1).reset(new aaa);
+
+  using item1 = item<attribute<"one", some::scalar>>;
+  auto eee = storage::make_storage<env, item1>();
+
+  auto h1 = storage::add<item1>(eee);
+
+  storage::attr<"one">(h1) = 1.0;
 }

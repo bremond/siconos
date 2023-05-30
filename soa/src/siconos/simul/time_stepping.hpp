@@ -42,37 +42,49 @@ struct time_stepping : item<> {
 
     void compute_one_step()
     {
-      auto osi = self()->one_step_integrator();
+      auto osi = one_step_integrator();
+      auto step = current_step();
 
       // just once if fext constant!
-      // osi.compute_iteration_matrix(current_step());  // fext <- just M-1
+      // osi.compute_iteration_matrix(step);  // fext <- just M-1
       // fext
 
-      osi.compute_free_state(current_step(), time_step());
-      osi.compute_output(current_step());
+      // v (step+1)
+      osi.compute_free_state(step, time_step());
 
+      // -> ydot (step+1)
+      osi.update_positions(step, time_step());
+      osi.compute_output(step);
+      osi.compute_output(step+1);
+
+      // activations of interactions
       update_indexsets(0);
       topology().make_index();
 
       if (topology().ninvds() > 0) {
-        osi.assemble_h_matrix_for_involved_ds(current_step(),
-                                              topology().ninvds());
-        osi.assemble_mass_matrix_for_involved_ds(current_step(),
-                                                 topology().ninvds());
+        // a least one activated interaction
 
-        osi.resize_assembled_vectors(current_step());
-        osi.compute_q_vector_assembled(current_step());
-        osi.compute_w_matrix(current_step());
+        print("ninvds = {}\n", topology().ninvds());
+
+        osi.assemble_h_matrix_for_involved_ds(step, topology().ninvds());
+        osi.assemble_mass_matrix_for_involved_ds(step, topology().ninvds());
+
+        osi.resize_assembled_vectors(step);
+
+        // H M^-1 H^t
+        osi.compute_w_matrix(step);
+        osi.nsl_effect_on_free_output(step);
+        osi.compute_q_nsp_vector_assembled(step);
 
         self()->template solve_nonsmooth_problem<formulation_t>();
 
-        osi.apply_nonsmooth_law_effect(current_step());
-
         osi.compute_input();
-
-        osi.update_all_velocities(current_step());
+        osi.update_all_velocities(step);
       }
-      osi.update_positions(current_step(), time_step());
+      else {
+        print(".");
+      }
+      osi.update_positions(step, time_step());
 
       current_step() += 1;
     }
@@ -81,11 +93,13 @@ struct time_stepping : item<> {
     void solve_nonsmooth_problem()
     {  // Mz=w+q
       auto osi = self()->one_step_integrator();
-      resize(osi.lambda_vector_assembled(), size0(osi.q_vector_assembled()));
-      resize(osi.ydot_vector_assembled(), size0(osi.q_vector_assembled()));
+      resize(osi.lambda_vector_assembled(),
+             size0(osi.q_nsp_vector_assembled()));
+      resize(osi.ydot_vector_assembled(),
+             size0(osi.q_nsp_vector_assembled()));
       self()->one_step_nonsmooth_problem().template solve<Formulation>(
           osi.w_matrix(),                 // M
-          osi.q_vector_assembled(),       // q
+          osi.q_nsp_vector_assembled(),   // q
           osi.lambda_vector_assembled(),  // z
           osi.ydot_vector_assembled());   // w
     }
@@ -118,7 +132,7 @@ struct time_stepping : item<> {
       for (auto v1next = ui1; ui1 != ui1end; ui1 = v1next) {
         ++v1next;
         auto inter1 = storage::handle(index_set1.bundle(*ui1),
-                             self()->data());  // get inter handle
+                                      self()->data());  // get inter handle
         //          auto rel1 = inter1.relation();
 
         if (index_set0.is_vertex(inter1)) {
@@ -128,7 +142,7 @@ struct time_stepping : item<> {
           index_set0.color(inter1_descr0) = env::gray_color;
           if constexpr (!std::derived_from<
                             typename topology_t::interaction::nonsmooth_law,
-                            model::equality_condition_nsl>) {
+                            model::nsl::equality_condition>) {
             // We assume that the integrator of the ds1 drive the update of
             // the index set SP::OneStepIntegrator Osi =
             // index_set1.properties(*ui1).osi;
@@ -211,15 +225,16 @@ struct time_stepping : item<> {
           else {
             assert(index_set0.color(*ui0) == env::white_color);
 
-            auto inter0 = storage::handle(index_set0.bundle(*ui0), self()->data());
+            auto inter0 =
+                storage::handle(index_set0.bundle(*ui0), self()->data());
             assert(!index_set1.is_vertex(inter0));
             bool activate = true;
             if constexpr (!std::derived_from<
                               typename topology_t::interaction::nonsmooth_law,
-                              model::equality_condition_nsl> &&
+                              model::nsl::equality_condition> &&
                           !std::derived_from<
                               typename topology_t::interaction::nonsmooth_law,
-                              model::relay_nsl>)
+                              model::nsl::relay>)
             //             && Type::value(*(inter0->nonSmoothLaw())) !=
             //             Type::RelayNSL)
             {

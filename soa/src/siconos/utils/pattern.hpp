@@ -278,8 +278,19 @@ struct frame {
 
 template <typename... Args>
 struct item {
-  using args = gather<Args...>;
   using item_t = void;
+
+  using args = gather<Args...>;
+  using attributes = decltype(ground::filter(
+      args{}, ground::derive_from<some::attribute<>>));
+
+  template <typename H>
+  struct interface {
+    decltype(auto) self()
+    {
+      return static_cast<H*>(this);  // handle inherits from default_interface
+    }
+  };
 
   friend auto operator<=>(const item<Args...>&,
                           const item<Args...>&) = default;
@@ -298,7 +309,6 @@ struct wrap : item<>, any_wrapper {
   using attributes = typename Item::attributes;
   using type = Item;
 };
-
 
 template <typename T>
 struct place_holder {
@@ -463,6 +473,6 @@ struct param_val {
 };
 
 template <string_literal Name, match::attribute A>
-struct attribute : A, name<Name> {
+struct attribute : A, symbol<Name> {
 };
 }  // namespace siconos

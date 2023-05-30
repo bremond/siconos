@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <variant>
 
+#include "siconos/utils/base.hpp"
 #include "siconos/utils/ground.hpp"
 #include "siconos/utils/pattern.hpp"
 #include "siconos/utils/some.hpp"
@@ -132,16 +133,14 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
     return memory(step, ground::get<attached_storage_t>(data()))[this->get()];
   }
 
+  // not convenient, it needs to specify template keyword:
+  // some_handle.template property<S>() = ...
   template <string_literal S>
   constexpr decltype(auto) property(indice step = 0)
   {
     return property(symbol<S>{}, step);
   }
 
-  template <string_literal S>
-  constexpr decltype(auto) attr(indice step = 0)
-  {
-  }
   decltype(auto) data() { return _data; };
 
   explicit handle(R& ref, D& data) : index<T, R>{ref}, _data{data} {};
@@ -263,11 +262,6 @@ static constexpr auto refine_recursively_attribute =
 
       return rec_loop(rec_loop, Attr{});
     };
-
-template <match::attribute T>
-static auto get_memory = [](auto& data) constexpr -> decltype(auto) {
-  return ground::get<T>(data);
-};
 
 static auto move_back = [](const auto i, auto& a) constexpr {
   if constexpr (match::push_back<std::decay_t<decltype(a)>>) {
@@ -601,9 +595,62 @@ static auto for_each = [](auto m, auto&& fun) constexpr -> void {
       m, ground::dup(ground::lockstep(fun)(ground::first, ground::second)));
 };
 
+template <string_literal S>
+static auto prop = [](auto h) constexpr -> decltype(auto) {
+  return h.template property<S>();
+};
+
+template <string_literal S>
+static auto attr = []<typename H>(H h) constexpr -> decltype(auto) {
+  using attr_n = std::decay_t<decltype(std::get<0>(ground::filter(
+      all_attributes(typename H::type{}), ground::derive_from<symbol<S>>)))>;
+  return memory(0, ground::get<attr_n>(h.data()))[h.get()];
+};
+
+template <match::attribute T>
+static auto attr_memory = [](auto& data) constexpr -> decltype(auto) {
+  return ground::get<T>(data);
+};
+
+template <match::item I, string_literal S>
+static auto prop_memory = [](auto& data) constexpr -> decltype(auto) {
+  using info_t = std::decay_t<decltype(ground::get<storage::info>(data))>;
+  using item_t = I;
+  constexpr auto tpl =
+      ground::filter(typename info_t::all_properties_t{},
+                     ground::is_a_model<[]<typename T>() consteval {
+                       return (match::attached_storage<T, item_t> &&
+                               match::tag<T, symbol<S>>);
+                     }>);
+
+  //  constexpr auto tpl = filter<hold<decltype([]<typename X>(X) {
+  //      return (match::attached_storage<X, item_t> && (match::tag<X,
+  //      symbol<S>>));
+  //    })>>(typename info_t::all_properties_t{});
+
+  static_assert(std::tuple_size_v<decltype(tpl)> >= 1,
+                "attached storage not found");
+
+  using attached_storage_t = std::decay_t<decltype(std::get<0>(tpl))>;
+  return ground::get<attached_storage_t>(data);
+};
+
+template <match::attribute T>
+static auto attr_values =
+    [](auto& data, auto step) constexpr -> decltype(auto) {
+  return memory(step, (attr_memory<T>(data)));
+};
+
+template <match::item I, string_literal S>
+static auto prop_values =
+    [](auto& data, auto step) constexpr -> decltype(auto) {
+  return memory(step, (prop_memory<I, S>(data)));
+};
+
 }  // namespace siconos::storage
 
 namespace siconos {
 using siconos::storage::access;
 using siconos::storage::default_interface;
+using siconos::storage::prop;
 }  // namespace siconos

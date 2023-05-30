@@ -3,36 +3,34 @@
 #include "siconos/siconos.hpp"
 #include "siconos/utils/pattern.hpp"
 
-namespace siconos::model {
-struct equality_condition_nsl {};
-struct relay_nsl {};
-struct nonsmooth_law {
-  struct newton_impact_friction : item<> {
-    struct e : some::scalar, access<e> {};
-    struct mu : some::scalar, access<mu> {};
+namespace siconos::model::nsl {
+struct equality_condition {};
+struct relay {};
 
-    static constexpr auto size = 2;
-    using attributes = types::attributes<e, mu>;
+struct newton_impact_friction : item<> {
+  struct e : some::scalar, access<e> {};
+  struct mu : some::scalar, access<mu> {};
 
-    template <typename Handle>
-    struct interface : default_interface<Handle> {
-      using default_interface<Handle>::self;
-      decltype(auto) e() { return Handle ::type ::e ::at(*self()); }
-      decltype(auto) mu() { return Handle ::type ::mu ::at(*self()); }
-    };
-  };
+  static constexpr auto size = 2;
+  using attributes = gather<e, mu>;
 
-  struct newton_impact : item<> {
-    struct e : some::scalar, access<e>, text<"e"> {};
-    static constexpr auto size = 1;
-    using attributes = gather<e>;
-
-    template <typename Handle>
-    struct interface : default_interface<Handle> {
-      using default_interface<Handle>::self;
-      decltype(auto) e() { return Handle ::type ::e ::at(*self()); };
-    };
+  template <typename Handle>
+  struct interface : default_interface<Handle> {
+    using default_interface<Handle>::self;
+    decltype(auto) e() { return Handle ::type ::e ::at(*self()); }
+    decltype(auto) mu() { return Handle ::type ::mu ::at(*self()); }
   };
 };
 
-}  // namespace siconos::model
+struct newton_impact : item<> {
+  struct e : some::scalar, access<e>, text<"e"> {};
+  static constexpr auto size = 1;
+  using attributes = gather<e>;
+
+  template <typename Handle>
+  struct interface : default_interface<Handle> {
+    using default_interface<Handle>::self;
+    decltype(auto) e() { return Handle ::type ::e ::at(*self()); };
+  };
+};
+}  // namespace siconos::model::nsl
