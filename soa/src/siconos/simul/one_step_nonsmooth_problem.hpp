@@ -6,6 +6,7 @@
 #include <lcp_cst.h>
 
 #include "SolverOptions.h"
+#include "siconos/storage/storage.hpp"
 #include "siconos/utils/pattern.hpp"
 #include "siconos/utils/some.hpp"
 
@@ -99,16 +100,44 @@ struct one_step_nonsmooth_problem : item<> {
         // w_mat cannot be sparse
         auto w_mat_dense = NM_create(NM_DENSE, size0(w_mat), size1(w_mat));
         NM_to_dense(w_mat._m, w_mat_dense);
+
+        print("w_mat_dense:\n");
+        NM_display(w_mat_dense);
         self()->problem().instance()->size = size0(w_mat);
         self()->problem().instance()->M = w_mat_dense;
         self()->problem().instance()->q = q_vec._v->matrix0;
+
+        print("LCP [\n");
+
+        print("q:\n");
+        numerics::display(q_vec);
+        print("----\n");
+
+        print("z:\n");
+        numerics::display(z_vec);
+        print("----\n");
+
+        print("w:\n");
+        numerics::display(w_vec);
+        print("----\n");
 
         linearComplementarity_driver(&*self()->problem().instance(),
                                      z_vec._v->matrix0, w_vec._v->matrix0,
                                      &*options().instance());
 
-        print("q:{}, z:{}, w:{}\n", *q_vec._v->matrix0, *z_vec._v->matrix0,
-              *w_vec._v->matrix0);
+        print("q:\n");
+        numerics::display(q_vec);
+        print("----\n");
+
+        print("z:\n");
+        numerics::display(z_vec);
+        print("----\n");
+
+        print("w:\n");
+        numerics::display(w_vec);
+        print("----\n");
+
+        print("]\n\n");
         NM_free(w_mat_dense);
       }
     }

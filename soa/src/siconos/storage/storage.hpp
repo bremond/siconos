@@ -3,12 +3,14 @@
 #include <cassert>
 #include <concepts>
 #include <range/v3/detail/variant.hpp>
+#include <tuple>
 #include <type_traits>
 #include <variant>
 
 #include "siconos/utils/base.hpp"
 #include "siconos/utils/ground.hpp"
 #include "siconos/utils/pattern.hpp"
+#include "siconos/utils/range.hpp"
 #include "siconos/utils/some.hpp"
 #include "siconos/utils/traits.hpp"
 #include "siconos/utils/utils.hpp"
@@ -146,6 +148,8 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
   explicit handle(R& ref, D& data) : index<T, R>{ref}, _data{data} {};
 
   explicit handle(index<T, R>& ha, D& data) : index<T, R>{ha}, _data{data} {};
+
+  explicit handle(index<T, R>&& ha, D& data) : index<T, R>{ha}, _data{data} {};
 
   handle() : index<T, R>{}, _data{} {};
 
@@ -645,6 +649,21 @@ template <match::item I, string_literal S>
 static auto prop_values =
     [](auto& data, auto step) constexpr -> decltype(auto) {
   return memory(step, (prop_memory<I, S>(data)));
+};
+
+template <match::item I>
+static auto handles = [](auto& data, auto step) constexpr -> decltype(auto) {
+  using info_t = std::decay_t<decltype(ground::get<storage::info>(data))>;
+  using env = typename info_t::env;
+  using indice = typename env::indice;
+
+  using attributes_t = typename I::attributes;
+  // need at least one attributes
+  // empty items are not supposed to exist
+  indice num = std::size(attr_values<nth_t<0,attributes_t>>(data, step));
+  return views::iota((indice) 0, num) | views::transform([&data](indice i) {
+    return handle<I,indice,std::decay_t<decltype(data)>>(index<I,indice>(i), data);
+         });
 };
 
 }  // namespace siconos::storage

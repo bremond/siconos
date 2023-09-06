@@ -48,6 +48,9 @@ struct mat : any_mat {
     if (_m) {
       _m = NM_free(_m);
     }
+    if (_mt) {
+      _m = NM_free(_mt);
+    }
   }
 };
 
@@ -88,7 +91,8 @@ void resize(match::any_mat auto& m, siconos::match::indice auto nrows,
             siconos::match::indice auto ncols)
 {
   if (m._m) m._m = NM_free(m._m);
-  m._mt = nullptr;
+  if (m._mt) m._mt = NM_free(m._mt);
+
   m._inversed = false;
 
   m._m = NM_create(NM_SPARSE, nrows * m.vnrows, ncols * m.vncols);
@@ -101,6 +105,8 @@ void resize(match::vec auto& v, siconos::match::indice auto nrows)
 
   //  static_assert(m.vncols == 1);  // only vector of vectors
   // dense vector
+  assert(nrows * v.vnrows >= 1);
+  assert(v.vncols == 1);
   v._v = NM_create(NM_DENSE, nrows * v.vnrows, v.vncols);
 }
 
@@ -180,7 +186,7 @@ void inverse(diag_mat<A>& a)
 
 // b += a
 template <typename T>
-void add(vec<T>& a, vec<T>& b)
+void add(const vec<T>& a, vec<T>& b)
 {
   // improve Numerics  cblas_daxpy(size0(a), 1, a._v->matrix0, 1,
   // b._v->matrix0);
@@ -199,9 +205,8 @@ void scal(siconos::match::scalar auto h, vec<T>& v)
 template <typename T>
 decltype(auto) get_vector(vec<T>& v, siconos::match::indice auto i)
 {
-  return matrix_view<T>(v._v->matrix0+i*v.vncols);
+  return matrix_view<T>(v._v->matrix0 + i * v.vnrows);
 }
-
 
 //
 // c <- a b
@@ -221,14 +226,17 @@ void prod(mat<A>& a, vec<B>& b, vec<prod_t<A, B>>& c)
 
 // c <- a^t b
 template <typename A, typename B>
-void prodt1(mat<A>& a, vec<B>& b, vec<prod_t<trans_t<A>, B>>& c)
+void prodt1(const mat<A>& a, const vec<B>& b, vec<prod_t<trans_t<A>, B>>& c)
 {
   assert(a._mt);
+  assert(a._mt->size1 == b._v->size0);  // transpose mult
+  assert(c._v->size0 == a._mt->size0);
   NM_gemv(1, a._mt, b._v->matrix0, 1, c._v->matrix0);
 }
 // c <- a b^t
 template <typename A, typename B>
-void prodt2(diag_mat<A>& a, mat<B>& b, mat<prod_t<A, trans_t<B>>>& c)
+void prodt2(const diag_mat<A>& a, const mat<B>& b,
+            mat<prod_t<A, trans_t<B>>>& c)
 {
   assert(b._mt);
   NM_gemm(1, a._m, b._mt, 1, c._m);
@@ -249,6 +257,10 @@ void solvet(diag_mat<A>& a, mat<B>& b, mat<trans_t<B>>& c)
   transpose(b);
   prodt2(a, b, c);
 }
+
+void display(match::any_mat auto& a) { NM_display(a._m); }
+
+void display(match::vec auto& v) { NM_display(v._v); }
 
 }  // namespace numerics
 }  // namespace siconos

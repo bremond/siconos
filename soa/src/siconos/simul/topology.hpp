@@ -2,6 +2,8 @@
 
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/pattern.hpp"
+#include "siconos/utils/print.hpp"
+#include "siconos/utils/range.hpp"
 
 namespace siconos::simul {
 
@@ -25,11 +27,8 @@ struct topology : item<> {
             std::integral_constant<int, 2> >,
         access<interaction_graphs> {};
 
-  // number of involved ds
-  struct ninvds : some::indice, access<ninvds> {};
-
   using attributes =
-      gather<dynamical_system_graphs, interaction_graphs, ninvds>;
+      gather<dynamical_system_graphs, interaction_graphs>;
 
   using properties = gather<
       storage::attached<dynamical_system, symbol<"involved">, some::boolean>,
@@ -66,7 +65,6 @@ struct topology : item<> {
     {
       return Handle ::type ::interaction_graphs ::at(*self());
     };
-    decltype(auto) ninvds() { return Handle ::type ::ninvds ::at(*self()); };
 
     using default_interface<Handle>::self;
 
@@ -76,8 +74,6 @@ struct topology : item<> {
       auto &data = self()->data();
       auto &dsg0 = self()->dynamical_system_graphs()[0];
       auto &ig0 = self()->interaction_graphs()[0];
-      ;
-
       auto inter = storage::add<interaction>(data);
       auto dsgv = dsg0.add_vertex(ds);
       auto [dsg0_ed, ig0_vd] = dsg0.add_edge(dsgv, dsgv, inter, ig0);
@@ -86,6 +82,22 @@ struct topology : item<> {
       prop<"nds">(inter) = 1;
       prop<"ds1">(inter) = ds;
       prop<"ds2">(inter) = ds;
+
+      dsg0.update_vertices_indices();
+      dsg0.update_edges_indices();
+
+      ig0.update_vertices_indices();
+      ig0.update_edges_indices();
+
+      print("dsg0:\n:");
+      print("=========\n");
+      dsg0.display();
+      print("=========\n");
+
+      print("ig0:\n");
+      print("=========\n");
+      ig0.display();
+      print("=========\n");
 
       return inter;
     };
@@ -98,7 +110,7 @@ struct topology : item<> {
       auto &ig0 = self()->interaction_graphs()[0];
       ;
 
-      auto inter = add<interaction>(data);
+      auto inter = storage::add<interaction>(data);
       auto dsgv1 = dsg0.add_vertex(ds1);
       auto dsgv2 = dsg0.add_vertex(ds2);
       auto [dsg0_ed, ig0_vd] = dsg0.add_edge(dsgv1, dsgv2, inter, ig0);
@@ -111,29 +123,25 @@ struct topology : item<> {
       inter.property(symbol<"ds1">{}) = ds1;
       inter.property(symbol<"ds2">{}) = ds2;
 
+      dsg0.update_vertices_indices();
+      dsg0.update_edges_indices();
+
+      ig0.update_vertices_indices();
+      ig0.update_edges_indices();
+
+      print("dsg0:\n:");
+      print("=========\n");
+      dsg0.display();
+      print("=========\n");
+
+      print("ig0:\n");
+      print("=========\n");
+      ig0.display();
+      print("=========\n");
+
       return inter;
     };
 
-    // strategy 2 : h_matrix is assembled for involved ds only
-    auto make_index()
-    {
-      auto &data = self()->data();
-      using info_t = std::decay_t<decltype(ground::get<storage::info>(data))>;
-      using env = typename info_t::env;
-      using indice = typename env::indice;
-      auto &index_set1 = self()->interaction_graphs()[1];
-      indice counter = 0;
-      for (auto [dsi, dsiend] = index_set1.edges(); dsi != dsiend; ++dsi) {
-        indice &prop = storage::handle(index_set1.bundle(*dsi), data)
-                           .property(symbol<"index">{});
-        auto &&involved = storage::handle(index_set1.bundle(*dsi), data)
-                              .property(symbol<"involved">{});
-        // ds is involved in some interaction
-        involved = true;
-        prop = counter++;
-      }
-      self()->ninvds() = counter;
-    };
   };
 };
 }  // namespace siconos::simul

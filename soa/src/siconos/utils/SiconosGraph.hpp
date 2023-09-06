@@ -44,6 +44,9 @@
 #include <boost/graph/directed_graph.hpp>
 #include <boost/graph/graph_concepts.hpp>
 #include <boost/graph/graph_utility.hpp>
+#include <boost/graph/graphviz.hpp>
+#include <iostream>
+
 #include <boost/property_map/property_map.hpp>
 #include <boost/static_assert.hpp>
 #include <limits>
@@ -484,6 +487,8 @@ class SiconosGraph {
     properties(descr) = og.properties(og.descriptor(vertex_bundle));
     //    descriptor0(descr) = og.descriptor(vertex_bundle);
 
+    update_vertices_indices();
+
     assert(bundle(descr) == vertex_bundle);
 
     // edges copy as in boost::subgraph
@@ -503,6 +508,7 @@ class SiconosGraph {
         EDescriptor edescr = add_edge(
             descr, descriptor(og.bundle(ognext_descr)), og.bundle(*ogoei));
 
+        update_edges_indices();
         properties(edescr) = og.properties(*ogoei);
         //        descriptor0(edescr) = *ogoei;
 
@@ -602,6 +608,12 @@ class SiconosGraph {
     BOOST_STATIC_ASSERT(
         (boost::is_same<typename AdjointG::edge_t, vertex_t>::value));
 
+#if !defined(SICONOS_USE_MAP_FOR_HASH)
+      std::unordered_map<E, EDescriptor> Edone;
+#else
+      std::map<E, EDescriptor> Edone;
+#endif
+
     EDescriptor new_ed = add_edge(vd1, vd2, e_bundle);
 
     typename AdjointG::VDescriptor new_ve = ag.add_vertex(e_bundle);
@@ -611,6 +623,7 @@ class SiconosGraph {
       typename AdjointG::EDescriptor aed =
           ag.add_edge(new_ve, new_ve, bundle(vd1));
     }
+
     assert(bundle(new_ed) == ag.bundle(new_ve));
     assert(ag.size() == edges_number());
 
@@ -621,22 +634,16 @@ class SiconosGraph {
 
       if (vdx == vd2) endl = true;
 
-#if !defined(SICONOS_USE_MAP_FOR_HASH)
-      std::unordered_map<E, EDescriptor> Edone;
-#else
-      std::map<E, EDescriptor> Edone;
-#endif
-
       OEIterator ied, iedend;
       for (std::tie(ied, iedend) = out_edges(vdx); ied != iedend; ++ied) {
         if (Edone.find(bundle(*ied)) == Edone.end()) {
-          Edone[bundle(*ied)] = *ied;
-
           assert(source(*ied) == vdx);
 
           if (*ied != new_ed)
           // so this is another edge
           {
+            Edone[bundle(*ied)] = *ied;
+
             assert(bundle(*ied) != e_bundle);
 
             assert(ag.bundle(ag.descriptor(bundle(*ied))) == bundle(*ied));
@@ -804,17 +811,23 @@ class SiconosGraph {
     std::cout << "edges number :" << edges_number() << std::endl;
     VIterator vi, viend;
     for (std::tie(vi, viend) = vertices(); vi != viend; ++vi) {
-      std::cout << "vertex :" << *vi << ", bundle :" << bundle(*vi)
-                << ", index : " << index(*vi) << ", color : " << color(*vi);
+      std::cout << "vertex : " << *vi << ", bundle : " << bundle(*vi).get()
+                << ", index : " << index(*vi) << ", color : " << color(*vi) << std::endl;
       OEIterator oei, oeiend, next;
       for (std::tie(oei, oeiend) = out_edges(*vi); oei != oeiend; ++oei) {
-        std::cout << "---" << bundle(*oei) << "-->"
-                  << "bundle : " << bundle(target(*oei))
+        std::cout << "---" << bundle(*oei).get() << "-->"
+                  << "bundle : " << bundle(target(*oei)).get()
                   << ", index : " << index(target(*oei))
-                  << ", color : " << color(target(*oei));
+                  << ", color : " << color(target(*oei)) << std::endl;
       }
       std::cout << std::endl;
     }
+  }
+
+  void graphviz() const
+  {
+    std::ofstream ofs("siconos.dot");
+    boost::write_graphviz(ofs, g);
   }
 
   /* debug */

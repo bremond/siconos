@@ -66,9 +66,8 @@ int main()
   static_assert(transform([]<typename T>(T) { return int{}; },
                           std::tuple<char, float, double>{}) ==
                 std::tuple<int, int, int>{});
-  static_assert(
-      std::is_same_v<decltype(all_items(nslaw{})),
-                     gather<siconos::model::nsl::newton_impact>>);
+  static_assert(std::is_same_v<decltype(all_items(nslaw{})),
+                               gather<siconos::model::nsl::newton_impact>>);
   static_assert(
       std::is_same_v<decltype([]() {
                        return transform(
@@ -106,16 +105,18 @@ int main()
           typename siconos::traits::config<env>::convert<some::scalar>::type,
           typename env::scalar>);
 
-  static_assert(match::attached_storage<
-                storage::attached<ball, zz, some::scalar>, ball>);
-  static_assert(match::attached_storage<
-                storage::attached<ball, zz, some::scalar>,
-                wrap<some::unbounded_collection, ball>>);
+  static_assert(
+      match::attached_storage<storage::attached<ball, zz, some::scalar>,
+                              ball>);
+  static_assert(
+      match::attached_storage<storage::attached<ball, zz, some::scalar>,
+                              wrap<some::unbounded_collection, ball>>);
   static_assert(match::attached_storage<
                 storage::attached<ball, symbol<"Z">, some::scalar>,
                 wrap<some::unbounded_collection, ball>>);
-  static_assert(!match::attached_storage<
-                storage::attached<ball, zz, some::scalar>, nslaw>);
+  static_assert(
+      !match::attached_storage<storage::attached<ball, zz, some::scalar>,
+                               nslaw>);
 
   static_assert(
       match::unbounded_storage<some::unbounded_collection<some::scalar>>);
@@ -155,19 +156,21 @@ int main()
                                    ground::derive_from<some::scalar>)),
                                std::tuple<nslaw::e>>);
 
-  static_assert(std::is_same_v<
-                decltype(attributes(interaction{})),
-                gather<some::indice_parameter<"dof">, some::indice_value<1>,
-                       interaction::nonsmooth_law, interaction::relation,
-                       interaction::h_matrix, interaction::lambda,
-                       interaction::y, interaction::ydot>>);
+  static_assert(
+      std::is_same_v<
+          decltype(attributes(interaction{})),
+          gather<some::indice_parameter<"dof">, some::indice_value<1>,
+                 interaction::nonsmooth_law, interaction::relation,
+                 interaction::h_matrix1, interaction::h_matrix2,
+                 interaction::lambda, interaction::y, interaction::ydot>>);
 
-  static_assert(std::is_same_v<
-                decltype(all_attributes(interaction{})),
-                gather<some::indice_parameter<"dof">, some::indice_value<1>,
-                       interaction::nonsmooth_law, interaction::relation,
-                       interaction::h_matrix, interaction::lambda,
-                       interaction::y, interaction::ydot, nslaw::e>>);
+  static_assert(
+      std::is_same_v<decltype(all_attributes(interaction{})),
+                     gather<some::indice_parameter<"dof">,
+                            some::indice_value<1>, interaction::nonsmooth_law,
+                            interaction::relation, interaction::h_matrix1,
+                            interaction::h_matrix2, interaction::lambda,
+                            interaction::y, interaction::ydot, nslaw::e>>);
 
   //}
 

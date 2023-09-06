@@ -18,6 +18,9 @@ concept vector = matrix<T> && T::ColsAtCompileTime == 1;
 template <typename T>
 concept diagonal_matrix = !matrix<T> && requires(T m) { m.diagonal()[0]; };
 
+template <typename T>
+concept any_matrix = (diagonal_matrix<T> || matrix<T>);
+
 }  // namespace match
 
 template <typename T, size_t M, size_t N>
@@ -26,8 +29,8 @@ using matrix = Eigen::Matrix<T, M, N>;  // column storage
 template <typename T, size_t M>
 using vector = Eigen::Vector<T, M>;  // column vector
 
-  template<typename T>
-  using matrix_view = Eigen::Map<T>;
+template <typename T>
+using matrix_view = Eigen::Map<T>;
 static_assert(vector<int, 3>::ColsAtCompileTime == 1);
 
 template <typename T, size_t M>

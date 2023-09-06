@@ -40,7 +40,7 @@ struct time_stepping : item<> {
 
     decltype(auto) time_step() { return self()->time_discretization().h(); }
 
-    void compute_one_step()
+    auto compute_one_step()
     {
       auto osi = one_step_integrator();
       auto step = current_step();
@@ -55,48 +55,52 @@ struct time_stepping : item<> {
       // -> ydot (step+1)
       osi.update_positions(step, time_step());
       osi.compute_output(step);
-      osi.compute_output(step+1);
+      osi.compute_output(step + 1);
 
       // activations of interactions
       update_indexsets(0);
-      topology().make_index();
 
-      if (topology().ninvds() > 0) {
+      // compute active interactions
+      auto [ninter,nds] = osi.compute_active_interactions(step, time_step());
+
+      if (nds > 0) {
         // a least one activated interaction
 
-        print("ninvds = {}\n", topology().ninvds());
+        print("ninter, nds = {},{}\n", ninter, nds);
 
-        osi.assemble_h_matrix_for_involved_ds(step, topology().ninvds());
-        osi.assemble_mass_matrix_for_involved_ds(step, topology().ninvds());
+        osi.assemble_h_matrix_for_involved_ds(step, ninter, nds);
+        osi.assemble_mass_matrix_for_involved_ds(step, nds);
 
-        osi.resize_assembled_vectors(step);
+        osi.resize_assembled_vectors(step, ninter);
 
         // H M^-1 H^t
         osi.compute_w_matrix(step);
         osi.nsl_effect_on_free_output(step);
-        osi.compute_q_nsp_vector_assembled(step);
+        osi.compute_q_nsp_vector_assembled(step, ninter);
 
-        self()->template solve_nonsmooth_problem<formulation_t>();
+        self()->template solve_nonsmooth_problem<formulation_t>(step, ninter);
 
         osi.compute_input();
         osi.update_all_velocities(step);
+        osi.update_positions(step, time_step());
       }
       else {
         print(".");
       }
-      osi.update_positions(step, time_step());
 
       current_step() += 1;
+
+      return nds;
     }
 
     template <typename Formulation>
-    void solve_nonsmooth_problem()
+    void solve_nonsmooth_problem(auto step, auto ninter)
     {  // Mz=w+q
       auto osi = self()->one_step_integrator();
-      resize(osi.lambda_vector_assembled(),
-             size0(osi.q_nsp_vector_assembled()));
-      resize(osi.ydot_vector_assembled(),
-             size0(osi.q_nsp_vector_assembled()));
+
+//      resize(osi.lambda_vector_assembled(), ninter);
+//      resize(osi.ydot_vector_assembled(), ninter);
+
       self()->one_step_nonsmooth_problem().template solve<Formulation>(
           osi.w_matrix(),                 // M
           osi.q_nsp_vector_assembled(),   // q
@@ -115,15 +119,11 @@ struct time_stepping : item<> {
       using info_t = std::decay_t<decltype(ground::get<storage::info>(data))>;
       using env = typename info_t::env;
 
-      auto osi = self()->one_step_integrator();
       auto topo = self()->topology();
 
       auto& index_set0 = topo.interaction_graphs()[0];
       auto& index_set1 = topo.interaction_graphs()[1];
       //        auto& dsg0 = topo.dynamical_system_graphs()[0];
-
-      // compute active interactions
-      osi.compute_active_interactions(current_step(), time_step());
 
       // Check index_set1
       auto [ui1, ui1end] = index_set1.vertices();

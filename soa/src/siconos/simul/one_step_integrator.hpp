@@ -1,5 +1,6 @@
 #pragma once
 
+#include "siconos/algebra/numerics.hpp"
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/pattern.hpp"
 #include "siconos/utils/print.hpp"
@@ -21,7 +22,8 @@ struct one_step_integrator {
   using q = typename system::q;
   using velocity = typename system::velocity;
   using mass_matrix = typename system::mass_matrix;
-  using h_matrix = typename interaction::h_matrix;
+  using h_matrix1 = typename interaction::h_matrix1;
+  using h_matrix2 = typename interaction::h_matrix2;
   using fext = typename system::fext;
 
   struct euler : item<> {
@@ -55,7 +57,7 @@ struct one_step_integrator {
         : some::scalar,
           access<constraint_activation_threshold> {};
 
-    struct h_matrix_assembled : some::unbounded_matrix<h_matrix>,
+    struct h_matrix_assembled : some::unbounded_matrix<h_matrix1>,
                                 access<h_matrix_assembled> {};
     struct q_nsp_vector_assembled
         : some::unbounded_vector<some::vector<some::scalar, nslaw_size>>,
@@ -81,8 +83,8 @@ struct one_step_integrator {
                                    access<mass_matrix_assembled> {};
     struct w_matrix
         : some::unbounded_matrix<
-              some::matrix<some::scalar, nth_t<0, typename h_matrix::sizes>,
-                           nth_t<0, typename h_matrix::sizes>>>,
+              some::matrix<some::scalar, nth_t<0, typename h_matrix1::sizes>,
+                           nth_t<0, typename h_matrix1::sizes>>>,
           access<w_matrix> {};
 
     using attributes =
@@ -154,23 +156,29 @@ struct one_step_integrator {
 
         auto &ys = storage::attr_values<y>(data, step);
         auto &ydots = storage::attr_values<ydot>(data, step);
-        auto &h_matrices = storage::attr_values<h_matrix>(data, step);
+        auto &h_matrices1 = storage::attr_values<h_matrix1>(data, step);
+        auto &h_matrices2 = storage::attr_values<h_matrix2>(data, step);
 
         auto &qs = storage::attr_values<q>(data, step);
-
         auto &velocities = storage::attr_values<velocity>(data, step);
 
-        auto &ids1s = storage::prop_values<interaction, "ds1">(data, step);
-        auto &ids2s = storage::prop_values<interaction, "ds2">(data, step);
+        auto &ds1s = storage::prop_values<interaction, "ds1">(data, step);
+        auto &ds2s = storage::prop_values<interaction, "ds2">(data, step);
 
-        for (auto [y, ydot, hm, ids1, jds2] :
-             views::zip(ys, ydots, h_matrices, ids1s, ids2s)) {
-          // only one ds a the moment
-          auto i = prop<"index">(storage::handle(ids1, data));
+        auto &ndss = storage::prop_values<interaction, "nds">(data, step);
 
-          y = hm * qs[i];
-          ydot = hm * velocities[i];
-          // fix for second ds
+        // global h_matrix is not assembled at this stage
+        for (auto [y, ydot, hm1, hm2, ds1, ds2, nds] : views::zip(
+                 ys, ydots, h_matrices1, h_matrices2, ds1s, ds2s, ndss)) {
+          if (nds == 1) {
+            y = hm1 * qs[ds1.get()];
+            ydot = hm1 * velocities[ds1.get()];
+          }
+          else {
+            assert(nds == 2);
+            y = hm1 * qs[ds1.get()] + hm2 * qs[ds2.get()];
+            ydot = hm1 * velocities[ds1.get()] + hm2 * velocities[ds2.get()];
+          }
         }
       }
 
@@ -183,8 +191,8 @@ struct one_step_integrator {
         auto &velo = velocity_vector_assembled();
         auto &mass_matrix = mass_matrix_assembled();
 
-        resize(p0, size0(h_matrix));
-        resize(velo, size0(h_matrix));
+        resize(p0, size1(h_matrix));
+        resize(velo, size1(h_matrix));
 
         transpose(h_matrix);
 
@@ -197,162 +205,168 @@ struct one_step_integrator {
         // velo += h_matrix^t * ydot
         prodt1(h_matrix, ydot, velo);
 
-        print("ydot assembled:{}\n", get_vector(ydot, 0));
-        print("lambda assembled:{}\n", get_vector(lambda, 0));
-        print("p0 assembled:{}\n", get_vector(p0, 0));
-        print("velo assembled:{}\n", get_vector(velo, 0));
+        print("ydot assembled:\n");
+        numerics::display(ydot);
+        print("lambda assembled:\n");
+        numerics::display(lambda);
+        print("p0 assembled:\n");
+        numerics::display(p0);
+        print("velo assembled:\n");
+        numerics::display(velo);
       }
 
-      void compute_active_interactions(auto step, auto h)
+      auto compute_active_interactions(auto step, auto h)
       {
         auto &data = self()->data();
+
+        using info_t =
+            std::decay_t<decltype(ground::get<storage::info>(data))>;
+        using env = typename info_t::env;
+        using indice = typename env::indice;
 
         auto &ys = storage::attr_values<y>(data, step + 1);
         auto &ydots = storage::attr_values<ydot>(data, step + 1);
 
+        auto &ids1s = storage::prop_values<interaction, "ds1">(data, step);
+        auto &ids2s = storage::prop_values<interaction, "ds2">(data, step);
+
         auto &activations =
             storage::prop_values<interaction, "activation">(data, step);
 
+        auto &involveds =
+            storage::prop_values<system, "involved">(data, step);
+
+        auto &irels =
+            storage::attr_values<typename interaction::relation>(data, step);
+
+        const auto &interactions = storage::handles<interaction>(data, step);
+
+        // all ds -> not involved
+        // without zip : involved is a copy not a ref!!
+        for (auto [involved] : views::zip(involveds)) {
+          involved = false;
+        };
+
         auto gamma_v = 0.5;
 
-        for (auto [y, ydot, activation] :
-             views::zip(ys, ydots, activations)) {
+        indice ds_counter = 0;
+        indice inter_counter = 0;
+        for (auto [y, ydot, activation, ids1, ids2, inter] :
+             views::zip(ys, ydots, activations, ids1s, ids2s, interactions)) {
+          auto b = inter.relation().b();
           // on normal component
-          activation = ((y + gamma_v * h * ydot)(0) <=
+          activation = ((y + gamma_v * h * ydot)(0) + b <=
                         self()->constraint_activation_threshold());
 
           if (activation) {
-            print("\nstep: {}, time: {} => ACTIVATION!\ny:{}, ydot:{}\n",
-                  step, step * h, y, ydot);
+            inter_counter++;
+
+            auto ds1 = storage::handle(ids1, data);
+            auto ds2 = storage::handle(ids2, data);
+
+            if (!prop<"involved">(ds1)) {
+              prop<"involved">(ds1) = true;
+              prop<"index">(ds1) = ds_counter++;
+            };
+
+            if (!prop<"involved">(ds2)) {
+              prop<"involved">(ds2) = true;
+              prop<"index">(ds2) = ds_counter++;
+            }
+
+            print(
+                "\nstep: {}, time: {} => ACTIVATION {}<->{} !\ny:{}, "
+                "ydot:{}\n",
+                step, step * h, ids1.get(), ids2.get(), y, ydot);
           }
         }
+        return std::pair{inter_counter, ds_counter};
       }
 
       // strategy 1 : assemble the matrix for involved ds only
-      auto assemble_h_matrix_for_involved_ds(auto step, auto size)
+      auto assemble_h_matrix_for_involved_ds(auto step, auto ninter, auto nds)
       {
         auto &data = self()->data();
-        auto &h_matrices =
-            storage::memory(step, storage::attr_memory<h_matrix>(data));
-        auto &ids1s =
-            ground::get<storage::attached<interaction, symbol<"ds1">,
-                                          some::item_ref<system>>>(data)[0];
-        auto &ids2s =
-            ground::get<storage::attached<interaction, symbol<"ds2">,
-                                          some::item_ref<system>>>(data)[0];
 
-        resize(self()->h_matrix_assembled(), size, size);
-        for (auto [mat, ids1, ids2] : views::zip(h_matrices, ids1s, ids2s)) {
-          auto i = storage::handle(ids1, data)
-                       .property(symbol<"index">{});  // involved index
-          auto j = storage::handle(ids2, data)
-                       .property(symbol<"index">{});  // involved index
-          set_value(self()->h_matrix_assembled(), i, j,
-                    mat);  // sparse block matrix
+        resize(self()->h_matrix_assembled(), ninter, nds);
+
+        for (auto [i, hi] :
+             (storage::handles<interaction>(data, step) |
+              views::filter([](auto h) { return prop<"activation">(h); })) |
+                 views::enumerate) {
+          auto mat1 = hi.h_matrix1();
+          auto mat2 = hi.h_matrix2();
+          auto ids1 = prop<"ds1">(hi);
+          auto ids2 = prop<"ds2">(hi);
+
+          auto j1 = prop<"index">(storage::handle(ids1, data));
+          auto j2 = prop<"index">(storage::handle(ids2, data));
+
+          if (j1 == j2) {
+            // one block
+            set_value(self()->h_matrix_assembled(), i, j1,
+                      mat1);  // sparse block matrix
+          }
+          else {
+            // i!=j blocks
+            set_value(self()->h_matrix_assembled(), i, j1,
+                      mat1);  // sparse block matrix
+            set_value(self()->h_matrix_assembled(), i, j2,
+                      mat2);  // sparse block matrix
+          }
         }
+
+        print("h_matrix:\n");
+        numerics::display(h_matrix_assembled());
+        print("================\n");
       }
 
-      auto resize_assembled_vectors(auto step)
+      auto resize_assembled_vectors(auto step, auto ninter)
       {
-        auto &data = self()->data();
-        auto &h_matrices =
-            storage::memory(step, storage::attr_memory<h_matrix>(data));
-        auto size = std::size(h_matrices);
-
-        resize(self()->y_vector_assembled(), size);
-        resize(self()->ydot_vector_assembled(), size);
-        resize(self()->lambda_vector_assembled(), size);
-      }
-
-      // strategy 2 : assemble the whole matrix (size = number of ds)
-      auto assemble_h_matrix_for_all_ds(auto step)
-      {
-        auto &data = self()->data();
-
-        // size is the number of ds
-        auto size = std::size(
-            storage::memory(step, storage::attr_memory<mass_matrix>(data)));
-
-        auto &h_matrices =
-            storage::memory(step, storage::attr_memory<h_matrix>(data));
-        auto &ids1s =
-            ground::get<storage::attached<interaction, symbol<"ds1">,
-                                          some::item_ref<system>>>(data)[0];
-        auto &ids2s =
-            ground::get<storage::attached<interaction, symbol<"ds2">,
-                                          some::item_ref<system>>>(data)[0];
-
-        resize(self()->h_matrix_assembled(), size, size);
-        for (auto [mat, ids1, ids2] : views::zip(h_matrices, ids1s, ids2s)) {
-          auto i = storage::handle(ids1, data).get();  // global index
-          auto j = storage::handle(ids2, data).get();  // global index
-          set_value(self()->h_matrix_assembled(), i, j, mat);
-        }
+        resize(self()->y_vector_assembled(), ninter);
+        resize(self()->ydot_vector_assembled(), ninter);
+        resize(self()->lambda_vector_assembled(), ninter);
       }
 
       auto assemble_mass_matrix_for_involved_ds(auto step, auto size)
       {
         auto &data = self()->data();
 
-        auto &mass_matrices =
-            storage::memory(step, storage::attr_memory<mass_matrix>(data));
-        auto &free_velocities =
-            storage::memory(step + 1, storage::attr_memory<velocity>(data));
-        auto &involved_ds = ground::get<
-            storage::attached<system, symbol<"involved">, some::boolean>>(
-            data)[0];
-
         // size may be 0
         resize(mass_matrix_assembled(), size, size);
-        resize(free_velocity_vector_assembled(), size);
+        resize(free_velocity_vector_assembled(), size);  // !!!
 
-        for (auto [i, mat_velo] : views::zip(mass_matrices, free_velocities) |
-                                      views::enumerate |
-                                      views::filter([&involved_ds](auto k_m) {
-                                        auto [k, _] = k_m;
-                                        return involved_ds[k];
-                                      })) {
-          auto &[mat, velo] = mat_velo;
-          print("velo {}\n", velo);
-          set_value(self()->mass_matrix_assembled(), i, i, mat);
-          //          set_value(self()->free_velocity_vector_assembled(), i,
-          //          velo);
+        for (auto hds :
+             storage::handles<system>(data, step) |
+                 views::filter([](auto h) { return prop<"involved">(h); })) {
+          auto i = prop<"index">(hds);
+          set_value(mass_matrix_assembled(), i, i, hds.mass_matrix());
         }
+
+        print("mass_matrix:\n");
+        numerics::display(mass_matrix_assembled());
+        print("================\n");
         assert(size0(mass_matrix_assembled()) ==
                size1(mass_matrix_assembled()));
       }
 
-      auto assemble_mass_matrix_for_all_ds(auto step)
-      {
-        auto &data = self()->data();
-
-        // size is the number of ds
-        auto size = std::size(
-            storage::memory(step, storage::attr_memory<mass_matrix>(data)));
-
-        auto &mass_matrices =
-            storage::memory(step, storage::attr_memory<mass_matrix>(data));
-
-        self()->mass_matrix_assembled().resize(size, size);
-
-        // also mapping block vector -> block diagonal matrix
-        for (auto [i, mat] : views::enumerate(mass_matrices)) {
-          set_value(self()->mass_matrix_assembled(), i, i, mat);
-        }
-      }
-
       // compute H vfree
-      auto compute_q_nsp_vector_assembled(auto step)
+      auto compute_q_nsp_vector_assembled(auto step, auto ninter)
       {
         auto &data = self()->data();
 
-        resize(q_nsp_vector_assembled(),
-               size0(free_velocity_vector_assembled()));
+        resize(q_nsp_vector_assembled(), ninter);
 
         auto &ydots = storage::attr_values<ydot>(data, step + 1);
 
-        for (auto [i, ydot] : ydots | views::enumerate) {
-          set_value(q_nsp_vector_assembled(), i, ydot);
+        auto k = 0;
+        for (auto [i, inter] : storage::handles<interaction>(data, step + 1) |
+               views::enumerate)
+        {
+          if (prop<"activation">(inter))
+          {
+            set_value(q_nsp_vector_assembled(), k++, ydots[inter.get()]);
+          };
         }
       }
       // compute H M^-1 H^t
@@ -363,7 +377,7 @@ struct one_step_integrator {
             std::decay_t<decltype(ground::get<storage::info>(data))>;
         using env = typename info_t::env;
         auto tmp_matrix = typename traits::config<env>::template convert<
-            some::unbounded_matrix<some::transposed_matrix<h_matrix>>>::
+            some::unbounded_matrix<some::transposed_matrix<h_matrix1>>>::
             type{};
 
         resize(tmp_matrix, size1(h_matrix_assembled()),
@@ -382,6 +396,10 @@ struct one_step_integrator {
         resize(w_matrix(), size0(h_matrix_assembled()), size1(tmp_matrix));
 
         prod(h_matrix_assembled(), tmp_matrix, w_matrix());
+
+        print("w_matrix:\n");
+        numerics::display(w_matrix());
+        print("================\n");
       }
 
       void update_velocity_for_involved_ds() {}
@@ -410,14 +428,17 @@ struct one_step_integrator {
         auto &involved_ds =
             storage::prop_values<system, "involved">(data, step);
 
+        auto &indices = storage::prop_values<system, "index">(data, step);
+
         // involved ds velocities -> ds velocities
-        for (auto [i, v] : all_vs | views::enumerate |
-                               views::filter([&involved_ds](auto k_m) {
-                                 auto [k, _] = k_m;
-                                 return involved_ds[k];
-                               })) {
+        for (auto [i, iv] : views::zip(indices, all_vs) | views::enumerate |
+                                views::filter([&involved_ds](auto k__) {
+                                  auto [k, _] = k__;
+                                  return involved_ds[k];
+                                })) {
+          auto [indx, v] = iv;
           // copy
-          v += get_vector(velo, i);
+          v += get_vector(velo, indx);
         }
       }
 

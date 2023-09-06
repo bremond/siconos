@@ -6,22 +6,24 @@ namespace siconos::data {
 using ball = model::lagrangian_ds;
 using lcp = numerics::nonsmooth_problem<LinearComplementarityProblem>;
 using osnspb = numerics::one_step_nonsmooth_problem<lcp>;
-using relation = model::lagrangian_r;
+using relation = model::lagrangian_tir;
 using nslaw = model::nsl::newton_impact;
 using interaction = simul::interaction<nslaw, relation, 1>;
 using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
 using topo = simul::topology<ball, interaction>;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
-}  // namespace siconos
+}  // namespace siconos::data
 
 int main(int argc, char* argv[])
 {
   using namespace siconos;
   auto data = storage::make_storage<
-    standard_environment, data::simulation, data::ball, data::relation, data::interaction,
-    storage::with_properties<storage::diagonal<data::ball::mass_matrix>,
-                    storage::unbounded_diagonal<data::osi::mass_matrix_assembled>>>();
+      standard_environment, data::simulation, data::ball, data::relation,
+      data::interaction,
+      storage::with_properties<
+          storage::diagonal<data::ball::mass_matrix>,
+          storage::unbounded_diagonal<data::osi::mass_matrix_assembled>>>();
 
   // unsigned int nDof = 3;         // degrees of freedom for the ball
   double t0 = 0;               // initial computation time
@@ -86,7 +88,7 @@ int main(int argc, char* argv[])
 
   // Interaction ball-floor
   auto interaction = simulation.topology().link(ball);
-  interaction.h_matrix() = {1., 0., 0.};
+  interaction.h_matrix1() = {1., 0., 0.};
   interaction.relation() = relation;
   interaction.nonsmooth_law() = nslaw;
 
@@ -102,16 +104,22 @@ int main(int argc, char* argv[])
       simulation.current_step());
 
   auto out = fmt::output_file("result.dat");
+
+  out.print("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
+            simulation.current_step() * simulation.time_step(),
+            data::ball::q::at(ball, simulation.current_step())(0),
+            data::ball::velocity::at(ball, simulation.current_step())(0), 0.,
+            0.);
+
   while (simulation.has_next_event()) {
-    simulation.compute_one_step();
+    auto ninvds = simulation.compute_one_step();
 
     double p0, lambda;
-    if (simulation.topology().ninvds() > 0) {
-      p0 = get_vector(
-          simulation.one_step_integrator().p0_vector_assembled(), 0)(0);
+    if (ninvds > 0) {
+      p0 = get_vector(simulation.one_step_integrator().p0_vector_assembled(),
+                      0)(0);
       lambda = get_vector(
-          simulation.one_step_integrator().lambda_vector_assembled(),
-          0)(0);
+          simulation.one_step_integrator().lambda_vector_assembled(), 0)(0);
     }
     else {
       p0 = 0;
