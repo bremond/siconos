@@ -1,7 +1,7 @@
 #pragma once
 #include <petscmat.h>
 
-#include "siconos/utils/traits.hpp"
+#include "siconos/storage/traits/traits.hpp"
 
 namespace siconos {
 namespace petsc {

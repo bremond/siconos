@@ -1,7 +1,6 @@
 #pragma once
 
-#include "siconos/storage/storage.hpp"
-#include "siconos/utils/pattern.hpp"
+#include "siconos/model/model.hpp"
 
 namespace siconos::model {
 struct equality_condition {};

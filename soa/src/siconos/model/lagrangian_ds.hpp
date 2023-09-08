@@ -1,8 +1,6 @@
 #pragma once
 
-#include "siconos/storage/storage.hpp"
-#include "siconos/utils/pattern.hpp"
-#include "siconos/utils/some.hpp"
+#include "siconos/model/model.hpp"
 
 namespace siconos::model {
 

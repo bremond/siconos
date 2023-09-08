@@ -1,8 +1,9 @@
 #pragma once
 
+#include "siconos/simul/simul.hpp"
+
 #include "siconos/algebra/numerics.hpp"
-#include "siconos/storage/storage.hpp"
-#include "siconos/utils/pattern.hpp"
+
 #include "siconos/utils/print.hpp"
 #include "siconos/utils/range.hpp"
 

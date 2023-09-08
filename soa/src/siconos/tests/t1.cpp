@@ -4,10 +4,18 @@
 using namespace siconos;
 using env = siconos::standard_environment;
 
+#include "siconos/storage/ground/ground.hpp"
+#include "siconos/storage/some/some.hpp"
+#include "siconos/storage/traits/traits.hpp"
 #include "siconos/utils/environment.hpp"
-#include "siconos/utils/some.hpp"
 
 namespace siconos {
+
+namespace some = storage::some;
+namespace traits = storage::traits;
+namespace ground = storage::ground;
+using namespace storage::pattern;
+
 struct aaa {
   int v = 1;
 };
@@ -41,8 +49,8 @@ using namespace boost::hana::literals;
 int main()
 {
   using ball = model::lagrangian_ds;
-  using lcp = numerics::nonsmooth_problem<LinearComplementarityProblem>;
-  using osnspb = numerics::one_step_nonsmooth_problem<lcp>;
+  using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
+  using osnspb = simul::one_step_nonsmooth_problem<lcp>;
   using relation = model::lagrangian_r;
   using nslaw = model::newton_impact;
   using interaction = simul::interaction<nslaw, relation, 1>;

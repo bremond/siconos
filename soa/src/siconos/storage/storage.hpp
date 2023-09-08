@@ -7,15 +7,17 @@
 #include <type_traits>
 #include <variant>
 
-#include "siconos/utils/base.hpp"
-#include "siconos/utils/ground.hpp"
-#include "siconos/utils/pattern.hpp"
+#include "siconos/storage/pattern/base.hpp"
+#include "siconos/storage/ground/ground.hpp"
+#include "siconos/storage/pattern/pattern.hpp"
 #include "siconos/utils/range.hpp"
-#include "siconos/utils/some.hpp"
-#include "siconos/utils/traits.hpp"
-#include "siconos/utils/utils.hpp"
+#include "siconos/storage/some/some.hpp"
+#include "siconos/storage/traits/traits.hpp"
+#include "siconos/storage/pattern/base_concepts.hpp"
 
 namespace siconos::storage {
+
+using namespace pattern;
 
 template <match::item I, typename Tag, match::attribute DataSpec>
 struct attached : DataSpec, some::attached_storage {

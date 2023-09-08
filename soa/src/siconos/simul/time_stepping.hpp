@@ -1,8 +1,7 @@
 #pragma once
 
+#include "siconos/simul/simul.hpp"
 #include "siconos/model/nslaws.hpp"
-#include "siconos/storage/storage.hpp"
-#include "siconos/utils/pattern.hpp"
 
 namespace siconos::simul {
 template <match::item... Items>

@@ -2,8 +2,8 @@
 
 #include "siconos/utils/environment.hpp"
 #include "siconos/storage/storage.hpp"
-#include "siconos/utils/ground.hpp"
-#include "siconos/utils/pattern.hpp"
+#include "siconos/storage/ground/ground.hpp"
+#include "siconos/storage/pattern/pattern.hpp"
 #include "siconos/algebra/numerics.hpp"
 #include "siconos/model/lagrangian_ds.hpp"
 #include "siconos/model/lagrangian_r.hpp"

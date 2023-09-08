@@ -1,6 +1,5 @@
 #pragma once
 
-#include "siconos/algebra/eigen.hpp"
 #include "siconos/storage/pattern/pattern.hpp"
 
 namespace siconos::storage::traits {

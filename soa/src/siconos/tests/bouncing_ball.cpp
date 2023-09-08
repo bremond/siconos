@@ -4,8 +4,8 @@
 
 namespace siconos::data {
 using ball = model::lagrangian_ds;
-using lcp = numerics::nonsmooth_problem<LinearComplementarityProblem>;
-using osnspb = numerics::one_step_nonsmooth_problem<lcp>;
+using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
+using osnspb = simul::one_step_nonsmooth_problem<lcp>;
 using relation = model::lagrangian_tir;
 using nslaw = model::newton_impact;
 using interaction = simul::interaction<nslaw, relation, 1>;
@@ -82,7 +82,7 @@ int main(int argc, char* argv[])
   osnspb.problem() = lcp;
 
   // -- set the options --
-  auto so = storage::add<numerics::solver_options>(data);
+  auto so = storage::add<simul::solver_options>(data);
   so.create();
   osnspb.options() = so;
 

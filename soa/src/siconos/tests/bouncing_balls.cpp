@@ -8,9 +8,9 @@
 
 namespace siconos::data {
 using ball = model::lagrangian_ds;
-using lcp = numerics::nonsmooth_problem<LinearComplementarityProblem>;
-using fc2d = numerics::nonsmooth_problem<FrictionContactProblem>;
-using osnspb = numerics::one_step_nonsmooth_problem<fc2d>;
+using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
+using fc2d = simul::nonsmooth_problem<FrictionContactProblem>;
+using osnspb = simul::one_step_nonsmooth_problem<fc2d>;
 using relation = model::lagrangian_tir;
 using nslaw = model::newton_impact_friction;
 using interaction = simul::interaction<nslaw, relation, 1>;
@@ -23,6 +23,9 @@ using simulation = simul::time_stepping<td, osi, osnspb, topo>;
 int main(int argc, char* argv[])
 {
   using namespace siconos;
+  namespace some = siconos::storage::some;
+  using siconos::storage::pattern::wrap;
+
   auto data = storage::make_storage<
       standard_environment, data::simulation,
       wrap<some::unbounded_collection, data::ball>,
@@ -105,7 +108,7 @@ int main(int argc, char* argv[])
   osnspb.problem() = fc2d;
 
   // -- set the options --
-  auto so = storage::add<numerics::solver_options>(data);
+  auto so = storage::add<simul::solver_options>(data);
   so.create(SICONOS_FRICTION_2D_NSGS);
   osnspb.options() = so;
 

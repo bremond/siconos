@@ -5,16 +5,10 @@
 #include "NumericsSparseMatrix.h"
 #include "siconos/algebra/eigen.hpp"
 #include "siconos/algebra/linear_algebra.hpp"
-#include "siconos/utils/pattern.hpp"
-#include "siconos/utils/traits.hpp"
+#include "siconos/storage/pattern/pattern.hpp"
+#include "siconos/storage/traits/traits.hpp"
 
-namespace siconos {
-
-static constexpr auto zero_threshold = 1e-30;
-namespace numerics {
-
-namespace match {
-
+namespace siconos::storage::pattern::match {
 template <typename T>
 concept vec = requires { typename T::vec_t; };
 
@@ -28,6 +22,12 @@ template <typename T>
 concept diag_mat = any_mat<T> && requires { typename T::diag_mat_t; };
 
 }  // namespace match
+
+namespace siconos::algebra {
+
+namespace match = siconos::storage::pattern::match;
+
+static constexpr auto zero_threshold = 1e-30;
 
 struct any_mat {
   using any_mat_t = void;
@@ -87,8 +87,8 @@ const auto size1(match::any_mat auto& m) { return m._m->size1 / m.vncols; };
 
 static_assert(vec<vector<int, 2>>::vncols == 1);
 
-void resize(match::any_mat auto& m, siconos::match::indice auto nrows,
-            siconos::match::indice auto ncols)
+void resize(match::any_mat auto& m, match::indice auto nrows,
+            match::indice auto ncols)
 {
   if (m._m) m._m = NM_free(m._m);
   if (m._mt) m._mt = NM_free(m._mt);
@@ -99,7 +99,7 @@ void resize(match::any_mat auto& m, siconos::match::indice auto nrows,
   NM_triplet_alloc(m._m, 1);
 }
 
-void resize(match::vec auto& v, siconos::match::indice auto nrows)
+void resize(match::vec auto& v, match::indice auto nrows)
 {
   if (v._v) v._v = NM_free(v._v);
 
@@ -120,23 +120,23 @@ void transpose(match::any_mat auto& m)
 void setup(match::any_mat auto& m) { resize(m, 1, 1); }
 
 template <typename T>
-void set_value(match::any_mat auto& m, siconos::match::indice auto i,
-               siconos::match::indice auto j, const T& value)
+void set_value(match::any_mat auto& m, match::indice auto i,
+               match::indice auto j, const T& value)
 {
-  if constexpr (siconos::match::scalar<T>) {
+  if constexpr (match::scalar<T>) {
     NM_zentry(m._m, i * m.vnrows, j * m.vncols, value, zero_threshold);
   }
   // diagonal block
-  else if constexpr (siconos::match::diagonal_matrix<T>) {
-    for (decltype(i) k = 0; k < traits::ncols(T{}); ++k) {
+  else if constexpr (match::diagonal_matrix<T>) {
+    for (decltype(i) k = 0; k < ncols(T{}); ++k) {
       NM_zentry(m._m, i * m.vnrows + k, j * m.vncols + k, value.diagonal()(k),
                 zero_threshold);
     }
   }
   // full block
-  else if constexpr (siconos::match::matrix<T>) {
-    for (decltype(i) k = 0; k < traits::nrows(T{}); ++k) {
-      for (decltype(j) l = 0; l < traits::ncols(T{}); ++l) {
+  else if constexpr (match::matrix<T>) {
+    for (decltype(i) k = 0; k < nrows(T{}); ++k) {
+      for (decltype(j) l = 0; l < ncols(T{}); ++l) {
         NM_zentry(m._m, i * m.vnrows + k, j * m.vncols + l, value(k, l),
                   zero_threshold);
       }
@@ -152,15 +152,14 @@ void set_value(match::any_mat auto& m, siconos::match::indice auto i,
 }
 
 template <typename T>
-void set_value(match::vec auto& m, siconos::match::indice auto i,
-               const T& value)
+void set_value(match::vec auto& m, match::indice auto i, const T& value)
 {
-  if constexpr (siconos::match::scalar<T>) {
+  if constexpr (match::scalar<T>) {
     NM_zentry(m._m, i * m.vnrows, 0, value, zero_threshold);
   }
   // vector block
-  else if constexpr (siconos::match::vector<T>) {
-    for (decltype(i) k = 0; k < traits::nrows(T{}); ++k) {
+  else if constexpr (match::vector<T>) {
+    for (decltype(i) k = 0; k < nrows(T{}); ++k) {
       NM_zentry(m._v, i * m.vnrows + k, 0, value(k), zero_threshold);
     }
   }
@@ -174,7 +173,7 @@ void set_value(match::vec auto& m, siconos::match::indice auto i,
   }
 }
 
-template <siconos::match::diagonal_matrix A>
+template <match::diagonal_matrix A>
 void inverse(diag_mat<A>& a)
 {
   if (!a._inversed) {
@@ -197,13 +196,13 @@ void add(const vec<T>& a, vec<T>& b)
 }
 
 template <typename T>
-void scal(siconos::match::scalar auto h, vec<T>& v)
+void scal(match::scalar auto h, vec<T>& v)
 {
   NM_scal(h, v._v);
 }
 
 template <typename T>
-decltype(auto) get_vector(vec<T>& v, siconos::match::indice auto i)
+decltype(auto) get_vector(vec<T>& v, match::indice auto i)
 {
   return matrix_view<T>(v._v->matrix0 + i * v.vnrows);
 }
@@ -243,14 +242,14 @@ void prodt2(const diag_mat<A>& a, const mat<B>& b,
 }
 
 // c <- a^-1 b
-template <siconos::match::diagonal_matrix A, typename B>
+template <match::diagonal_matrix A, typename B>
 void solve(diag_mat<A>& a, vec<B>& b, vec<B>& c)
 {
   inverse(a);
   prod(a, b, c);
 }
 
-template <siconos::match::diagonal_matrix A, siconos::match::matrix B>
+template <match::diagonal_matrix A, match::matrix B>
 void solvet(diag_mat<A>& a, mat<B>& b, mat<trans_t<B>>& c)
 {
   inverse(a);
@@ -263,4 +262,4 @@ void display(match::any_mat auto& a) { NM_display(a._m); }
 void display(match::vec auto& v) { NM_display(v._v); }
 
 }  // namespace numerics
-}  // namespace siconos
+

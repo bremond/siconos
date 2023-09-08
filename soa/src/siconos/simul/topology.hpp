@@ -1,7 +1,7 @@
 #pragma once
 
-#include "siconos/storage/storage.hpp"
-#include "siconos/utils/pattern.hpp"
+#include "siconos/simul/simul.hpp"
+
 #include "siconos/utils/print.hpp"
 #include "siconos/utils/range.hpp"
 

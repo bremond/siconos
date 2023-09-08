@@ -1,7 +1,7 @@
 #pragma once
 
-#include "siconos/utils/pattern.hpp"
-#include "siconos/utils/traits.hpp"
+#include "siconos/storage/pattern/pattern.hpp"
+#include "siconos/storage/traits/traits.hpp"
 
 #include <range/v3/view/join.hpp>
 #include <range/v3/view/stride.hpp>
@@ -22,8 +22,9 @@ static auto solve_in_place(auto& m, auto& x)
   }
   else
     []<bool flag = false>()
-    {  // static_assert(flag, "not implemented");
-      ground::type_trace<decltype(m)>();
+    {
+      static_assert(flag, "not implemented");
+      // storage::ground::type_trace<decltype(m)>();
     }
   ();
 }
