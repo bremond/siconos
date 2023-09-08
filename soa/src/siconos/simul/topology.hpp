@@ -83,11 +83,11 @@ struct topology : item<> {
       prop<"ds1">(inter) = ds;
       prop<"ds2">(inter) = ds;
 
-      dsg0.update_vertices_indices();
-      dsg0.update_edges_indices();
+//      dsg0.update_vertices_indices();
+//      dsg0.update_edges_indices();
 
-      ig0.update_vertices_indices();
-      ig0.update_edges_indices();
+//      ig0.update_vertices_indices();
+//      ig0.update_edges_indices();
 
 /*      print("dsg0:\n:");
       print("=========\n");
@@ -123,11 +123,11 @@ struct topology : item<> {
       inter.property(symbol<"ds1">{}) = ds1;
       inter.property(symbol<"ds2">{}) = ds2;
 
-      dsg0.update_vertices_indices();
-      dsg0.update_edges_indices();
+//      dsg0.update_vertices_indices();
+//      dsg0.update_edges_indices();
 
-      ig0.update_vertices_indices();
-      ig0.update_edges_indices();
+//      ig0.update_vertices_indices();
+//      ig0.update_edges_indices();
 
 /*      print("dsg0:\n:");
       print("=========\n");

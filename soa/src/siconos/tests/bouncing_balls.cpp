@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
 
   // unsigned int nDof = 3;         // degrees of freedom for the ball
   double t0 = 0;               // initial computation time
-  double tmax = 1;            // final computation time
+  double tmax = 10;            // final computation time
   double h = 0.005;            // time step
   double position_init = 1.0;  // initial position for lowest bead.
   double velocity_init = 0.0;  // initial velocity for lowest bead.
@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
   double m = 1.;               // Ball mass
   double g = 9.81;             // Gravity
 
-  unsigned int nballs = 300000;
+  unsigned int nballs = 1000000;
   print("====> Model loading ...\n");
 
   // ---------------------------
