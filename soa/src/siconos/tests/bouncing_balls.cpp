@@ -1,13 +1,18 @@
 
+#include <Friction_cst.h>
+#include "siconos/model/nslaws.hpp"
 #include "siconos/siconos.hpp"
 #include "siconos/utils/print.hpp"
+#include <numeric>
+#include <chrono>
 
 namespace siconos::data {
 using ball = model::lagrangian_ds;
 using lcp = numerics::nonsmooth_problem<LinearComplementarityProblem>;
-using osnspb = numerics::one_step_nonsmooth_problem<lcp>;
+using fc2d = numerics::nonsmooth_problem<FrictionContactProblem>;
+using osnspb = numerics::one_step_nonsmooth_problem<fc2d>;
 using relation = model::lagrangian_tir;
-using nslaw = model::nsl::newton_impact;
+using nslaw = model::newton_impact_friction;
 using interaction = simul::interaction<nslaw, relation, 1>;
 using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
@@ -21,15 +26,15 @@ int main(int argc, char* argv[])
   auto data = storage::make_storage<
       standard_environment, data::simulation,
       wrap<some::unbounded_collection, data::ball>,
-    wrap<some::unbounded_collection, data::relation>,
-    wrap<some::unbounded_collection, data::interaction>,
-    storage::with_properties<
-      storage::diagonal<data::ball::mass_matrix>,
-      storage::unbounded_diagonal<data::osi::mass_matrix_assembled>>>();
+      wrap<some::unbounded_collection, data::relation>,
+      wrap<some::unbounded_collection, data::interaction>,
+      storage::with_properties<
+          storage::diagonal<data::ball::mass_matrix>,
+          storage::unbounded_diagonal<data::osi::mass_matrix_assembled>>>();
 
   // unsigned int nDof = 3;         // degrees of freedom for the ball
   double t0 = 0;               // initial computation time
-  double tmax = 1;             // final computation time
+  double tmax = 1;            // final computation time
   double h = 0.005;            // time step
   double position_init = 1.0;  // initial position for lowest bead.
   double velocity_init = 0.0;  // initial velocity for lowest bead.
@@ -38,28 +43,25 @@ int main(int argc, char* argv[])
   double m = 1.;               // Ball mass
   double g = 9.81;             // Gravity
 
+  unsigned int nballs = 300000;
   print("====> Model loading ...\n");
 
   // ---------------------------
   // -- The dynamical_systems --
   // ---------------------------
-  auto ball1 = storage::add<data::ball>(data);
-  auto ball2 = storage::add<data::ball>(data);
+  for (unsigned int i=0; i<nballs; ++i)
+  {
+    auto ball = storage::add<data::ball>(data);
+    ball.q() = {position_init * (i+1), 0, 0};
+    ball.velocity() = {velocity_init, 0, 0};
+    ball.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
+    ball.fext() = {-m * g, 0., 0.};
+  }
 
-  ball1.q() = {position_init, 0, 0};
-  ball2.q() = {position_init * 2, 0, 0};
-
-  fmt::print("{} - {}\n", ball1.q(), ball2.q());
-
-  ball1.velocity() = {velocity_init, 0, 0};
-  ball2.velocity() = {velocity_init, 0, 0};
-  ball1.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
-  ball2.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
-
-  // -- Set external forces (weight) --
-  ball1.fext() = {-m * g, 0., 0.};
-  ball2.fext() = {-m * g, 0., 0.};
-
+  for (auto ball : storage::handles<data::ball>(data, 0))
+  {
+    print("ball:{} , ball.q()={}\n", ball.get(), ball.q()[0]);
+  }
   // ------------------
   // -- The relation --
   // ------------------
@@ -67,21 +69,25 @@ int main(int argc, char* argv[])
   // -- Lagrangian relation --
   auto relation_f = storage::add<data::relation>(data);
   auto relation_b = storage::add<data::relation>(data);
-  relation_f.b() = - radius;
+  relation_f.b() = -radius;
   relation_b.b() = -2 * radius;
 
-  auto vbs = storage::attr_values<typename data::relation::b>(data, 0);
-//  assert(vbs[0] == 0);
-//  assert(vbs[1] == -0.2);
+  //  assert(vbs[0] == 0);
+  //  assert(vbs[1] == -0.2);
   //  the_relation.h_matrix() = {1.0, 0., 0.};
 
   // -- nslaw --
   double e = 0.9;
   auto nslaw = storage::add<data::nslaw>(data);
   nslaw.e() = e;
+  nslaw.mu() = 0.;
 
-  auto lcp = storage::add<data::lcp>(data);
-  lcp.create();
+//  auto lcp = storage::add<data::lcp>(data);
+//  lcp.create();
+  auto fc2d = storage::add<data::fc2d>(data);
+  fc2d.create();
+  fc2d.instance()->dimension = 2;
+  fc2d.instance()->mu = 0;
 
   // ------------------
   // --- Simulation ---
@@ -96,26 +102,42 @@ int main(int argc, char* argv[])
   simulation.time_discretization().tmax() = tmax;
   // -- set the formulation for the one step nonsmooth problem --
   auto osnspb = simulation.one_step_nonsmooth_problem();
-  osnspb.problem() = lcp;
+  osnspb.problem() = fc2d;
 
   // -- set the options --
   auto so = storage::add<numerics::solver_options>(data);
-  so.create();
+  so.create(SICONOS_FRICTION_2D_NSGS);
   osnspb.options() = so;
 
-  // Interaction ball-floor
-  auto interaction1 = simulation.topology().link(ball1);
-  auto interaction2 = simulation.topology().link(ball1, ball2);
-  interaction1.h_matrix1() = {1., 0., 0.};
-  interaction1.h_matrix2() = {1., 0., 0.};
-  interaction2.h_matrix1() = {-1., 0., 0.};
-  interaction2.h_matrix2() = {1., 0., 0.};
+  auto balls = storage::handles<data::ball>(data, 0);
 
-  interaction1.relation() = relation_f;
-  interaction2.relation() = relation_b;
+  auto first_ball = (balls | views::take(1)).front();
+//    views::transform([&simulation, &radius, &relation_f, &nslaw](auto first_ball)
+//    {
+  auto interaction = simulation.topology().link(first_ball);
+  interaction.h_matrix1() <<
+        1., 0., 0.,
+        0., 1., -radius;
+  interaction.h_matrix2() <<
+        1., 0., 0.,
+        0., 1., -radius;
+  interaction.relation() = relation_f;
+  interaction.nonsmooth_law() = nslaw;
+//    });
 
-  interaction1.nonsmooth_law() = nslaw;
-  interaction2.nonsmooth_law() = nslaw;
+  for (auto [ball1, ball2] : views::zip(balls, balls | views::drop(1)))
+  {
+    print("new interaction ball<->ball : {} {}\n", ball1.get(), ball2.get());
+    auto interaction = simulation.topology().link(ball1, ball2);
+    interaction.h_matrix1() <<
+      -1., 0., 0.,
+      0., 1., -radius;
+    interaction.h_matrix2() <<
+      1., 0., 0.,
+      0., 1., -radius;
+    interaction.relation() = relation_b;
+    interaction.nonsmooth_law() = nslaw;
+  };
 
   // =========================== End of model definition
   // ===========================
@@ -123,7 +145,11 @@ int main(int argc, char* argv[])
   // =================================
 
   //  auto fd = io::open<ascii>("result.dat");
+  balls = storage::handles<data::ball>(data, 0);
+  auto ball1 = (balls | views::take(1)).front();
+  auto ball2 = (balls | views::take(2)).back();
 
+  print("ball1:{}, ball2:{} ball1.q()={}, ball2.q()={}\n", ball1.get(), ball2.get(), ball1.q(), ball2.q());
   // fix this for constant fext
   simulation.one_step_integrator().compute_iteration_matrix(
       simulation.current_step());
@@ -138,6 +164,8 @@ int main(int argc, char* argv[])
             data::ball::velocity::at(ball2, simulation.current_step())(0), 0.,
             0.);
 
+  std::chrono::time_point<std::chrono::system_clock> start, end;
+  start = std::chrono::system_clock::now();
   while (simulation.has_next_event()) {
     auto ninvds = simulation.compute_one_step();
 
@@ -179,5 +207,12 @@ int main(int argc, char* argv[])
               data::ball::velocity::at(ball2, simulation.current_step())(0),
               p01, p02, lambda1, lambda2);
   }
+
+  print("Computation Time \n");
+  end = std::chrono::system_clock::now();
+  int elapsed = std::chrono::duration_cast<std::chrono::milliseconds>
+    (end-start).count();
+  print("Computation time : {} ms \n", elapsed);
+
   //  io::close(fd);
 }

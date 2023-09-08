@@ -1,9 +1,9 @@
 #pragma once
 
-#include "siconos/siconos.hpp"
+#include "siconos/storage/storage.hpp"
 #include "siconos/utils/pattern.hpp"
 
-namespace siconos::model::nsl {
+namespace siconos::model {
 struct equality_condition {};
 struct relay {};
 
@@ -33,4 +33,4 @@ struct newton_impact : item<> {
     decltype(auto) e() { return Handle ::type ::e ::at(*self()); };
   };
 };
-}  // namespace siconos::model::nsl
+}  // namespace siconos::model

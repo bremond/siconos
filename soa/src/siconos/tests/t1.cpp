@@ -44,7 +44,7 @@ int main()
   using lcp = numerics::nonsmooth_problem<LinearComplementarityProblem>;
   using osnspb = numerics::one_step_nonsmooth_problem<lcp>;
   using relation = model::lagrangian_r;
-  using nslaw = model::nsl::newton_impact;
+  using nslaw = model::newton_impact;
   using interaction = simul::interaction<nslaw, relation, 1>;
   using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
   using td = simul::time_discretization<>;
@@ -67,7 +67,7 @@ int main()
                           std::tuple<char, float, double>{}) ==
                 std::tuple<int, int, int>{});
   static_assert(std::is_same_v<decltype(all_items(nslaw{})),
-                               gather<siconos::model::nsl::newton_impact>>);
+                               gather<siconos::model::newton_impact>>);
   static_assert(
       std::is_same_v<decltype([]() {
                        return transform(

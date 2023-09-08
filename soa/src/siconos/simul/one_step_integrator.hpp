@@ -205,14 +205,14 @@ struct one_step_integrator {
         // velo += h_matrix^t * ydot
         prodt1(h_matrix, ydot, velo);
 
-        print("ydot assembled:\n");
+/*      print("ydot assembled:\n");
         numerics::display(ydot);
         print("lambda assembled:\n");
         numerics::display(lambda);
         print("p0 assembled:\n");
         numerics::display(p0);
         print("velo assembled:\n");
-        numerics::display(velo);
+        numerics::display(velo);*/
       }
 
       auto compute_active_interactions(auto step, auto h)
@@ -274,10 +274,10 @@ struct one_step_integrator {
               prop<"index">(ds2) = ds_counter++;
             }
 
-            print(
-                "\nstep: {}, time: {} => ACTIVATION {}<->{} !\ny:{}, "
-                "ydot:{}\n",
-                step, step * h, ids1.get(), ids2.get(), y, ydot);
+//          print(
+//              "\nstep: {}, time: {} => ACTIVATION {}<->{} !\ny:{}, "
+//              "ydot:{}\n",
+            //             step, step * h, ids1.get(), ids2.get(), y, ydot);
           }
         }
         return std::pair{inter_counter, ds_counter};
@@ -316,9 +316,9 @@ struct one_step_integrator {
           }
         }
 
-        print("h_matrix:\n");
+/*      print("h_matrix:\n");
         numerics::display(h_matrix_assembled());
-        print("================\n");
+        print("================\n");*/
       }
 
       auto resize_assembled_vectors(auto step, auto ninter)
@@ -343,11 +343,11 @@ struct one_step_integrator {
           set_value(mass_matrix_assembled(), i, i, hds.mass_matrix());
         }
 
-        print("mass_matrix:\n");
+/*      print("mass_matrix:\n");
         numerics::display(mass_matrix_assembled());
         print("================\n");
         assert(size0(mass_matrix_assembled()) ==
-               size1(mass_matrix_assembled()));
+        size1(mass_matrix_assembled()));*/
       }
 
       // compute H vfree
@@ -397,9 +397,9 @@ struct one_step_integrator {
 
         prod(h_matrix_assembled(), tmp_matrix, w_matrix());
 
-        print("w_matrix:\n");
+/*      print("w_matrix:\n");
         numerics::display(w_matrix());
-        print("================\n");
+        print("================\n");*/
       }
 
       void update_velocity_for_involved_ds() {}

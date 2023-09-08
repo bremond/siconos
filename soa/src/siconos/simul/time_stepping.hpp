@@ -1,5 +1,6 @@
 #pragma once
 
+#include "siconos/model/nslaws.hpp"
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/pattern.hpp"
 
@@ -61,12 +62,12 @@ struct time_stepping : item<> {
       update_indexsets(0);
 
       // compute active interactions
-      auto [ninter,nds] = osi.compute_active_interactions(step, time_step());
+      auto [ninter, nds] = osi.compute_active_interactions(step, time_step());
 
       if (nds > 0) {
         // a least one activated interaction
 
-        print("ninter, nds = {},{}\n", ninter, nds);
+//        print("ninter, nds = {},{}\n", ninter, nds);
 
         osi.assemble_h_matrix_for_involved_ds(step, ninter, nds);
         osi.assemble_mass_matrix_for_involved_ds(step, nds);
@@ -90,6 +91,7 @@ struct time_stepping : item<> {
 
       current_step() += 1;
 
+      print("step {}\n", current_step());
       return nds;
     }
 
@@ -98,8 +100,8 @@ struct time_stepping : item<> {
     {  // Mz=w+q
       auto osi = self()->one_step_integrator();
 
-//      resize(osi.lambda_vector_assembled(), ninter);
-//      resize(osi.ydot_vector_assembled(), ninter);
+      //      resize(osi.lambda_vector_assembled(), ninter);
+      //      resize(osi.ydot_vector_assembled(), ninter);
 
       self()->one_step_nonsmooth_problem().template solve<Formulation>(
           osi.w_matrix(),                 // M
@@ -142,7 +144,7 @@ struct time_stepping : item<> {
           index_set0.color(inter1_descr0) = env::gray_color;
           if constexpr (!std::derived_from<
                             typename topology_t::interaction::nonsmooth_law,
-                            model::nsl::equality_condition>) {
+                            model::equality_condition>) {
             // We assume that the integrator of the ds1 drive the update of
             // the index set SP::OneStepIntegrator Osi =
             // index_set1.properties(*ui1).osi;
@@ -231,10 +233,10 @@ struct time_stepping : item<> {
             bool activate = true;
             if constexpr (!std::derived_from<
                               typename topology_t::interaction::nonsmooth_law,
-                              model::nsl::equality_condition> &&
+                              model::equality_condition> &&
                           !std::derived_from<
                               typename topology_t::interaction::nonsmooth_law,
-                              model::nsl::relay>)
+                              model::relay>)
             //             && Type::value(*(inter0->nonSmoothLaw())) !=
             //             Type::RelayNSL)
             {

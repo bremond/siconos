@@ -1,4 +1,5 @@
 #pragma once
+#include <FrictionContactProblem.h>
 #include <LinearComplementarityProblem.h>
 #include <NonSmoothDrivers.h>
 #include <fmt/core.h>
@@ -101,8 +102,8 @@ struct one_step_nonsmooth_problem : item<> {
         auto w_mat_dense = NM_create(NM_DENSE, size0(w_mat), size1(w_mat));
         NM_to_dense(w_mat._m, w_mat_dense);
 
-        print("w_mat_dense:\n");
-        NM_display(w_mat_dense);
+/*        print("w_mat_dense:\n");
+          NM_display(w_mat_dense);*/
         self()->problem().instance()->size = size0(w_mat);
         self()->problem().instance()->M = w_mat_dense;
         self()->problem().instance()->q = q_vec._v->matrix0;
@@ -139,6 +140,19 @@ struct one_step_nonsmooth_problem : item<> {
 
         print("]\n\n");
         NM_free(w_mat_dense);
+      }
+      else if constexpr (std::derived_from<Formulation,
+                                           FrictionContactProblem>) {
+        self()->problem().instance()->numberOfContacts = size0(w_mat);
+        self()->problem().instance()->M = w_mat._m;
+        self()->problem().instance()->q = q_vec._v->matrix0;
+        self()->problem().instance()->mu = (double*) malloc(size0(w_mat)*sizeof(double));
+
+        for (unsigned int i=0; i<size0(w_mat); ++i) self()->problem().instance()->mu[i] =0.;
+        fc2d_driver(&*self()->problem().instance(), z_vec._v->matrix0,
+                    w_vec._v->matrix0, &*options().instance());
+
+        free( self()->problem().instance()->mu);
       }
     }
   };

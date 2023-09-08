@@ -89,7 +89,7 @@ struct topology : item<> {
       ig0.update_vertices_indices();
       ig0.update_edges_indices();
 
-      print("dsg0:\n:");
+/*      print("dsg0:\n:");
       print("=========\n");
       dsg0.display();
       print("=========\n");
@@ -97,7 +97,7 @@ struct topology : item<> {
       print("ig0:\n");
       print("=========\n");
       ig0.display();
-      print("=========\n");
+      print("=========\n");*/
 
       return inter;
     };
@@ -129,7 +129,7 @@ struct topology : item<> {
       ig0.update_vertices_indices();
       ig0.update_edges_indices();
 
-      print("dsg0:\n:");
+/*      print("dsg0:\n:");
       print("=========\n");
       dsg0.display();
       print("=========\n");
@@ -137,7 +137,7 @@ struct topology : item<> {
       print("ig0:\n");
       print("=========\n");
       ig0.display();
-      print("=========\n");
+      print("=========\n");*/
 
       return inter;
     };
