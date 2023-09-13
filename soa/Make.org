@@ -1,0 +1,562 @@
+#+STARTUP: inlineimages
+#+OPTIONS: tex:t
+#+STARTUP: latexpreview
+
+* internal
+#+name: src-dir
+#+begin_src elisp
+  (progn
+    (mkdir "build-gcc-release" t)
+    (mkdir "build-gcc-debug" t)
+    (mkdir "build-gcc-debug-siconos" t)
+    (mkdir "build-clang-release" t)
+    (mkdir "build-clang-debug" t)
+    (mkdir "build-clang-debug-siconos" t)
+    (mkdir "build-clang-release-siconos" t)
+    (mkdir "build-clang-relwithdebinfo-siconos" t)
+    (mkdir "build-local-clang-debug" t)
+    default-directory)
+#+end_src
+
+
+#+RESULTS:
+
+* gcc
+
+** Release
+
+#+name: mybenchmarks-cmake-release-gcc
+#+header: :var src_dir=src-dir
+#+header: :dir build-gcc-release
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment siconos --pure --ad-hoc siconos benchmark gcc-toolchain eigen boost fmt range-v3 cmake make dash -- \
+       dash -c "cmake ${src_dir} -DGUIX_ENVIRONMENT=\${GUIX_ENVIRONMENT} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=1" 
+#+end_src
+
+#+name: mybenchmarks-make-gcc
+#+header: :var src_dir=src-dir
+#+header: :dir build-gcc-release
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment siconos --pure --ad-hoc siconos benchmark gcc-toolchain eigen boost fmt range-v3 cmake make -- \
+       make VERBOSE=1
+#+end_src
+
+
+* bench-gcc
+
+** Release
+
+
+#+name: mybenchmarks-make-gcc-release-bench-column_of_beads
+#+header: :dir (concat "build-gcc-release" "/src/siconos/benchmarks")
+#+begin_src sh :compile :results output silent
+  for n in `seq 1 18`; do
+    nbeads=`echo "2^$n" | bc`
+    echo -n "$nbeads "; time -f 'RESULTS : -- %E %M %R --' ./column_of_beads_ts $nbeads 2>&1 | sed -n "s/RESULTS : -- \(.*\) --/\1/gp" | tr '\n' ' '
+    echo
+  done > column_of_beads_ts.csv
+#+end_src
+
+#+name: mybenchmarks-make-gcc-release-bench-ColumnOfBeads
+#+header: :dir (concat "build-gcc-release" "/src/siconos/benchmarks")
+#+begin_src sh :compile :results output silent
+  for n in `seq 1 18`; do
+    nbeads=`echo "2^$n" | bc`
+    echo -n "$nbeads "; time -f 'RESULTS : -- %E %M %R --' ./ColumnOfBeadsTS $nbeads 2>&1 | sed -n "s/RESULTS : -- \(.*\) --/\1/gp" | tr '\n' ' '
+    echo
+  done > ColumnOfBeadsTS.csv
+#+end_src
+
+#+name: packs
+#+begin_src elisp
+`("python-ipykernel" "python-numpy" "python-scipy" "python-matplotlib" "python-sympy" "python-pandas")
+#+end_src
+
+
+
+
+* clang
+
+** Release
+
+#+name: mybenchmarks-cmake-release-clang
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-release
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment siconos --pure --ad-hoc siconos benchmark clang-toolchain eigen boost fmt range-v3 cmake make dash -- \
+       dash -c "cmake ${src_dir} -DGUIX_ENVIRONMENT=\${GUIX_ENVIRONMENT} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=1" 
+#+end_src
+
+#+name: mybenchmarks-make-release-clang
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-release
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment siconos --pure --ad-hoc siconos benchmark clang-toolchain eigen boost fmt range-v3 cmake make dash -- \
+       make VERBOSE=1
+#+end_src
+
+
+** Debug
+
+#+name: mybenchmarks-cmake-clang-debug
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
+       dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1" 
+#+end_src
+
+#+name: mybenchmarks-make-clang-debug
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt range-v3 cmake make -- \
+       make VERBOSE=1
+#+end_src
+
+
+** ReWithDebInfoSiconos
+
+#+name: mybenchmarks-cmake-clang-relwithdebinfo-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-relwithdebinfo-siconos
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment --pure --ad-hoc eigen suitesparse benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
+       dash -c "cmake ${src_dir} -DGUIX_ENVIRONMENT=\${GUIX_ENVIRONMENT} -DCMAKE_CXX_STANDARD_LIBRARIES=-L/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 -DSICONOS_INSTALL_DIR=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos -DCMAKE_BUILD_TYPE=RelWithDebInfo" 
+#+end_src
+
+#+name: mybenchmarks-make-clang-relwithdebinfo-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-relwithdebinfo-siconos
+#+begin_src sh :compile :results output silent
+guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment --pure --ad-hoc eigen suitesparse benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
+       make VERBOSE=1
+#+end_src
+
+#+name: mybenchmarks-make-clang-relwithdebinfo-siconos-run-bouncing-balls
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-relwithdebinfo-siconos" "/src/siconos/tests")
+#+begin_src sh :compile :results output silent
+  LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/Release/siconos/lib64 time ./bouncing_balls > /tmp/l
+#+end_src
+
+#+name: mybenchmarks-make-clang-release-siconos-run-bouncing-balls
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-release-siconos" "/src/siconos/tests")
+#+begin_src gnuplot :file "./results.png"
+  #set  term X11
+#!tail -n 100000 result.dat > result-gp.dat
+resultfile = "result-many.dat"
+#resultfile = "BouncingBallSchatzmanPaoliOSI.ref"
+#resultfile = "result_tdg.dat"
+plot \
+resultfile every ::1 u 1:2 t "Ball1 position" w l,\
+resultfile every ::2 u 1:3 t "Ball2 position" w l,\
+#resultfile every ::2 u 1:4 t "Ball1 velocity" w l
+
+#,\
+#"result-gp.dat" u 1:5 t "Multiplier" w l
+#+end_src
+
+#+RESULTS: mybenchmarks-make-clang-release-siconos-run-bouncing-balls
+[[file:build-clang-release-siconos/src/siconos/tests/results.png]]
+
+
+
+** ReleaseSiconos
+
+#+name: mybenchmarks-cmake-clang-release-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-release-siconos
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment siconos --pure --ad-hoc eigen suitesparse benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
+       dash -c "cmake ${src_dir} -DGUIX_ENVIRONMENT=\${GUIX_ENVIRONMENT} -DCMAKE_CXX_STANDARD_LIBRARIES=-L/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 -DSICONOS_INSTALL_DIR=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos -DCMAKE_BUILD_TYPE=Release" 
+#+end_src
+
+#+name: mybenchmarks-make-clang-release-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-release-siconos
+#+begin_src sh :compile :results output silent
+guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment siconos --pure --ad-hoc eigen suitesparse benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
+       make VERBOSE=1
+#+end_src
+
+#+name: mybenchmarks-make-clang-release-siconos-run-bouncing-balls
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-release-siconos" "/src/siconos/tests")
+#+begin_src sh :compile :results output silent
+  LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/Release/siconos/lib64 time -f '%M %E' ./bouncing_balls > /tmp/l
+#+end_src
+
+#+name: mybenchmarks-make-clang-release-siconos-run-bouncing-balls
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-release-siconos" "/src/siconos/tests")
+#+begin_src gnuplot :file "./results.png"
+  #set  term X11
+#!tail -n 100000 result.dat > result-gp.dat
+resultfile = "result-many.dat"
+#resultfile = "BouncingBallSchatzmanPaoliOSI.ref"
+#resultfile = "result_tdg.dat"
+plot \
+resultfile every ::1 u 1:2 t "Ball1 position" w l,\
+resultfile every ::2 u 1:3 t "Ball2 position" w l,\
+#resultfile every ::2 u 1:4 t "Ball1 velocity" w l
+
+#,\
+#"result-gp.dat" u 1:5 t "Multiplier" w l
+#+end_src
+
+#+RESULTS: mybenchmarks-make-clang-release-siconos-run-bouncing-balls
+[[file:build-clang-release-siconos/src/siconos/tests/results.png]]
+
+
+** DebugSiconos
+
+#+name: mybenchmarks-cmake-clang-debug-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug-siconos
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment siconos --pure --ad-hoc eigen suitesparse benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
+       dash -c "cmake ${src_dir} -DGUIX_ENVIRONMENT=\${GUIX_ENVIRONMENT} -DCMAKE_CXX_STANDARD_LIBRARIES=-L/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 -DSICONOS_INSTALL_DIR=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos -DCMAKE_BUILD_TYPE=Debug" 
+#+end_src
+
+#+name: mybenchmarks-make-clang-debug-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug-siconos
+#+begin_src sh :compile :results output silent
+guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment siconos --pure --ad-hoc eigen suitesparse benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
+       make VERBOSE=1
+#+end_src
+
+
+* bouncing ball
+
+#+name: mybenchmarks-make-clang-debug-siconos-run-bouncing-ball
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-debug-siconos" "/src/siconos/tests")
+#+begin_src sh :compile :results output silent
+  LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 ./bouncing_ball
+#+end_src
+
+
+
+
+
+#+name: mybenchmarks-make-clang-debug-siconos-run-bouncing-ball
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-debug-siconos" "/src/siconos/tests")
+#+begin_src gnuplot :file "./results.png"
+  #set  term X11
+#!tail -n 100000 result.dat > result-gp.dat
+resultfile = "result.dat"
+#resultfile = "BouncingBallSchatzmanPaoliOSI.ref"
+#resultfile = "result_tdg.dat"
+plot \
+resultfile every ::2 u 1:2 t "Ball position" w l,\
+resultfile every ::2 u 1:3 t "Ball Velocity" w l,\
+resultfile every ::2 u 1:4 t "Reaction force" w l
+
+#,\
+#"result-gp.dat" u 1:5 t "Multiplier" w l
+#+end_src
+
+#+RESULTS: mybenchmarks-make-clang-debug-siconos-run-bouncing-ball
+[[file:build-clang-debug-siconos/src/siconos/tests/results.png]]
+
+
+
+
+
+
+
+
+
+* bouncing balls
+
+#+name: mybenchmarks-make-clang-debug-siconos-run-bouncing-balls
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-debug-siconos" "/src/siconos/tests")
+#+begin_src sh :compile :results output silent
+  LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 time -f '%M %E' ./bouncing_balls
+#+end_src
+
+#+name: mybenchmarks-make-clang-debug-siconos-valgrind-bouncing-balls
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-debug-siconos" "/src/siconos/tests")
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+     environment --pure --ad-hoc valgrind dash -- \
+  dash -c "LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 valgrind --leak-check=full -s ./bouncing_balls"
+#+end_src
+
+
+#+name: mybenchmarks-make-clang-debug-siconos-run-bouncing-balls
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-debug-siconos" "/src/siconos/tests")
+#+begin_src gnuplot :file "./results.png"
+  #set  term X11
+#!tail -n 100000 result.dat > result-gp.dat
+resultfile = "result-many.dat"
+#resultfile = "BouncingBallSchatzmanPaoliOSI.ref"
+#resultfile = "result_tdg.dat"
+plot \
+resultfile every ::1 u 1:2 t "Ball1 position" w l,\
+resultfile every ::2 u 1:3 t "Ball2 position" w l,\
+#resultfile every ::2 u 1:4 t "Ball1 velocity" w l
+
+#,\
+#"result-gp.dat" u 1:5 t "Multiplier" w l
+#+end_src
+
+#+RESULTS: mybenchmarks-make-clang-debug-siconos-run-bouncing-balls
+[[file:build-clang-debug-siconos/src/siconos/tests/results.png]]
+
+
+* bench
+
+** Debug
+#+name: mybenchmarks-make-clang-debug-siconos-bench-column_of_beads
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-debug-siconos" "/src/siconos/benchmarks")
+#+begin_src sh :compile :results output silent
+  LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 ./column_of_beads_ts 10
+#+end_src
+
+
+#+name: mybenchmarks-make-clang-debug-siconos-bench-ColumnOfBeads
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-debug-siconos" "/src/siconos/benchmarks")
+#+begin_src sh :compile :results output silent
+  LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 ./ColumnOfBeadsTS 10
+#+end_src
+
+** ReleaseSiconos
+
+#+name: mybenchmarks-make-clang-release-siconos-bench-column_of_beads
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-release-siconos" "/src/siconos/benchmarks")
+#+begin_src sh :compile :results output silent
+  LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/Release/siconos/lib64 time -f '%R %M %E' ./column_of_beads_ts 15000 | sed -n 's/Computation time : \(.*\) ms/\1/p'
+#+end_src
+
+
+#+name: mybenchmarks-make-clang-release-siconos-bench-ColumnOfBeads
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-release-siconos" "/src/siconos/benchmarks")
+#+begin_src sh :compile :results output silent
+  LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/Release/siconos/lib64 time -f '%R %M %E' ./ColumnOfBeadsTS  10000 | sed -n 's/Computation time : \(.*\) ms/\1/p'
+#+end_src
+
+** Release
+
+
+#+name: mybenchmarks-make-clang-release-bench-column_of_beads
+#+header: :dir (concat "build-clang-release" "/src/siconos/benchmarks")
+#+begin_src sh :compile :results output silent
+  for n in `seq 1 18`; do
+    nbeads=`echo "2^$n" | bc`
+    echo -n "$nbeads "; time -f 'RESULTS : -- %E %M %R --' ./column_of_beads_ts $nbeads 2>&1 | sed -n "s/RESULTS : -- \(.*\) --/\1/gp" | tr '\n' ' '
+    echo
+  done > column_of_beads_ts.csv
+#+end_src
+
+#+name: mybenchmarks-make-clang-release-bench-ColumnOfBeads
+#+header: :dir (concat "build-clang-release" "/src/siconos/benchmarks")
+#+begin_src sh :compile :results output silent
+  for n in `seq 1 18`; do
+    nbeads=`echo "2^$n" | bc`
+    echo -n "$nbeads "; time -f 'RESULTS : -- %E %M %R --' ./ColumnOfBeadsTS $nbeads 2>&1 | sed -n "s/RESULTS : -- \(.*\) --/\1/gp" | tr '\n' ' '
+    echo
+  done > ColumnOfBeadsTS.csv
+#+end_src
+
+#+name: packs
+#+begin_src elisp
+`("python-ipykernel" "python-numpy" "python-scipy" "python-matplotlib" "python-sympy" "python-pandas")
+#+end_src
+
+* plots
+:PROPERTIES:
+:header-args: :prefix guix :prefix-args (org-babel-ref-resolve "make-env(packs)")
+:END:
+
+
+#+name: ctrl-plot-pena-0
+#+header: :var data_filename1=(concat "build-clang-release" "/src/siconos/benchmarks/column_of_beads_ts.csv")
+#+header: :var data_filename2=(concat "build-clang-release" "/src/siconos/benchmarks/ColumnOfBeadsTS.csv") 
+#+begin_src jupyter-python :session mybenchmarks-release-bench
+  %matplotlib inline
+  import matplotlib.pyplot as plt
+  import numpy as np
+
+
+  plt.style.use('ggplot')
+  xtab1 = np.loadtxt(data_filename1, delimiter=' ', dtype=str)
+  xtab2 = np.loadtxt(data_filename2, delimiter=' ', dtype=str)
+
+  f0 = [float(i) for i in xtab2[:,0]]
+  f11 = [float(i) for i in xtab1[:,1]]
+  f13 = [float(i) for i in xtab1[:,3]]
+  f14 = [float(i) for i in xtab1[:,4]]
+
+  f21 = [float(i) for i in xtab2[:,1]]
+  f23 = [float(i) for i in xtab2[:,3]]
+  f24 = [float(i) for i in xtab2[:,4]]
+
+  import pandas
+  df = pandas.DataFrame(f21, columns=['ColumnOfBeads'], index=xtab2[:,0])
+  df['column_of_beads'] = f11 
+
+  df.plot(kind='bar', figsize=(30,15))
+  plt.gca().set_yscale('log')
+  plt.gca().tick_params(axis='x', which='both', labelsize=25)
+  plt.gca().tick_params(axis='y', which='both', labelsize=25)
+  plt.gca().legend(loc='upper left', fontsize=35)
+  plt.ylabel('time (ms)', fontsize=35)
+  plt.xlabel('number of beads', fontsize=35)
+  # width=0.35
+  # ax = fig.add_subplot(2, 1, 1)
+  # ax.set_yscale('log')
+  # ax.tick_params(axis='both', which='major', labelsize=40)
+  # ax.tick_params(axis='both', which='minor', labelsize=40)
+  # ax.grid()
+  # #ax.set_xscale('log')
+  # #ax.set_xticklabels(labels=f0, fontsize=20)
+  # ax.bar(xtab2[:,0], f2, width)
+  # ax.bar(xtab2[:,0], f1, width)
+#+end_src
+
+
+
+#+name: ctrl-plot-pena-1
+#+begin_src jupyter-python :session mybenchmarks-release-bench
+  df = pandas.DataFrame(f23, columns=['ColumnOfBeads'], index=xtab2[:,0])
+  df['column_of_beads'] = f13 
+
+  df.plot(kind='bar', figsize=(30,15))
+  plt.gca().set_yscale('log')
+  plt.gca().tick_params(axis='x', which='both', labelsize=25)
+  plt.gca().tick_params(axis='y', which='both', labelsize=25)
+  plt.gca().legend(loc='upper left', fontsize=35)
+  plt.ylabel('mem (kb)', fontsize=35)
+  plt.xlabel('number of beads', fontsize=35)
+  # width=0.35
+  # ax = fig.add_subplot(2, 1, 1)
+  # ax.set_yscale('log')
+  # ax.tick_params(axis='both', which='major', labelsize=40)
+  # ax.tick_params(axis='both', which='minor', labelsize=40)
+  # ax.grid()
+  # #ax.set_xscale('log')
+  # #ax.set_xticklabels(labels=f0, fontsize=20)
+  # ax.bar(xtab2[:,0], f2, width)
+  # ax.bar(xtab2[:,0], f1, width)
+#+end_src
+
+
+#+name: ctrl-plot-pena-2
+#+begin_src jupyter-python :session mybenchmarks-release-bench
+  df = pandas.DataFrame(f24, columns=['ColumnOfBeads'], index=xtab2[:,0])
+  df['column_of_beads'] = f14
+
+  df.plot(kind='bar', figsize=(30,15))
+  plt.gca().set_yscale('log')
+  plt.gca().tick_params(axis='x', which='both', labelsize=25)
+  plt.gca().tick_params(axis='y', which='both', labelsize=25)
+  plt.gca().legend(loc='upper left', fontsize=35)
+  plt.ylabel('number of page faults', fontsize=35)
+  plt.xlabel('number of beads', fontsize=35)
+  # width=0.35
+  # ax = fig.add_subplot(2, 1, 1)
+  # ax.set_yscale('log')
+  # ax.tick_params(axis='both', which='major', labelsize=40)
+  # ax.tick_params(axis='both', which='minor', labelsize=40)
+  # ax.grid()
+  # #ax.set_xscale('log')
+  # #ax.set_xticklabels(labels=f0, fontsize=20)
+  # ax.bar(xtab2[:,0], f2, width)
+  # ax.bar(xtab2[:,0], f1, width)
+#+end_src
+
+
+** results
+#+RESULTS: ctrl-plot-pena-0
+:RESULTS:
+: Text(0.5, 0, 'number of beads')
+[[file:./.ob-jupyter/fbc8b6860ffa6553016a0e85bdee4949646d2517.png]]
+:END:
+
+
+
+#+RESULTS: ctrl-plot-pena-1
+:RESULTS:
+: Text(0.5, 0, 'number of beads')
+[[file:./.ob-jupyter/e378e0716e655acfff901028fc066364b8a96b4c.png]]
+:END:
+
+#+RESULTS: ctrl-plot-pena-2
+:RESULTS:
+: Text(0.5, 0, 'number of beads')
+[[file:./.ob-jupyter/0ad1fe875c3dad8b2ae26340b6e0f118cc341a9c.png]]
+:END:
+
+
+* Guix settings                                                       :SETUP:
+** utils
+
+#+name: make-channels
+#+begin_src scheme :eval no :tangle .guix-channels.scm
+(list (channel
+        (name 'guix)
+        (url "https://git.savannah.gnu.org/git/guix.git")
+        (branch "master")
+        (commit
+          "aecc6e70587f8412cbbb9b2c13141de4f534518e")
+        (introduction
+          (make-channel-introduction
+            "9edb3f66fd807b096b48283debdcddccfea34bad"
+            (openpgp-fingerprint
+              "BBB0 2DDF 2CEA F6A8 0D1D  E643 A2A0 6DF2 A33A 54FA")))))
+#+end_src
+
+
+#+name: make-env
+#+header: :var packages='()
+#+begin_src elisp
+  `("time-machine" 
+    "--channels=.guix-channels.scm" "--" "environment" "--pure" "--ad-hoc" 
+    ,@packages "dash" "--")
+#+end_src
+
+#+name: startup
+#+begin_src elisp
+  (jupyter-runtime-directory) ; must be call outside guix environment
+  (org-babel-tangle) ; .guix-channels.scm
+  (let ((process-prefix "guix")
+        (process-prefix-args (org-babel-ref-resolve "make-env(packs)")))
+      (progn
+        (org-babel-jupyter-make-language-alias "python" "python")))
+#+end_src
+
+#+RESULTS: startup
+: ((jupyter-sage . python) (jupyter-julia . julia) (jupyter-python3 . python) (jupyter-python . python) (jupyter-bash . bash) (inline-js . javascript) (C . c) (C++ . c++) (asymptote . asy) (beamer . latex) (calc . fundamental) (cpp . c++) (ditaa . artist) (desktop . conf-desktop) (dot . fundamental) (elisp . emacs-lisp) (ocaml . tuareg) (screen . shell-script) (sqlite . sql) (toml . conf-toml) (shell . sh) (ash . sh) (sh . sh) (bash . sh) (jsh . sh) (bash2 . sh) (dash . sh) (dtksh . sh) (ksh . sh) (es . sh) (rc . sh) (itcsh . sh) (tcsh . sh) (jcsh . sh) (csh . sh) (ksh88 . sh) (oash . sh) (pdksh . sh) (mksh . sh) (posix . sh) (wksh . sh) (wsh . sh) (zsh . sh) (rpm . sh))
+
+
+** COMMENT Org Babel settings
+# Local Variables:
+# org-confirm-babel-evaluate: nil
+# org-image-actual-width: nil
+# buffer-file-coding-system: utf-8-unix
+# eval: (progn (org-babel-goto-named-src-block "startup") (org-babel-execute-src-block) (outline-hide-sublevels 1))
+# End:

@@ -5,6 +5,7 @@
 #include "siconos/utils/print.hpp"
 #include <numeric>
 #include <chrono>
+#include <stdlib.h>
 
 namespace siconos::data {
 using ball = model::lagrangian_ds;
@@ -22,6 +23,7 @@ using simulation = simul::time_stepping<td, osi, osnspb, topo>;
 
 int main(int argc, char* argv[])
 {
+  unsigned int nballs = atoi(argv[1]);
   using namespace siconos;
   namespace some = siconos::storage::some;
   using siconos::storage::pattern::wrap;
@@ -46,7 +48,6 @@ int main(int argc, char* argv[])
   double m = 1.;               // Ball mass
   double g = 9.81;             // Gravity
 
-  unsigned int nballs = 10000;
   print("====> Model loading ...\n");
 
   // ---------------------------
@@ -110,6 +111,7 @@ int main(int argc, char* argv[])
   // -- set the options --
   auto so = storage::add<simul::solver_options>(data);
   so.create(SICONOS_FRICTION_2D_NSGS);
+  so.instance()->iparam[SICONOS_IPARAM_MAX_ITER] = 1;
   osnspb.options() = so;
 
   auto balls = storage::handles<data::ball>(data, 0);
@@ -211,11 +213,10 @@ int main(int argc, char* argv[])
               p01, p02, lambda1, lambda2);
   }
 
-  print("Computation Time \n");
   end = std::chrono::system_clock::now();
   int elapsed = std::chrono::duration_cast<std::chrono::milliseconds>
     (end-start).count();
-  print("Computation time : {} ms \n", elapsed);
+  print("RESULTS : -- {} --\n", elapsed);
 
   //  io::close(fd);
 }
