@@ -62,10 +62,10 @@ int main(int argc, char* argv[])
     ball.fext() = {-m * g, 0., 0.};
   }
 
-  for (auto ball : storage::handles<data::ball>(data, 0))
-  {
-    print("ball:{} , ball.q()={}\n", ball.get(), ball.q()[0]);
-  }
+  //for (auto ball : storage::handles<data::ball>(data, 0))
+  //{
+  //  print("ball:{} , ball.q()={}\n", ball.get(), ball.q()[0]);
+  //}
   // ------------------
   // -- The relation --
   // ------------------
@@ -132,7 +132,7 @@ int main(int argc, char* argv[])
 
   for (auto [ball1, ball2] : views::zip(balls, balls | views::drop(1)))
   {
-    print("new interaction ball<->ball : {} {}\n", ball1.get(), ball2.get());
+    //print("new interaction ball<->ball : {} {}\n", ball1.get(), ball2.get());
     auto interaction = simulation.topology().link(ball1, ball2);
     interaction.h_matrix1() <<
       -1., 0., 0.,
@@ -154,7 +154,7 @@ int main(int argc, char* argv[])
   auto ball1 = (balls | views::take(1)).front();
   auto ball2 = (balls | views::take(2)).back();
 
-  print("ball1:{}, ball2:{} ball1.q()={}, ball2.q()={}\n", ball1.get(), ball2.get(), ball1.q(), ball2.q());
+  //print("ball1:{}, ball2:{} ball1.q()={}, ball2.q()={}\n", ball1.get(), ball2.get(), ball1.q(), ball2.q());
   // fix this for constant fext
   simulation.one_step_integrator().compute_iteration_matrix(
       simulation.current_step());
@@ -173,7 +173,7 @@ int main(int argc, char* argv[])
   start = std::chrono::system_clock::now();
   while (simulation.has_next_event()) {
     auto ninvds = simulation.compute_one_step();
-
+/*
     double p01, p02, lambda1, lambda2;
     if (ninvds > 1) {
       p01 = get_vector(simulation.one_step_integrator().p0_vector_assembled(),
@@ -210,7 +210,7 @@ int main(int argc, char* argv[])
               data::ball::q::at(ball2, simulation.current_step())(0),
               data::ball::velocity::at(ball1, simulation.current_step())(0),
               data::ball::velocity::at(ball2, simulation.current_step())(0),
-              p01, p02, lambda1, lambda2);
+              p01, p02, lambda1, lambda2); */
   }
 
   end = std::chrono::system_clock::now();

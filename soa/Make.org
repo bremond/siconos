@@ -547,10 +547,7 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
         (process-prefix-args (org-babel-ref-resolve "make-env(packs)")))
       (progn
         (org-babel-jupyter-make-language-alias "python" "python")))
-#+end_src
-
-#+RESULTS: startup
-: ((jupyter-sage . python) (jupyter-julia . julia) (jupyter-python3 . python) (jupyter-python . python) (jupyter-bash . bash) (inline-js . javascript) (C . c) (C++ . c++) (asymptote . asy) (beamer . latex) (calc . fundamental) (cpp . c++) (ditaa . artist) (desktop . conf-desktop) (dot . fundamental) (elisp . emacs-lisp) (ocaml . tuareg) (screen . shell-script) (sqlite . sql) (toml . conf-toml) (shell . sh) (ash . sh) (sh . sh) (bash . sh) (jsh . sh) (bash2 . sh) (dash . sh) (dtksh . sh) (ksh . sh) (es . sh) (rc . sh) (itcsh . sh) (tcsh . sh) (jcsh . sh) (csh . sh) (ksh88 . sh) (oash . sh) (pdksh . sh) (mksh . sh) (posix . sh) (wksh . sh) (wsh . sh) (zsh . sh) (rpm . sh))
+#+end_src :results none
 
 
 ** COMMENT Org Babel settings
