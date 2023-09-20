@@ -1,5 +1,6 @@
 #pragma once
 
+#include "siconos/config/config.hpp"
 #include "siconos/utils/environment.hpp"
 #include "siconos/storage/storage.hpp"
 #include "siconos/storage/ground/ground.hpp"

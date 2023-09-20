@@ -8,7 +8,10 @@
 #include "siconos/utils/SiconosGraph.hpp"  // modified for std::array
 
 namespace siconos {
+template <typename Params>
 struct standard_environment {
+  using params = Params;
+
   using boolean = bool;
   using scalar = double;
   using indice = std::size_t;
@@ -58,9 +61,5 @@ struct standard_environment {
 
   template <typename T>
   using vdescriptor = typename T::VDescriptor;
-
-  // should go in a config struct
-  using params = storage::ground::map<storage::ground::pair<
-      storage::pattern::param<"dof">, storage::pattern::param_val<3>>>;
 };
 }  // namespace siconos

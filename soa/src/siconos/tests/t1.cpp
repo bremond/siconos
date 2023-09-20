@@ -1,8 +1,16 @@
 #include "siconos/siconos.hpp"
 #include "siconos/utils/print.hpp"
 
+
+
+namespace siconos::config
+{
+  using params = map<assoc<param<"dof">, param_val<3>>>;
+}
+
 using namespace siconos;
-using env = siconos::standard_environment;
+
+using env = standard_environment<config::params>;
 
 #include "siconos/storage/ground/ground.hpp"
 #include "siconos/storage/some/some.hpp"
@@ -31,14 +39,14 @@ struct bbb : item<> {
 
 static_assert(
     std::is_same_v<
-        traits::config<standard_environment>::convert<some::scalar>::type,
+    traits::config<standard_environment<int>>::convert<some::scalar>::type,
         double>);
 static_assert(
     std::is_same_v<
-        traits::config<standard_environment>::convert<pointer<float>>::type,
+    traits::config<standard_environment<int>>::convert<pointer<float>>::type,
         pointer<float>>);
 
-static_assert(std::is_same_v<traits::config<standard_environment>::convert<
+  static_assert(std::is_same_v<traits::config<standard_environment<int>>::convert<
                                  some::specific<pointer<float>>>::type,
                              pointer<float>>);
 

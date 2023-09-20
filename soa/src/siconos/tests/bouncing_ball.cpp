@@ -2,7 +2,7 @@
 #include "siconos/siconos.hpp"
 #include "siconos/utils/print.hpp"
 
-namespace siconos::data {
+namespace siconos::config {
 using ball = model::lagrangian_ds;
 using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
 using osnspb = simul::one_step_nonsmooth_problem<lcp>;
@@ -13,17 +13,23 @@ using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
 using topo = simul::topology<ball, interaction>;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
-}  // namespace siconos::data
+
+using params = map<iparam<"dof", 3>>;
+}  // namespace siconos::config
+
+template <typename E, typename C>
+struct concat_env : E, C {
+};
 
 int main(int argc, char* argv[])
 {
   using namespace siconos;
   auto data = storage::make_storage<
-      standard_environment, data::simulation, data::ball, data::relation,
-      data::interaction,
+      standard_environment<config::params>, config::simulation, config::ball,
+      config::relation, config::interaction,
       storage::with_properties<
-          storage::diagonal<data::ball::mass_matrix>,
-          storage::unbounded_diagonal<data::osi::mass_matrix_assembled>>>();
+          storage::diagonal<config::ball::mass_matrix>,
+          storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
 
   // unsigned int nDof = 3;         // degrees of freedom for the ball
   double t0 = 0;               // initial computation time
@@ -41,7 +47,7 @@ int main(int argc, char* argv[])
   // --------------------------
   // -- The dynamical_system --
   // --------------------------
-  auto ball = storage::add<data::ball>(data);
+  auto ball = storage::add<config::ball>(data);
 
   ball.q() = {position_init, 0, 0};
   ball.velocity() = {velocity_init, 0, 0};
@@ -55,21 +61,21 @@ int main(int argc, char* argv[])
   // ------------------
 
   // -- Lagrangian relation --
-  auto relation = storage::add<data::relation>(data);
+  auto relation = storage::add<config::relation>(data);
   //  the_relation.h_matrix() = {1.0, 0., 0.};
 
   // -- nslaw --
   double e = 0.9;
-  auto nslaw = storage::add<data::nslaw>(data);
+  auto nslaw = storage::add<config::nslaw>(data);
   nslaw.e() = e;
 
-  auto lcp = storage::add<data::lcp>(data);
+  auto lcp = storage::add<config::lcp>(data);
   lcp.create();
 
   // ------------------
   // --- Simulation ---
   // ------------------
-  auto simulation = storage::add<data::simulation>(data);
+  auto simulation = storage::add<config::simulation>(data);
 
   simulation.one_step_integrator().theta() = theta;
   simulation.one_step_integrator().constraint_activation_threshold() = 0.;
@@ -107,9 +113,9 @@ int main(int argc, char* argv[])
 
   out.print("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
             simulation.current_step() * simulation.time_step(),
-            data::ball::q::at(ball, simulation.current_step())(0),
-            data::ball::velocity::at(ball, simulation.current_step())(0), 0.,
-            0.);
+            config::ball::q::at(ball, simulation.current_step())(0),
+            config::ball::velocity::at(ball, simulation.current_step())(0),
+            0., 0.);
 
   while (simulation.has_next_event()) {
     auto ninvds = simulation.compute_one_step();
@@ -128,8 +134,8 @@ int main(int argc, char* argv[])
 
     out.print("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
               simulation.current_step() * simulation.time_step(),
-              data::ball::q::at(ball, simulation.current_step())(0),
-              data::ball::velocity::at(ball, simulation.current_step())(0),
+              config::ball::q::at(ball, simulation.current_step())(0),
+              config::ball::velocity::at(ball, simulation.current_step())(0),
               p0, lambda);
   }
   //  io::close(fd);

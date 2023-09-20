@@ -36,6 +36,17 @@ struct indice_parameter : undefined_indice_parameter {
   static constexpr auto name = S;
 };
 
+struct undefined_type_parameter : attribute<> {};
+
+template <string_literal S>
+struct type_parameter : undefined_type_parameter, attribute<> {
+  static constexpr auto name = S;
+};
+
+template <string_literal S>
+struct item : type_parameter<S> {
+};
+
 struct undefined_indice_value : attribute<> {};
 template <auto I>
 struct indice_value : undefined_indice_value {
@@ -148,5 +159,4 @@ template <string_literal S>
 struct definition : given_definition, symbol<S> {
 };
 
-}  // namespace some
-
+}  // namespace siconos::storage::some
