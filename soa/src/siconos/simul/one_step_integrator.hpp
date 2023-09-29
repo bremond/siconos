@@ -1,22 +1,21 @@
 #pragma once
 
-#include "siconos/simul/simul.hpp"
-
 #include "siconos/algebra/numerics.hpp"
-
+#include "siconos/simul/simul.hpp"
 #include "siconos/utils/print.hpp"
 #include "siconos/utils/range.hpp"
+#include "siconos/utils/variant.hpp"
 
 namespace siconos::simul {
 
 template <typename DynamicalSystem, typename Interaction>
 struct one_step_integrator {
   using interaction = Interaction;
-  using nonsmooth_law = typename interaction::nonsmooth_law;
+  using nonsmooth_law = typename interaction::nslaw;
   using system = DynamicalSystem;
   using dof = typename interaction::dof;
   using nslaw_size = typename interaction::nslaw_size;
-  using nslaw = typename interaction::nslaw_t;
+  using nslaw = typename interaction::nslaw;
   using y = typename interaction::y;
   using ydot = typename interaction::ydot;
   using lambda = typename interaction::lambda;
@@ -206,14 +205,14 @@ struct one_step_integrator {
         // velo += h_matrix^t * ydot
         prodt1(h_matrix, ydot, velo);
 
-/*      print("ydot assembled:\n");
-        numerics::display(ydot);
-        print("lambda assembled:\n");
-        numerics::display(lambda);
-        print("p0 assembled:\n");
-        numerics::display(p0);
-        print("velo assembled:\n");
-        numerics::display(velo);*/
+        /*      print("ydot assembled:\n");
+                numerics::display(ydot);
+                print("lambda assembled:\n");
+                numerics::display(lambda);
+                print("p0 assembled:\n");
+                numerics::display(p0);
+                print("velo assembled:\n");
+                numerics::display(velo);*/
       }
 
       auto compute_active_interactions(auto step, auto h)
@@ -237,9 +236,6 @@ struct one_step_integrator {
         auto &involveds =
             storage::prop_values<system, "involved">(data, step);
 
-        auto &irels =
-            storage::attr_values<typename interaction::relation>(data, step);
-
         const auto &interactions = storage::handles<interaction>(data, step);
 
         // all ds -> not involved
@@ -254,7 +250,10 @@ struct one_step_integrator {
         indice inter_counter = 0;
         for (auto [y, ydot, activation, ids1, ids2, inter] :
              views::zip(ys, ydots, activations, ids1s, ids2s, interactions)) {
-          auto b = inter.relation().b();
+          auto b = siconos::utils::apply_maybe(
+              inter.relation(), 0., [&data](auto &real_relation) {
+                return storage::handle(real_relation, data).b();
+              });
           // on normal component
           activation = ((y + gamma_v * h * ydot)(0) + b <=
                         self()->constraint_activation_threshold());
@@ -275,9 +274,9 @@ struct one_step_integrator {
               prop<"index">(ds2) = ds_counter++;
             }
 
-//          print(
-//              "\nstep: {}, time: {} => ACTIVATION {}<->{} !\ny:{}, "
-//              "ydot:{}\n",
+            //          print(
+            //              "\nstep: {}, time: {} => ACTIVATION {}<->{}
+            //              !\ny:{}, " "ydot:{}\n",
             //             step, step * h, ids1.get(), ids2.get(), y, ydot);
           }
         }
@@ -317,9 +316,9 @@ struct one_step_integrator {
           }
         }
 
-/*      print("h_matrix:\n");
-        numerics::display(h_matrix_assembled());
-        print("================\n");*/
+        /*      print("h_matrix:\n");
+                numerics::display(h_matrix_assembled());
+                print("================\n");*/
       }
 
       auto resize_assembled_vectors(auto step, auto ninter)
@@ -344,11 +343,11 @@ struct one_step_integrator {
           set_value(mass_matrix_assembled(), i, i, hds.mass_matrix());
         }
 
-/*      print("mass_matrix:\n");
-        numerics::display(mass_matrix_assembled());
-        print("================\n");
-        assert(size0(mass_matrix_assembled()) ==
-        size1(mass_matrix_assembled()));*/
+        /*      print("mass_matrix:\n");
+                numerics::display(mass_matrix_assembled());
+                print("================\n");
+                assert(size0(mass_matrix_assembled()) ==
+                size1(mass_matrix_assembled()));*/
       }
 
       // compute H vfree
@@ -362,10 +361,8 @@ struct one_step_integrator {
 
         auto k = 0;
         for (auto [i, inter] : storage::handles<interaction>(data, step + 1) |
-               views::enumerate)
-        {
-          if (prop<"activation">(inter))
-          {
+                                   views::enumerate) {
+          if (prop<"activation">(inter)) {
             set_value(q_nsp_vector_assembled(), k++, ydots[inter.get()]);
           };
         }
@@ -398,9 +395,9 @@ struct one_step_integrator {
 
         prod(h_matrix_assembled(), tmp_matrix, w_matrix());
 
-/*      print("w_matrix:\n");
-        numerics::display(w_matrix());
-        print("================\n");*/
+        /*      print("w_matrix:\n");
+                numerics::display(w_matrix());
+                print("================\n");*/
       }
 
       void update_velocity_for_involved_ds() {}

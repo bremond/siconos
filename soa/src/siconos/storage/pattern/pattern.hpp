@@ -7,13 +7,14 @@
 #include <utility>
 
 #include "siconos/storage/ground/ground.hpp"
+#include "siconos/storage/pattern/base.hpp"
 #include "siconos/storage/pattern/base_concepts.hpp"
 #include "siconos/storage/some/some.hpp"
 
 namespace siconos::storage::pattern {
 
-//namespace some = storage::some;
-//namespace ground = storage::ground;
+// namespace some = storage::some;
+// namespace ground = storage::ground;
 
 struct empty {};
 struct linear {};
@@ -85,7 +86,7 @@ static_assert(std::is_same_v<decltype(cons(int{}, gather<float, char>{})),
                              gather<int, float, char>>);
 
 static auto append =
-  []<concepts::tuple_like... Tpls>(Tpls... tpls) constexpr {
+    []<concepts::tuple_like... Tpls>(Tpls... tpls) constexpr {
       return std::tuple_cat(tpls...);
     };
 
@@ -391,6 +392,21 @@ static auto all_items = rec([](auto&& all_items, match::item auto root_item) {
       return gather<>{};
     }
   };
+
+  auto poly_ref = []() {
+    if constexpr (match::attributes<type_t>) {
+      return transform(
+        []<typename T>(T) { return typename T::type{}; },
+          flatten(transform([]<typename T>(T) { return typename T::types{}; },
+                            filter<hold<decltype([]<typename T>(T) {
+                              return match::polymorphic_type<T>;
+                            })>>(typename type_t::attributes{}))));
+    }
+    else {
+      return gather<>{};
+    }
+  };
+
   if constexpr (match::items<type_t>) {
     return cons(
         root_item,
@@ -398,7 +414,8 @@ static auto all_items = rec([](auto&& all_items, match::item auto root_item) {
                           append(items_ref(), typename type_t::items{}))));
   }
   else {
-    return cons(root_item, flatten(transform(all_items, items_ref())));
+    return cons(root_item, flatten(transform(
+                               all_items, append(items_ref(), poly_ref()))));
     ;
   }
 });
@@ -472,8 +489,12 @@ struct param_val {
   static constexpr auto value = V;
 };
 
+template <typename T>
+struct param_type {
+  using type = T;
+};
 
 template <string_literal Name, match::attribute A>
 struct attribute : A, symbol<Name> {
 };
-}  // namespace siconos::pattern
+}  // namespace siconos::storage::pattern

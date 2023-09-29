@@ -11,9 +11,12 @@ namespace siconos::config
   using assoc = storage::ground::pair<K, V>;
 
   using storage::pattern::param;
-
   using storage::pattern::param_val;
+  using storage::pattern::param_type;
 
   template<storage::pattern::string_literal S, auto N>
   using iparam = assoc<param<S>, param_val<N>>;
+
+  template<storage::pattern::string_literal S, typename T>
+  using tparam = assoc<param<S>, param_type<T>>;
 }

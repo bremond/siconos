@@ -25,6 +25,7 @@ if(fconcepts_diagnostics)
 endif()
 
 set_target_properties(t1 PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
+
 #set_target_properties(t2 PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
 #set_target_properties(tnonos PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
 set_target_properties(bouncing_ball PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
@@ -32,6 +33,7 @@ set_target_properties(bouncing_balls PROPERTIES COMPILE_FLAGS "${flags}")# -fcon
 
 
 target_link_libraries(t1 siconos_numerics benchmark pthread fmt)
+
 #target_link_libraries(t2 siconos_numerics benchmark pthread fmt)
 #target_link_libraries(tnonos siconos_numerics benchmark pthread fmt)
 target_link_libraries(bouncing_ball siconos_numerics benchmark pthread fmt)

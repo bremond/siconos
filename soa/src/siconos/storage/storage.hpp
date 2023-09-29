@@ -7,13 +7,13 @@
 #include <type_traits>
 #include <variant>
 
-#include "siconos/storage/pattern/base.hpp"
 #include "siconos/storage/ground/ground.hpp"
+#include "siconos/storage/pattern/base.hpp"
+#include "siconos/storage/pattern/base_concepts.hpp"
 #include "siconos/storage/pattern/pattern.hpp"
-#include "siconos/utils/range.hpp"
 #include "siconos/storage/some/some.hpp"
 #include "siconos/storage/traits/traits.hpp"
-#include "siconos/storage/pattern/base_concepts.hpp"
+#include "siconos/utils/range.hpp"
 
 namespace siconos::storage {
 
@@ -151,7 +151,8 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
 
   explicit handle(index<T, R>& ha, D& data) : index<T, R>{ha}, _data{data} {};
 
-  explicit handle(index<T, R>&& ha, D& data) : index<T, R>{ha}, _data{data} {};
+  explicit handle(index<T, R>&& ha, D& data)
+      : index<T, R>{ha}, _data{data} {};
 
   handle() : index<T, R>{}, _data{} {};
 
@@ -662,11 +663,15 @@ static auto handles = [](auto& data, auto step) constexpr -> decltype(auto) {
   using attributes_t = typename I::attributes;
   // need at least one attributes
   // empty items are not supposed to exist
-  indice num = std::size(attr_values<nth_t<0,attributes_t>>(data, step));
-  return views::iota((indice) 0, num) | views::transform([&data](indice i) {
-    return handle<I,indice,std::decay_t<decltype(data)>>(index<I,indice>(i), data);
+  indice num = std::size(attr_values<nth_t<0, attributes_t>>(data, step));
+  return views::iota((indice)0, num) | views::transform([&data](indice i) {
+           return handle<I, indice, std::decay_t<decltype(data)>>(
+               index<I, indice>(i), data);
          });
 };
+
+
+/*siconos::storage::ground::dump_keys(data, [](auto&& s) { std::cout << s<< std::endl;});*/
 
 }  // namespace siconos::storage
 

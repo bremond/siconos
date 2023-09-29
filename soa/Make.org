@@ -99,6 +99,37 @@
        make VERBOSE=1
 #+end_src
 
+#+name: mybenchmarks-make-clang-release-run-bouncing-ball
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-release" "/src/siconos/tests")
+#+begin_src sh :compile :results output silent
+  time -f '%M %E' ./bouncing_ball > /tmp/l
+#+end_src
+
+#+name: mybenchmarks-make-clang-release-run-bouncing-ball
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-release" "/src/siconos/tests")
+#+begin_src gnuplot :file "./results.png"
+  #set  term X11
+#!tail -n 100000 result.dat > result-gp.dat
+resultfile = "result.dat"
+#resultfile = "BouncingBallSchatzmanPaoliOSI.ref"
+#resultfile = "result_tdg.dat"
+plot \
+resultfile every ::1 u 1:2 t "Ball position" w l,\
+resultfile every ::2 u 1:3 t "Ball velocity" w l,\
+#resultfile every ::2 u 1:4 t "Ball1 velocity" w l
+
+#,\
+#"result-gp.dat" u 1:5 t "Multiplier" w l
+#+end_src
+
+#+RESULTS: mybenchmarks-make-clang-release-run-bouncing-ball
+[[file:build-clang-release/src/siconos/tests/results.png]]
+
+
+
+
 
 ** Debug
 
@@ -359,7 +390,7 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
   LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/Release/siconos/lib64 time -f '%R %M %E' ./ColumnOfBeadsTS  10000 | sed -n 's/Computation time : \(.*\) ms/\1/p'
 #+end_src
 
-** Release
+** Clang release
 
 
 #+name: mybenchmarks-make-clang-release-bench-column_of_beads
@@ -395,7 +426,7 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 
 #+name: ctrl-plot-pena-0
 #+header: :var data_filename1=(concat "build-clang-release" "/src/siconos/benchmarks/column_of_beads_ts.csv")
-#+header: :var data_filename2=(concat "build-clang-release" "/src/siconos/benchmarks/ColumnOfBeadsTS.csv") 
+#+header: :var data_filename2=(concat "build-clang-release" "/src/siconos/benchmarks/column_of_beads_ts.1.csv") 
 #+begin_src jupyter-python :session mybenchmarks-release-bench
   %matplotlib inline
   import matplotlib.pyplot as plt
@@ -494,7 +525,7 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+RESULTS: ctrl-plot-pena-0
 :RESULTS:
 : Text(0.5, 0, 'number of beads')
-[[file:./.ob-jupyter/fbc8b6860ffa6553016a0e85bdee4949646d2517.png]]
+[[file:./.ob-jupyter/4efd430f031afd302c2223f12ff182b9198525dc.png]]
 :END:
 
 
@@ -502,13 +533,13 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+RESULTS: ctrl-plot-pena-1
 :RESULTS:
 : Text(0.5, 0, 'number of beads')
-[[file:./.ob-jupyter/e378e0716e655acfff901028fc066364b8a96b4c.png]]
+[[file:./.ob-jupyter/feb10f70eb84142887681605d54a9ccf8d965313.png]]
 :END:
 
 #+RESULTS: ctrl-plot-pena-2
 :RESULTS:
 : Text(0.5, 0, 'number of beads')
-[[file:./.ob-jupyter/0ad1fe875c3dad8b2ae26340b6e0f118cc341a9c.png]]
+[[file:./.ob-jupyter/4a856fc92617c0f1cac26bb4319b9c9d231b2c58.png]]
 :END:
 
 

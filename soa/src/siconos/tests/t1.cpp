@@ -1,11 +1,11 @@
+#include <concepts>
+
 #include "siconos/siconos.hpp"
+#include "siconos/storage/pattern/base.hpp"
 #include "siconos/utils/print.hpp"
 
-
-
-namespace siconos::config
-{
-  using params = map<assoc<param<"dof">, param_val<3>>>;
+namespace siconos::config {
+using params = map<assoc<param<"dof">, param_val<3>>>;
 }
 
 using namespace siconos;
@@ -37,68 +37,59 @@ struct bbb : item<> {
   };
 };
 
-static_assert(
-    std::is_same_v<
-    traits::config<standard_environment<int>>::convert<some::scalar>::type,
-        double>);
-static_assert(
-    std::is_same_v<
-    traits::config<standard_environment<int>>::convert<pointer<float>>::type,
-        pointer<float>>);
-
-  static_assert(std::is_same_v<traits::config<standard_environment<int>>::convert<
-                                 some::specific<pointer<float>>>::type,
+static_assert(std::is_same_v<traits::config<standard_environment<int>>::
+                                 convert<some::scalar>::type,
+                             double>);
+static_assert(std::is_same_v<traits::config<standard_environment<int>>::
+                                 convert<pointer<float>>::type,
                              pointer<float>>);
+
+static_assert(
+    std::is_same_v<traits::config<standard_environment<int>>::convert<
+                       some::specific<pointer<float>>>::type,
+                   pointer<float>>);
 
 }  // namespace siconos
 
 using namespace boost::hana::literals;
 
+using ball = model::lagrangian_ds;
+using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
+using osnspb = simul::one_step_nonsmooth_problem<lcp>;
+using nslaw = model::newton_impact;
+using relation = model::lagrangian_r<nslaw>;
+using interaction = simul::interaction<relation>;
+using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
+using td = simul::time_discretization<>;
+using topo = simul::topology<ball, interaction>;
+using simulation = simul::time_stepping<td, osi, osnspb, topo>;
+
+template <typename T>
+struct is_polymorhic : std::integral_constant<bool, []() {
+  return match::polymorphic_type<T>;
+}()> {
+};
+
 int main()
 {
-  using ball = model::lagrangian_ds;
-  using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
-  using osnspb = simul::one_step_nonsmooth_problem<lcp>;
-  using relation = model::lagrangian_r;
-  using nslaw = model::newton_impact;
-  using interaction = simul::interaction<nslaw, relation, 1>;
-  using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
-  using td = simul::time_discretization<>;
-  using topo = simul::topology<ball, interaction>;
-  using simulation = simul::time_stepping<td, osi, osnspb, topo>;
-
   struct zz {};
   //  {
-  static_assert(must::contains<int, std::tuple<int, float, char>>);
-  static_assert(!must::contains<double, std::tuple<int, float, char>>);
-  static_assert(
-      std::is_same_v<decltype(cons(int{}, std::tuple<char, float>{})),
-                     std::tuple<int, char, float>>);
-
-  static_assert(
-      std::is_same_v<decltype(append(gather<int>{}, gather<float>{})),
-                     gather<int, float>>);
-
-  static_assert(transform([]<typename T>(T) { return int{}; },
-                          std::tuple<char, float, double>{}) ==
-                std::tuple<int, int, int>{});
   static_assert(std::is_same_v<decltype(all_items(nslaw{})),
                                gather<siconos::model::newton_impact>>);
-  static_assert(
-      std::is_same_v<decltype([]() {
-                       return transform(
-                           []<typename T>(T) { return typename T::type{}; },
-                           filter<hold<decltype([]<typename T>(T) {
-                             return match::item_ref<T>;
-                           })>>(typename interaction::attributes{}));
-                     }()),
-                     gather<nslaw, relation>>);
+
+  static_assert(std::derived_from<
+                std::decay_t<decltype(std::get<0>(ground::filter(
+                    typename interaction::attributes{},
+                    ground::compose(ground::trait<is_polymorhic>,
+                                    ground::typeid_))))>,
+                some::polymorphic_attribute<some::item_ref<relation>>>);
 
   // ground::type_trace<decltype(all_items(interaction{}))>();
   static_assert(std::is_same_v<decltype(all_items(interaction{})),
                                std::tuple<interaction, nslaw, relation>>);
 
-  // static_assert(must::contains<osnspb, decltype(all_items(simulation{}))>);
+  // static_assert(must::contains<osnspb,
+  // decltype(all_items(simulation{}))>);
 
   static_assert(match::item<ball>);
   static_assert(match::attribute<nslaw::e>);
@@ -151,7 +142,10 @@ int main()
 
   static_assert(traits::translatable<int, env>);
 
-  std::cout << ground::type_name<traits::config<env>::convert<int>::type>();
+#ifdef __clang__
+  std::cout
+      << ground::type_name<traits::config<env>::convert<int>::type>().c_str();
+#endif
   static_assert(std::is_same_v<traits::config<env>::convert<int>::type, int>);
 
   static_assert(
@@ -175,18 +169,16 @@ int main()
   static_assert(
       std::is_same_v<
           decltype(attributes(interaction{})),
-          gather<some::indice_parameter<"dof">, some::indice_value<1>,
-                 interaction::nonsmooth_law, interaction::relation,
+          gather<interaction::relation, interaction::nonsmooth_law,
                  interaction::h_matrix1, interaction::h_matrix2,
                  interaction::lambda, interaction::y, interaction::ydot>>);
 
   static_assert(
       std::is_same_v<decltype(all_attributes(interaction{})),
-                     gather<some::indice_parameter<"dof">,
-                            some::indice_value<1>, interaction::nonsmooth_law,
-                            interaction::relation, interaction::h_matrix1,
-                            interaction::h_matrix2, interaction::lambda,
-                            interaction::y, interaction::ydot, nslaw::e>>);
+                     gather<interaction::relation, interaction::nonsmooth_law,
+                            interaction::h_matrix1, interaction::h_matrix2,
+                            interaction::lambda, interaction::y,
+                            interaction::ydot, nslaw::e>>);
 
   //}
 

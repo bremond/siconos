@@ -5,6 +5,9 @@
 #include <algorithm>
 #include <boost/hana.hpp>
 #include <boost/hana/equal.hpp>
+#ifdef __clang__
+#include <boost/hana/experimental/type_name.hpp>
+#endif
 #include <boost/hana/ext/std/array.hpp>
 #include <boost/hana/ext/std/tuple.hpp>
 #include <boost/hana/functional/overload_linearly.hpp>
@@ -16,6 +19,7 @@
 #include <boost/hana/not_equal.hpp>
 #include <boost/hana/pair.hpp>
 #include <boost/hana/string.hpp>
+#include <boost/type_index.hpp>
 #include <numeric>
 #include <type_traits>
 #include <typeinfo>
@@ -28,26 +32,10 @@
 
 namespace siconos::storage::ground {
 
-template <typename T>
-constexpr auto type_name()
+template <typename Y>
+constexpr decltype(auto) debug_type(Y)
 {
-  std::string_view name, prefix, suffix;
-#ifdef __clang__
-  name = __PRETTY_FUNCTION__;
-  prefix = "auto type_name() [T = ";
-  suffix = "]";
-#elif defined(__GNUC__)
-  name = __PRETTY_FUNCTION__;
-  prefix = "constexpr auto type_name() [with T = ";
-  suffix = "]";
-#elif defined(_MSC_VER)
-  name = __FUNCSIG__;
-  prefix = "auto __cdecl type_name<";
-  suffix = ">(void)";
-#endif
-  name.remove_prefix(prefix.size());
-  name.remove_suffix(suffix.size());
-  return name;
+  return boost::typeindex::type_id_with_cvr<Y>();
 }
 
 // debug (see_below for clang, gcc above...)
@@ -69,6 +57,16 @@ constexpr bool type_trace()
 
 namespace hana = boost::hana;
 
+#ifdef __clang__
+using hana::experimental::type_name;
+#endif
+
+using hana::take_while;
+
+template <typename T>
+using inner_type = typename std::remove_reference<T>::type;
+
+using hana::tuple;
 static constexpr auto typeid_ = hana::typeid_;
 
 template <template <typename... Ts> typename F>
@@ -259,5 +257,13 @@ template <typename B>
 static constexpr auto derive_from = is_a_model<[]<typename T>() consteval {
   return std::derived_from<T, B>;
 }>;
-}
 
+template <typename D>
+static constexpr auto dump_keys(D, auto &&fun)
+{
+  for_each(D{}, [&fun]<typename KeyValue>(KeyValue kv) {
+    fun(debug_type(inner_type<inner_type<decltype(first(kv))>>{})
+            .pretty_name());
+  });
+}
+}  // namespace siconos::storage::ground

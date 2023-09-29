@@ -39,7 +39,7 @@ struct indice_parameter : undefined_indice_parameter {
 struct undefined_type_parameter : attribute<> {};
 
 template <string_literal S>
-struct type_parameter : undefined_type_parameter, attribute<> {
+struct type_parameter : undefined_type_parameter {
   static constexpr auto name = S;
 };
 
@@ -143,6 +143,18 @@ struct bounded_collection : undefined_bounded_collection,
 
 template <match::item T>
 struct item_ref : attribute<>, with_type<T> {
+};
+
+struct undefined_polymorphic_type {};
+template <typename... Ts>
+struct polymorph : undefined_polymorphic_type, with_types<Ts...> {
+  using polymorphic = void;
+};
+
+template <typename... Ts>
+struct polymorphic_attribute : attribute<>,
+                               with_type<gather<Ts...>>,
+                               polymorph<Ts...> {
 };
 
 struct given_type {};

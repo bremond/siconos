@@ -7,6 +7,12 @@
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/SiconosGraph.hpp"  // modified for std::array
 
+#include <cstddef> // std::size_t
+#include <vector>
+#include <array>
+#include <tuple>
+#include <variant>
+
 namespace siconos {
 template <typename Params>
 struct standard_environment {
@@ -49,6 +55,9 @@ struct standard_environment {
 
   template <typename T>
   using item_ref = storage::index<T, indice>;
+
+  template <typename ...Ts>
+  using poly = std::variant<Ts...>;
 
   template <typename T>
   using default_storage = std::array<T, 1>;

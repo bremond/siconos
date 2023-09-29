@@ -4,16 +4,18 @@
 
 namespace siconos::simul {
 
-template <typename Nslaw, typename Relation, std::size_t K = 2>
+template <match::item... Relations>
 struct interaction : item<> {
-  using nslaw_t = Nslaw;
-  using relation_t = Relation;
+  using nslaw = typename nth_t<0, gather<Relations...>>::nslaw;  // one nslaw
+  using relations = gather<Relations...>;
 
   using dof = some::indice_parameter<"dof">;
-  using nslaw_size = some::indice_value<Nslaw::size>;
+  using nslaw_size = some::indice_value<nslaw::size>;
 
-  struct nonsmooth_law : some::item_ref<Nslaw>, access<nonsmooth_law> {};
-  struct relation : some::item_ref<Relation>, access<relation> {};
+  struct relation : some::polymorphic_attribute<some::item_ref<Relations>...>,
+                    access<relation> {};
+
+  struct nonsmooth_law : some::item_ref<nslaw>, access<nonsmooth_law> {};
 
   struct h_matrix1 : some::matrix<some::scalar, nslaw_size, dof>,
                      access<h_matrix1> {};
@@ -25,8 +27,8 @@ struct interaction : item<> {
   struct y : some::vector<some::scalar, nslaw_size>, access<y> {};
   struct ydot : some::vector<some::scalar, nslaw_size>, access<ydot> {};
 
-  using attributes = gather<dof, nslaw_size, nonsmooth_law, relation,
-                            h_matrix1, h_matrix2, lambda, y, ydot>;
+  using attributes =
+      gather<relation, nonsmooth_law, h_matrix1, h_matrix2, lambda, y, ydot>;
 
   template <typename Handle>
   struct interface : default_interface<Handle> {
@@ -39,11 +41,16 @@ struct interaction : item<> {
 
     decltype(auto) relation()
     {
-      return make_handle<relation_t>(*self());
+      return Handle ::type ::relation ::at(*self());
+    };
+    decltype(auto) h_matrix1()
+    {
+      return Handle::type::h_matrix1::at(*self());
     }
-
-    decltype(auto) h_matrix1() { return Handle::type::h_matrix1::at(*self()); }
-    decltype(auto) h_matrix2() { return Handle::type::h_matrix2::at(*self()); }
+    decltype(auto) h_matrix2()
+    {
+      return Handle::type::h_matrix2::at(*self());
+    }
 
     decltype(auto) lambda() { return Handle ::type ::lambda ::at(*self()); }
     decltype(auto) y() { return Handle ::type ::y ::at(*self()); }

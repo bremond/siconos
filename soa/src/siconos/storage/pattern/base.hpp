@@ -8,7 +8,7 @@
 namespace siconos::storage::pattern {
 using size_t = std::size_t;
 
-template <typename ...Ts>
+template <typename... Ts>
 using pointer = std::shared_ptr<Ts...>;
 
 template <size_t N, typename tpl>
@@ -17,8 +17,8 @@ using nth_t = std::decay_t<decltype(std::get<N>(tpl{}))>;
 template <typename... Args>
 using gather = std::tuple<Args...>;
 
-  template <typename T, typename Tpl>
-  using cons_t = std::decay_t<decltype(std::tuple_cat<std::tuple<T>, Tpl>)>;
+template <typename T, typename Tpl>
+using cons_t = std::decay_t<decltype(std::tuple_cat<std::tuple<T>, Tpl>)>;
 
 // https://ctrpeach.io/posts/cpp20-string-literal-template-parameters/
 // https://stackoverflow.com/questions/62266052/c20-string-literal-template-argument-working-example
@@ -112,6 +112,9 @@ template <typename T>
 concept properties = item<T> && requires { typename T::properties; };
 
 template <typename T>
+concept polymorphic_type = requires { typename T::polymorphic; };
+
+template <typename T>
 concept size = requires(T a) {
   {
     std::size(a)
@@ -139,5 +142,5 @@ concept full_handle =
 template <typename T>
 concept wrap = item<T> && requires { typename T::wrap_t; };
 
-}   // namespace match
-}   // namespace siconos::storage::pattern
+}  // namespace match
+}  // namespace siconos::storage::pattern

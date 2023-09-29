@@ -6,9 +6,9 @@ namespace siconos::config {
 using ball = model::lagrangian_ds;
 using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
 using osnspb = simul::one_step_nonsmooth_problem<lcp>;
-using relation = model::lagrangian_tir;
 using nslaw = model::newton_impact;
-using interaction = simul::interaction<nslaw, relation, 1>;
+using relation = model::lagrangian_tir<nslaw>;
+using interaction = simul::interaction<relation>;
 using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
 using topo = simul::topology<ball, interaction>;
@@ -95,6 +95,7 @@ int main(int argc, char* argv[])
   // Interaction ball-floor
   auto interaction = simulation.topology().link(ball);
   interaction.h_matrix1() = {1., 0., 0.};
+
   interaction.relation() = relation;
   interaction.nonsmooth_law() = nslaw;
 
@@ -139,4 +140,5 @@ int main(int argc, char* argv[])
               p0, lambda);
   }
   //  io::close(fd);
+
 }

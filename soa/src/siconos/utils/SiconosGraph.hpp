@@ -620,8 +620,10 @@ class SiconosGraph {
 
     if (vd1 == vd2) {
       // self edge
+#ifndef NDEBUG
       typename AdjointG::EDescriptor aed =
-          ag.add_edge(new_ve, new_ve, bundle(vd1));
+#endif
+        ag.add_edge(new_ve, new_ve, bundle(vd1));
     }
 
     assert(bundle(new_ed) == ag.bundle(new_ve));
@@ -655,7 +657,9 @@ class SiconosGraph {
             assert(!ag.is_edge(new_ve, ag.descriptor(bundle(*ied)),
                                bundle(vdx)));
 
+#ifndef NDEBUG
             typename AdjointG::EDescriptor aed =
+#endif
                 ag.add_edge(new_ve, ag.descriptor(bundle(*ied)), bundle(vdx));
 
             assert(ag.bundle(aed) == bundle(vdx));

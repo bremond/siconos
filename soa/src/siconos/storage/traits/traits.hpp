@@ -1,6 +1,9 @@
 #pragma once
 
+#include <concepts>
+#include <tuple>
 #include "siconos/storage/pattern/pattern.hpp"
+#include "siconos/storage/some/some.hpp"
 
 namespace siconos::storage::traits {
 
@@ -19,6 +22,14 @@ static auto translate = rec([]<typename E, typename T>(auto&& translate, E,
     // return the type itself
     return T{};
   }
+  else if constexpr (std::derived_from<T, some::undefined_polymorphic_type>)
+  {
+    return std::apply([]<typename ...Ts>(Ts...)
+                      {
+                        return typename E::template poly<decltype(translate(E{}, Ts{}))...>{};
+                      },
+                      (typename T::types{}));
+  }
   else if constexpr (std::derived_from<T, some::boolean>) {
     return typename E::boolean{};
   }
@@ -33,6 +44,9 @@ static auto translate = rec([]<typename E, typename T>(auto&& translate, E,
   }
   else if constexpr (std::derived_from<T, some::undefined_indice_value>) {
     return T{};
+  }
+  else if constexpr (std::derived_from<T, some::undefined_type_parameter>) {
+    return ground::get<param<T::name>>(typename E::params{});
   }
 
   else if constexpr (std::derived_from<
