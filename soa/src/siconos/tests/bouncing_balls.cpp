@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
   auto data = storage::make_storage<
       standard_environment<config::params>, config::simulation,
       wrap<some::unbounded_collection, config::ball>,
-      wrap<some::unbounded_collection, config::relation>,
+      wrap<some::bounded_collection, config::relation, some::indice_value<1>>,
       wrap<some::unbounded_collection, config::interaction>,
       storage::with_properties<
           storage::time_invariant<config::ball::fext>,

@@ -471,39 +471,17 @@ static auto make_storage = []() constexpr -> decltype(auto) {
             using storage_t = std::decay_t<decltype(s)>;
 
             if constexpr (match::wrap<Item>) {
-              if constexpr (match::unbounded_storage<
-                                typename Item::template wrapper<
-                                    some::scalar>>) {
-                return ground::pair<
-                    Attr,
-                    typename traits::config<Env>::template convert<
-                        typename Item::template wrapper<storage_t>>::type>{};
+              return ground::pair<
+                Attr,
+                typename traits::config<Env>::template convert<
+                  typename Item::template wrapper<storage_t>>::type>{};
               }
-              else if constexpr (match::bounded_storage<
-                                     typename Item::template wrapper<
-                                         some::scalar, 1>>) {
-                return ground::pair<
-                    Attr, typename traits::config<Env>::template convert<
-                              typename Item::template wrapper<
-                                  storage_t, std::get<0>(Item::sizes)>>::
-                              type>{};  // std::forward<storage_t>(s)};
-              }
-              else {
-                []<typename Attribute = Attr, typename LastItem = Item,
-                   bool flag = false>()
-                {
-                  static_assert(flag, "storage error");
-                }
-                ();
-              }
-            }
             else  // default storage
             {
               return ground::pair<
                   Attr, typename Env::template default_storage<storage_t>>{};
             }
           }),
-
       // attribute level: memory depends on keeps
       []<match::attribute Attribute>(Attribute attr, auto s) {
         using storage_t = std::decay_t<decltype(s)>;

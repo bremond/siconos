@@ -140,6 +140,9 @@ int main()
 
   static_assert(match::wrap<wrap<some::unbounded_diagonal_matrix, ball>>);
 
+  static_assert(match::bounded_storage<
+                wrap<some::bounded_collection, ball, some::indice_value<1>>::template wrapper<some::scalar>>);
+
   static_assert(traits::translatable<int, env>);
 
 #ifdef __clang__

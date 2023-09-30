@@ -302,12 +302,13 @@ struct any_wrapper {};
 struct any_bounded_wrapper : any_wrapper {};
 struct any_unbounded_wrapper : any_wrapper {};
 
-template <template <typename T> typename Wrapper, match::item Item>
-struct wrap : item<>, any_wrapper {
+template <template <typename... Ts> typename Wrapper, match::item Item,
+          typename ...Args>
+struct wrap : Wrapper<Item, Args...>, Item, any_wrapper {
   using wrap_t = void;
   template <typename T>
-  using wrapper = Wrapper<T>;
-  using attributes = typename Item::attributes;
+  using wrapper = Wrapper<T, Args...>;
+  //  using attributes = typename Item::attributes;
   using type = Item;
 };
 
@@ -396,7 +397,7 @@ static auto all_items = rec([](auto&& all_items, match::item auto root_item) {
   auto poly_ref = []() {
     if constexpr (match::attributes<type_t>) {
       return transform(
-        []<typename T>(T) { return typename T::type{}; },
+          []<typename T>(T) { return typename T::type{}; },
           flatten(transform([]<typename T>(T) { return typename T::types{}; },
                             filter<hold<decltype([]<typename T>(T) {
                               return match::polymorphic_type<T>;
