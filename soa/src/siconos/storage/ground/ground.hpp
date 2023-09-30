@@ -16,6 +16,7 @@
 #include <boost/hana/fwd/for_each.hpp>
 #include <boost/hana/fwd/map.hpp>
 #include <boost/hana/integral_constant.hpp>
+#include <boost/hana/lazy.hpp>
 #include <boost/hana/not_equal.hpp>
 #include <boost/hana/pair.hpp>
 #include <boost/hana/string.hpp>
@@ -66,6 +67,9 @@ using hana::take_while;
 template <typename T>
 using inner_type = typename std::remove_reference<T>::type;
 
+using hana::eval;
+using hana::is_valid;
+using hana::make_lazy;
 using hana::tuple;
 static constexpr auto typeid_ = hana::typeid_;
 
@@ -266,4 +270,31 @@ static constexpr auto dump_keys(D, auto &&fun)
             .pretty_name());
   });
 }
+
+template <auto I, typename R, typename F>
+static constexpr R call_with_integral_constant_if_valid(R &&def_val, F &&fun)
+{
+  constexpr auto N = std::integral_constant<decltype(I), I>{};
+  if constexpr (is_valid([](auto K) -> decltype(F{K}) {
+      })(N)) {
+    return static_cast<F &&>(fun)(N);
+  }
+  else {
+    return def_val;
+  }
+}
+
+template <auto NumOfCases, typename ReturnType, typename F>
+inline constexpr ReturnType call_with_index(auto index, ReturnType &&def_val,
+                                            F &&f)
+{
+  constexpr auto fun_tab = []<std::size_t... I>(std::index_sequence<I...>) {
+    return std::array{
+        siconos::storage::ground::call_with_integral_constant_if_valid<
+            I, ReturnType, F>...};
+  }(std::make_index_sequence<NumOfCases>{});
+
+  return fun_tab[index](static_cast<ReturnType &&>(def_val), static_cast<F &&>(f));
+}
+
 }  // namespace siconos::storage::ground

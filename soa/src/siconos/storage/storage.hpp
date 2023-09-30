@@ -35,6 +35,8 @@ static constexpr auto memory = []<typename T>(
 namespace property {
 struct keep : some::property {};
 
+struct time_invariant : some::property {};
+
 struct refine : some::property {};
 
 struct diagonal : refine {
@@ -65,6 +67,12 @@ struct keep : property::keep {
   using keep_t = void;
   //    using attribute = Attr;
   static constexpr std::size_t size = N;
+};
+
+template <match::attribute Attr>
+struct time_invariant : property::time_invariant {
+  using type = Attr;
+  using time_invariant_t = void;
 };
 
 template <match::abstract_matrix M>
@@ -228,6 +236,9 @@ static auto has_property = [](auto& data) constexpr -> bool {
     return std::derived_from<Attr, typename P::type>;
   });
 };
+
+template <typename A, typename K, typename D>
+using has_property_t = std::decay_t<decltype(has_property<A, K>(D{}))>;
 
 static auto refine_attribute = []<match::attribute Attr, typename D>(
                                    const D& data,
@@ -670,8 +681,8 @@ static auto handles = [](auto& data, auto step) constexpr -> decltype(auto) {
          });
 };
 
-
-/*siconos::storage::ground::dump_keys(data, [](auto&& s) { std::cout << s<< std::endl;});*/
+/*siconos::storage::ground::dump_keys(data, [](auto&& s) { std::cout << s<<
+ * std::endl;});*/
 
 }  // namespace siconos::storage
 

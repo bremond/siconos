@@ -1,5 +1,6 @@
 #pragma once
 
+#include "siconos/algebra/eigen.hpp"
 #include "siconos/simul/simul.hpp"
 #include "siconos/model/nslaws.hpp"
 
@@ -269,6 +270,12 @@ struct time_stepping : item<> {
       //   IndexSets end : index_set1 size : %ld\n", index_set1->size());
       // }
     };
+
+    void initialize()
+    {
+      one_step_integrator().initialize(current_step());
+    }
+
   };
 };
 

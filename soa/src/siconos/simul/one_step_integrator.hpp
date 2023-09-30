@@ -2,6 +2,7 @@
 
 #include "siconos/algebra/numerics.hpp"
 #include "siconos/simul/simul.hpp"
+#include "siconos/storage/storage.hpp"
 #include "siconos/utils/print.hpp"
 #include "siconos/utils/range.hpp"
 #include "siconos/utils/variant.hpp"
@@ -250,7 +251,8 @@ struct one_step_integrator {
         indice inter_counter = 0;
         for (auto [y, ydot, activation, ids1, ids2, inter] :
              views::zip(ys, ydots, activations, ids1s, ids2s, interactions)) {
-          auto b = siconos::utils::apply_maybe(
+
+          auto b = siconos::utils::apply_if_valid(
               inter.relation(), 0., [&data](auto &real_relation) {
                 return storage::handle(real_relation, data).b();
               });
@@ -497,7 +499,17 @@ struct one_step_integrator {
           // note: theta useless if fext is constant
           v_next = v + h * theta_ * minv_f + h * (1 - theta_) * minv_f_next;
         }
-      };
+      }
+
+      void initialize(auto current_step)
+      {
+        using data_t = const std::decay_t<decltype(self()->data())>;
+        if constexpr (storage::has_property_t<typename system::fext,
+                      property::time_invariant, data_t>()) {
+          // constant fext => constant iteration matrix
+          compute_iteration_matrix(current_step);
+        }
+      }
     };
   };
 };

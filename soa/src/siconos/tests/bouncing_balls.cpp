@@ -21,7 +21,7 @@ using td = simul::time_discretization<>;
 using topo = simul::topology<ball, interaction>;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
 
-using params = map<iparam<"dof", 3>>;  
+using params = map<iparam<"dof", 3>>;
 }  // namespace siconos::config
 
 int main(int argc, char* argv[])
@@ -31,11 +31,12 @@ int main(int argc, char* argv[])
   using siconos::storage::pattern::wrap;
 
   auto data = storage::make_storage<
-    standard_environment<config::params>, config::simulation,
+      standard_environment<config::params>, config::simulation,
       wrap<some::unbounded_collection, config::ball>,
       wrap<some::unbounded_collection, config::relation>,
       wrap<some::unbounded_collection, config::interaction>,
       storage::with_properties<
+          storage::time_invariant<config::ball::fext>,
           storage::diagonal<config::ball::mass_matrix>,
           storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
 

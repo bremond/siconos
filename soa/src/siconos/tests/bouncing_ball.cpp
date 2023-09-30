@@ -28,6 +28,7 @@ int main(int argc, char* argv[])
       standard_environment<config::params>, config::simulation, config::ball,
       config::relation, config::interaction,
       storage::with_properties<
+          storage::time_invariant<config::ball::fext>,
           storage::diagonal<config::ball::mass_matrix>,
           storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
 
@@ -107,8 +108,7 @@ int main(int argc, char* argv[])
   //  auto fd = io::open<ascii>("result.dat");
 
   // fix this for constant fext
-  simulation.one_step_integrator().compute_iteration_matrix(
-      simulation.current_step());
+  simulation.initialize();
 
   auto out = fmt::output_file("result.dat");
 
@@ -140,5 +140,4 @@ int main(int argc, char* argv[])
               p0, lambda);
   }
   //  io::close(fd);
-
 }
