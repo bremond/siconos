@@ -72,6 +72,7 @@ struct topology : item<> {
     decltype(auto) link(Hds ds)
     {
       auto &data = self()->data();
+
       auto &dsg0 = self()->dynamical_system_graphs()[0];
       auto &ig0 = self()->interaction_graphs()[0];
       auto inter = storage::add<interaction>(data);
@@ -106,6 +107,7 @@ struct topology : item<> {
     decltype(auto) link(Hds ds1, Hds ds2)
     {
       auto &data = self()->data();
+
       auto &dsg0 = self()->dynamical_system_graphs()[0];
       auto &ig0 = self()->interaction_graphs()[0];
       ;

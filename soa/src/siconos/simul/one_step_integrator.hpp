@@ -251,7 +251,6 @@ struct one_step_integrator {
         indice inter_counter = 0;
         for (auto [y, ydot, activation, ids1, ids2, inter] :
              views::zip(ys, ydots, activations, ids1s, ids2s, interactions)) {
-
           auto b = siconos::utils::apply_if_valid(
               inter.relation(), 0., [&data](auto &real_relation) {
                 return storage::handle(real_relation, data).b();
@@ -466,19 +465,9 @@ struct one_step_integrator {
         auto &mats = storage::memory(step, mass_matrices);
         auto &fs = storage::memory(step, external_forces);
 
-        //        if constexpr (has_property<mass_matrix,
-        //        some::time_invariant>(data)) {
-        //          if constexpr (has_property<fext,
-        //          some::time_invariant>(data)) {
-        //            if constexpr (has_property<mass_matrix,
-        //            property::diagonal>(
-        //                              data)) {
         for (auto [mat, f] : views::zip(mats, fs)) {
           f = mat.inverse() * f;
         }
-        //            }
-        //          }
-        //      }
       }
 
       auto compute_free_state(auto step, auto h)
@@ -501,11 +490,64 @@ struct one_step_integrator {
         }
       }
 
-      void initialize(auto current_step)
+      void initialize(auto step)
+      {
+        compute_iteration_matrix(step);
+        compute_h_matrices(step);
+      }
+
+      void compute_h_matrices(auto step)
+      {
+        auto &data = self()->data();
+
+        auto &h_matrices1 = storage::attr_values<h_matrix1>(data, step);
+        auto &h_matrices2 = storage::attr_values<h_matrix2>(data, step);
+        auto &ndss = storage::prop_values<interaction, "nds">(data, step);
+
+        const auto &interactions = storage::handles<interaction>(data, step);
+
+        for (auto [inter, hm1, hm2, nds] :
+             views::zip(interactions, h_matrices1, h_matrices2, ndss)) {
+          // local binding not enough to be passed to lambda...
+          auto &hhm1 = hm1;
+          auto &hhm2 = hm2;
+
+          if (nds == 2)
+          {
+            siconos::utils::apply_if_valid(
+              inter.relation(), false,
+              [&data, &step, &hhm1, &hhm2](auto &rrel) {
+                storage::handle(rrel, data).compute_jachq(step, hhm1, hhm2);
+                return true;
+              });
+          } else {
+            // nds == 1
+             siconos::utils::apply_if_valid(
+              inter.relation(), false,
+              [&data, &step, &hhm1](auto &rrel) {
+                storage::handle(rrel, data).compute_jachq(step, hhm1);
+                return true;
+              });
+          }
+        };
+      }
+
+      void update_h_matrices(auto step)
+      {
+        auto &data = self()->data();
+        using data_t = const std::decay_t<decltype(data)>;
+        if constexpr (!storage::has_property_t<
+                          h_matrix1, property::time_invariant, data_t>()) {
+          compute_h_matrices(step);
+        }
+      };
+
+      void update_iteration_matrix(auto current_step)
       {
         using data_t = const std::decay_t<decltype(self()->data())>;
-        if constexpr (storage::has_property_t<typename system::fext,
-                      property::time_invariant, data_t>()) {
+        if constexpr (!storage::has_property_t<typename system::fext,
+                                              property::time_invariant,
+                                              data_t>()) {
           // constant fext => constant iteration matrix
           compute_iteration_matrix(current_step);
         }

@@ -1,8 +1,8 @@
 #pragma once
 
 #include "siconos/algebra/eigen.hpp"
-#include "siconos/simul/simul.hpp"
 #include "siconos/model/nslaws.hpp"
+#include "siconos/simul/simul.hpp"
 
 namespace siconos::simul {
 template <match::item... Items>
@@ -46,11 +46,6 @@ struct time_stepping : item<> {
       auto osi = one_step_integrator();
       auto step = current_step();
 
-      // just once if fext constant!
-      // osi.compute_iteration_matrix(step);  // fext <- just M-1
-      // fext
-
-      // v (step+1)
       osi.compute_free_state(step, time_step());
 
       // -> ydot (step+1)
@@ -67,7 +62,7 @@ struct time_stepping : item<> {
       if (nds > 0) {
         // a least one activated interaction
 
-//        print("ninter, nds = {},{}\n", ninter, nds);
+        //        print("ninter, nds = {},{}\n", ninter, nds);
 
         osi.assemble_h_matrix_for_involved_ds(step, ninter, nds);
         osi.assemble_mass_matrix_for_involved_ds(step, nds);
@@ -88,6 +83,12 @@ struct time_stepping : item<> {
       else {
         print(".");
       }
+
+      // do nothing if lagrangian_r is time_invariant
+      //osi.update_h_matrices(step);
+
+      // do nothing if fext is time_invariant
+      //osi.update_iteration_matrix(step);
 
       current_step() += 1;
 
@@ -271,11 +272,7 @@ struct time_stepping : item<> {
       // }
     };
 
-    void initialize()
-    {
-      one_step_integrator().initialize(current_step());
-    }
-
+    void initialize() { one_step_integrator().initialize(current_step()); }
   };
 };
 

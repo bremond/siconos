@@ -29,8 +29,8 @@ struct lagrangian_r : item<> {
 };
 
 template <match::item Nslaw>
-struct lagrangian_tir
-    : item<description<"A lagrangian time invariant relation">>,
+struct lagrangian_linear
+    : item<>,
       time_invariant {
   using nslaw = Nslaw;
   using nslaw_size = some::indice_value<nslaw::size>;
@@ -50,6 +50,16 @@ struct lagrangian_tir
     decltype(auto) h_matrix() { return Handle::type::h_matrix::at(*self()); }
 
     decltype(auto) b() { return Handle::type::b::at(*self()); }
+
+    decltype(auto) compute_jachq(auto step, auto& h_matrix1, auto& h_matrix2)
+    {
+      h_matrix1 = h_matrix();
+      h_matrix2 = -h_matrix();
+    }
+    decltype(auto) compute_jachq(auto step, auto& h_matrix1)
+    {
+      h_matrix1 << -h_matrix();
+    }
   };
 };
 

@@ -275,7 +275,8 @@ template <auto I, typename R, typename F>
 static constexpr R call_with_integral_constant_if_valid(R &&def_val, F &&fun)
 {
   constexpr auto N = std::integral_constant<decltype(I), I>{};
-  if constexpr (is_valid([](auto K) -> decltype(F{K}) {
+
+  if constexpr (is_valid([](auto K) -> decltype(F{fun}){
       })(N)) {
     return static_cast<F &&>(fun)(N);
   }

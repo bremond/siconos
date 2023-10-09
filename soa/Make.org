@@ -44,9 +44,7 @@
 #+end_src
 
 
-* bench-gcc
-
-** Release
+** bench gcc
 
 
 #+name: mybenchmarks-make-gcc-release-bench-column_of_beads
@@ -125,31 +123,134 @@ resultfile every ::2 u 1:3 t "Ball velocity" w l,\
 #+end_src
 
 #+RESULTS: mybenchmarks-make-clang-release-run-bouncing-ball
-[[file:build-clang-release/src/siconos/tests/results.png]]
+[[file:build-clang-release/srqc/siconos/tests/results.png]]
 
 
+
+
+
+
+
+
+** bench-clang
+
+
+#+name: mybenchmarks-make-clang-release-bench-column_of_beads
+#+header: :dir (concat "build-clang-release" "/src/siconos/benchmarks")
+#+begin_src sh :compile :results output silent
+  for n in `seq 1 18`; do
+    nbeads=`echo "2^$n" | bc`
+    echo -n "$nbeads "; time -f 'RESULTS : -- %E %M %R --' ./column_of_beads_ts $nbeads 2>&1 | sed -n "s/RESULTS : -- \(.*\) --/\1/gp" | tr '\n' ' '
+    echo
+  done > column_of_beads_ts.csv
+#+end_src
+
+#+name: mybenchmarks-make-clang-release-bench-ColumnOfBeads
+#+header: :dir (concat "build-clang-release" "/src/siconos/benchmarks")
+#+begin_src sh :compile :results output silent
+  for n in `seq 1 18`; do
+    nbeads=`echo "2^$n" | bc`
+    echo -n "$nbeads "; time -f 'RESULTS : -- %E %M %R --' ./ColumnOfBeadsTS $nbeads 2>&1 | sed -n "s/RESULTS : -- \(.*\) --/\1/gp" | tr '\n' ' '
+    echo
+  done > ColumnOfBeadsTS.csv
+#+end_src
+
+#+name: packs
+#+begin_src elisp
+`("python-ipykernel" "python-numpy" "python-scipy" "python-matplotlib" "python-sympy" "python-pandas")
+#+end_src
 
 
 
 ** Debug
 
-#+name: mybenchmarks-cmake-clang-debug
+#+name: mybenchmarks-cmake-debug-clang
 #+header: :var src_dir=src-dir
 #+header: :dir build-clang-debug
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
-       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
-       dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1" 
+       environment siconos --pure --ad-hoc siconos benchmark clang-toolchain eigen boost fmt range-v3 cmake make dash -- \
+       dash -c "cmake ${src_dir} -DGUIX_ENVIRONMENT=\${GUIX_ENVIRONMENT} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1" 
 #+end_src
 
-#+name: mybenchmarks-make-clang-debug
+#+name: mybenchmarks-make-debug-clang
 #+header: :var src_dir=src-dir
 #+header: :dir build-clang-debug
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
-       environment --pure --ad-hoc siconos benchmark clang-toolchain boost fmt range-v3 cmake make -- \
+       environment siconos --pure --ad-hoc siconos benchmark clang-toolchain eigen boost fmt range-v3 cmake make dash -- \
        make VERBOSE=1
 #+end_src
+
+#+name: mybenchmarks-make-clang-debug-run-bouncing-ball
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-debug" "/src/siconos/tests")
+#+begin_src sh :compile :results output silent
+  time -f '%M %E' ./bouncing_ball > /tmp/l
+#+end_src
+
+#+name: mybenchmarks-make-clang-debug-run-bouncing-ball
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-debug" "/src/siconos/tests")
+#+begin_src gnuplot :file "./results.png"
+  #set  term X11
+#!tail -n 100000 result.dat > result-gp.dat
+resultfile = "result.dat"
+#resultfile = "BouncingBallSchatzmanPaoliOSI.ref"
+#resultfile = "result_tdg.dat"
+plot \
+resultfile every ::1 u 1:2 t "Ball position" w l,\
+resultfile every ::2 u 1:3 t "Ball velocity" w l,\
+#resultfile every ::2 u 1:4 t "Ball1 velocity" w l
+
+#,\
+#"result-gp.dat" u 1:5 t "Multiplier" w l
+#+end_src
+
+#+RESULTS: mybenchmarks-make-clang-debug-run-bouncing-ball
+[[file:build-clang-debug/src/siconos/tests/results.png]]
+
+#+name: mybenchmarks-make-clang-debug-run-bouncing-balls
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-debug" "/src/siconos/tests")
+#+begin_src sh :compile :results output silent
+  ./bouncing_balls > /tmp/l
+#+end_src
+
+#+name: mybenchmarks-make-clang-debug-valgrind-bouncing-balls
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-debug" "/src/siconos/tests")
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+     environment --pure --ad-hoc valgrind dash -- \
+  dash -c "valgrind --leak-check=full -s ./bouncing_balls"
+#+end_src
+
+
+
+#+name: mybenchmarks-make-clang-debug-run-bouncing-balls
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-debug" "/src/siconos/tests")
+#+begin_src gnuplot :file "./results.png"
+  #set  term X11
+#!tail -n 100000 result.dat > result-gp.dat
+resultfile = "result-many.dat"
+#resultfile = "BouncingBallSchatzmanPaoliOSI.ref"
+#resultfile = "result_tdg.dat"
+plot \
+resultfile every ::1 u 1:2 t "Ball1 position" w l,\
+resultfile every ::2 u 1:3 t "Ball2 position" w l,\
+#resultfile every ::2 u 1:4 t "Ball1 velocity" w l
+
+#,\
+#"result-gp.dat" u 1:5 t "Multiplier" w l
+#+end_src
+
+#+RESULTS: mybenchmarks-make-clang-debug-run-bouncing-balls
+[[file:build-clang-debug/src/siconos/tests/results.png]]
+
+
+
 
 
 ** ReWithDebInfoSiconos
@@ -390,33 +491,6 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
   LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/Release/siconos/lib64 time -f '%R %M %E' ./ColumnOfBeadsTS  10000 | sed -n 's/Computation time : \(.*\) ms/\1/p'
 #+end_src
 
-** Clang release
-
-
-#+name: mybenchmarks-make-clang-release-bench-column_of_beads
-#+header: :dir (concat "build-clang-release" "/src/siconos/benchmarks")
-#+begin_src sh :compile :results output silent
-  for n in `seq 1 18`; do
-    nbeads=`echo "2^$n" | bc`
-    echo -n "$nbeads "; time -f 'RESULTS : -- %E %M %R --' ./column_of_beads_ts $nbeads 2>&1 | sed -n "s/RESULTS : -- \(.*\) --/\1/gp" | tr '\n' ' '
-    echo
-  done > column_of_beads_ts.csv
-#+end_src
-
-#+name: mybenchmarks-make-clang-release-bench-ColumnOfBeads
-#+header: :dir (concat "build-clang-release" "/src/siconos/benchmarks")
-#+begin_src sh :compile :results output silent
-  for n in `seq 1 18`; do
-    nbeads=`echo "2^$n" | bc`
-    echo -n "$nbeads "; time -f 'RESULTS : -- %E %M %R --' ./ColumnOfBeadsTS $nbeads 2>&1 | sed -n "s/RESULTS : -- \(.*\) --/\1/gp" | tr '\n' ' '
-    echo
-  done > ColumnOfBeadsTS.csv
-#+end_src
-
-#+name: packs
-#+begin_src elisp
-`("python-ipykernel" "python-numpy" "python-scipy" "python-matplotlib" "python-sympy" "python-pandas")
-#+end_src
 
 * plots
 :PROPERTIES:
@@ -525,7 +599,7 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+RESULTS: ctrl-plot-pena-0
 :RESULTS:
 : Text(0.5, 0, 'number of beads')
-[[file:./.ob-jupyter/4efd430f031afd302c2223f12ff182b9198525dc.png]]
+[[file:./.ob-jupyter/6df61be5c7d8e9cb67df5a9bf60bde59708b8d36.png]]
 :END:
 
 
@@ -533,13 +607,13 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+RESULTS: ctrl-plot-pena-1
 :RESULTS:
 : Text(0.5, 0, 'number of beads')
-[[file:./.ob-jupyter/feb10f70eb84142887681605d54a9ccf8d965313.png]]
+[[file:./.ob-jupyter/14cd77d348672ef5fa59973dca4926fb6c5c56f9.png]]
 :END:
 
 #+RESULTS: ctrl-plot-pena-2
 :RESULTS:
 : Text(0.5, 0, 'number of beads')
-[[file:./.ob-jupyter/4a856fc92617c0f1cac26bb4319b9c9d231b2c58.png]]
+[[file:./.ob-jupyter/58306c449ba16fc2ec82bfeb20b776ea4fea5bdd.png]]
 :END:
 
 
