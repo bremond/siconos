@@ -14,7 +14,7 @@ using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
 using fc2d = simul::nonsmooth_problem<FrictionContactProblem>;
 using osnspb = simul::one_step_nonsmooth_problem<fc2d>;
 using nslaw = model::newton_impact_friction;
-using relation = model::lagrangian_linear<nslaw>;
+using relation = model::lagrangian_r<nslaw>;
 using interaction = simul::interaction<relation>;
 using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
@@ -37,7 +37,7 @@ int main(int argc, char* argv[])
       wrap<some::unbounded_collection, config::interaction>,
       storage::with_properties<
           storage::time_invariant<config::ball::fext>,
-          storage::diagonal<config::ball::mass_matrix>,
+        storage::diagonal<config::ball, "mass_matrix">,
           storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
 
   // unsigned int nDof = 3;         // degrees of freedom for the ball

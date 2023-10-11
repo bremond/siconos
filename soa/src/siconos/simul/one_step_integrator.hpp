@@ -22,7 +22,6 @@ struct one_step_integrator {
   using lambda = typename interaction::lambda;
   using q = typename system::q;
   using velocity = typename system::velocity;
-  using mass_matrix = typename system::mass_matrix;
   using h_matrix1 = typename interaction::h_matrix1;
   using h_matrix2 = typename interaction::h_matrix2;
   using fext = typename system::fext;
@@ -80,8 +79,9 @@ struct one_step_integrator {
     struct p0_vector_assembled
         : some::unbounded_vector<some::vector<some::scalar, dof>>,
           access<p0_vector_assembled> {};
-    struct mass_matrix_assembled : some::unbounded_matrix<mass_matrix>,
-                                   access<mass_matrix_assembled> {};
+    struct mass_matrix_assembled
+        : some::unbounded_matrix<attr_t<system, "mass_matrix">>,
+          access<mass_matrix_assembled> {};
     struct w_matrix
         : some::unbounded_matrix<
               some::matrix<some::scalar, nth_t<0, typename h_matrix1::sizes>,
@@ -459,7 +459,8 @@ struct one_step_integrator {
       auto compute_iteration_matrix(auto step)
       {
         auto &data = self()->data();
-        auto &mass_matrices = storage::attr_memory<mass_matrix>(data);
+        auto &mass_matrices =
+            storage::attr_memory<system, "mass_matrix">(data);
         auto &external_forces = storage::attr_memory<fext>(data);
 
         auto &mats = storage::memory(step, mass_matrices);
@@ -512,22 +513,21 @@ struct one_step_integrator {
           auto &hhm1 = hm1;
           auto &hhm2 = hm2;
 
-          if (nds == 2)
-          {
+          if (nds == 2) {
             siconos::utils::apply_if_valid(
-              inter.relation(), false,
-              [&data, &step, &hhm1, &hhm2](auto &rrel) {
-                storage::handle(rrel, data).compute_jachq(step, hhm1, hhm2);
-                return true;
-              });
-          } else {
+                inter.relation(), false,
+                [&data, &step, &hhm1, &hhm2](auto &rrel) {
+                  storage::handle(rrel, data).compute_jachq(step, hhm1, hhm2);
+                  return true;
+                });
+          }
+          else {
             // nds == 1
-             siconos::utils::apply_if_valid(
-              inter.relation(), false,
-              [&data, &step, &hhm1](auto &rrel) {
-                storage::handle(rrel, data).compute_jachq(step, hhm1);
-                return true;
-              });
+            siconos::utils::apply_if_valid(
+                inter.relation(), false, [&data, &step, &hhm1](auto &rrel) {
+                  storage::handle(rrel, data).compute_jachq(step, hhm1);
+                  return true;
+                });
           }
         };
       }
@@ -537,7 +537,7 @@ struct one_step_integrator {
         auto &data = self()->data();
         using data_t = const std::decay_t<decltype(data)>;
         if constexpr (!storage::has_property_t<
-                          h_matrix1, property::time_invariant, data_t>()) {
+                          interaction, property::time_invariant, data_t>()) {
           compute_h_matrices(step);
         }
       };
@@ -546,8 +546,8 @@ struct one_step_integrator {
       {
         using data_t = const std::decay_t<decltype(self()->data())>;
         if constexpr (!storage::has_property_t<typename system::fext,
-                                              property::time_invariant,
-                                              data_t>()) {
+                                               property::time_invariant,
+                                               data_t>()) {
           // constant fext => constant iteration matrix
           compute_iteration_matrix(current_step);
         }

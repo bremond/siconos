@@ -8,4 +8,8 @@ namespace siconos::model
 {
   using namespace storage;
   using namespace storage::pattern;
+
+  struct linear : some::property {};
+  struct any_lagrangian_relation {};
+
 }

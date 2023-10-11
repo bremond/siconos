@@ -75,11 +75,23 @@ struct time_invariant : property::time_invariant {
   using time_invariant_t = void;
 };
 
-template <match::abstract_matrix M>
+//  template <typename T, string_literal = "">
+// struct diagonal {
+//};
+
+template <match::item Item, string_literal S>
 struct diagonal : property::diagonal {
-  using type = M;
+  using type = std::decay_t<decltype(std::get<0>(
+      ground::filter(attributes(Item{}), ground::derive_from<symbol<S>>)))>;
+  static_assert(match::abstract_matrix<type>);
   using diagonal_t = void;
 };
+
+// template <match::abstract_matrix M>
+// struct diagonal<M> : property::diagonal {
+//   using type = M;
+//   using diagonal_t = void;
+// };
 
 template <match::abstract_matrix M>
 struct unbounded_diagonal : property::unbounded_diagonal {
@@ -125,9 +137,9 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
 
   D& _data;
 
-  decltype(auto) attributes()
+  constexpr decltype(auto) attributes()
   {
-    return typename index<T, R>::type::attributes{};
+    return attributes(typename index<T, R>::type{});
   };
 
   template <typename A>
@@ -231,11 +243,21 @@ static auto attribute_properties = [](auto& data) constexpr -> auto {
 };
 
 template <match::attribute Attr, match::property K>
-static auto has_property = [](auto& data) constexpr -> bool {
+static constexpr bool has_property(auto& data)
+{
   return ground::any_of(all_properties_as<K>(data), []<match::property P>(P) {
     return std::derived_from<Attr, typename P::type>;
   });
-};
+}
+
+template <match::item Item, match::property K>
+static constexpr auto has_property(auto& data)
+{
+  return ground::any_of(typename Item::properties{},
+                        []<match::property P>(P) {
+                          return std::derived_from<typename P::type, K>;
+                        });
+}
 
 template <typename A, typename K, typename D>
 using has_property_t = std::decay_t<decltype(has_property<A, K>(D{}))>;
@@ -472,10 +494,10 @@ static auto make_storage = []() constexpr -> decltype(auto) {
 
             if constexpr (match::wrap<Item>) {
               return ground::pair<
-                Attr,
-                typename traits::config<Env>::template convert<
-                  typename Item::template wrapper<storage_t>>::type>{};
-              }
+                  Attr,
+                  typename traits::config<Env>::template convert<
+                      typename Item::template wrapper<storage_t>>::type>{};
+            }
             else  // default storage
             {
               return ground::pair<
@@ -596,16 +618,29 @@ static auto prop = [](auto h) constexpr -> decltype(auto) {
   return h.template property<S>();
 };
 
+template <match::item Item, string_literal S>
+using attr_t = std::decay_t<decltype(std::get<0>(ground::filter(
+    attributes(Item{}), ground::derive_from<symbol<S>>)))>;
+
 template <string_literal S>
-static auto attr = []<typename H>(H h) constexpr -> decltype(auto) {
-  using attr_n = std::decay_t<decltype(std::get<0>(ground::filter(
-      all_attributes(typename H::type{}), ground::derive_from<symbol<S>>)))>;
-  return memory(0, ground::get<attr_n>(h.data()))[h.get()];
+static auto attr = []<typename H>(H h, typename H::indice step =
+                                           0) constexpr -> decltype(auto) {
+  using attr_n = attr_t<typename H::type, S>;
+  return memory(step, ground::get<attr_n>(h.data()))[h.get()];
 };
 
 template <match::attribute T>
-static auto attr_memory = [](auto& data) constexpr -> decltype(auto) {
+static constexpr decltype(auto) attr_memory(auto& data)
+{
   return ground::get<T>(data);
+};
+
+template <match::item I, string_literal S>
+static constexpr decltype(auto) attr_memory(auto& data)
+{
+  using attr_n = std::decay_t<decltype(std::get<0>(
+      ground::filter(attributes(I{}), ground::derive_from<symbol<S>>)))>;
+  return ground::get<attr_n>(data);
 };
 
 template <match::item I, string_literal S>
@@ -632,9 +667,15 @@ static auto prop_memory = [](auto& data) constexpr -> decltype(auto) {
 };
 
 template <match::attribute T>
-static auto attr_values =
-    [](auto& data, auto step) constexpr -> decltype(auto) {
+static constexpr decltype(auto) attr_values(auto& data, auto step)
+{
   return memory(step, (attr_memory<T>(data)));
+};
+
+template <match::item I, string_literal S>
+static constexpr decltype(auto) attr_values(auto& data, auto step)
+{
+  return memory(step, (attr_memory<I, S>(data)));
 };
 
 template <match::item I, string_literal S>
@@ -649,7 +690,7 @@ static auto handles = [](auto& data, auto step) constexpr -> decltype(auto) {
   using env = typename info_t::env;
   using indice = typename env::indice;
 
-  using attributes_t = typename I::attributes;
+  using attributes_t = std::decay_t<decltype(attributes(I{}))>;
   // need at least one attributes
   // empty items are not supposed to exist
   indice num = std::size(attr_values<nth_t<0, attributes_t>>(data, step));

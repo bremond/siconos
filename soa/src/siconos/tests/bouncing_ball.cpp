@@ -7,7 +7,7 @@ using ball = model::lagrangian_ds;
 using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
 using osnspb = simul::one_step_nonsmooth_problem<lcp>;
 using nslaw = model::newton_impact;
-using relation = model::lagrangian_linear<nslaw>;
+using relation = model::lagrangian_r<nslaw>;
 using interaction = simul::interaction<relation>;
 using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
@@ -17,7 +17,6 @@ using simulation = simul::time_stepping<td, osi, osnspb, topo>;
 using params = map<iparam<"dof", 3>>;
 }  // namespace siconos::config
 
-
 int main(int argc, char* argv[])
 {
   using namespace siconos;
@@ -26,7 +25,7 @@ int main(int argc, char* argv[])
       config::relation, config::interaction,
       storage::with_properties<
           storage::time_invariant<config::ball::fext>,
-          storage::diagonal<config::ball::mass_matrix>,
+          storage::diagonal<config::ball, "mass_matrix">,
           storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
 
   // unsigned int nDof = 3;         // degrees of freedom for the ball
@@ -60,7 +59,7 @@ int main(int argc, char* argv[])
 
   // -- Lagrangian relation --
   auto relation = storage::add<config::relation>(data);
-  relation.h_matrix() = {1.0, 0., 0.};
+  relation.h_matrix() = {-1.0, 0., 0.};
 
   // -- nslaw --
   double e = 0.9;
@@ -92,7 +91,7 @@ int main(int argc, char* argv[])
 
   // Interaction ball-floor
   auto interaction = simulation.topology().link(ball);
-  //interaction.h_matrix1() = {1., 0., 0.};
+  // interaction.h_matrix1() = {1., 0., 0.};
 
   interaction.relation() = relation;
   interaction.nonsmooth_law() = nslaw;

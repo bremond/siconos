@@ -123,7 +123,7 @@ resultfile every ::2 u 1:3 t "Ball velocity" w l,\
 #+end_src
 
 #+RESULTS: mybenchmarks-make-clang-release-run-bouncing-ball
-[[file:build-clang-release/srqc/siconos/tests/results.png]]
+[[file:build-clang-release/src/siconos/tests/results.png]]
 
 
 
@@ -599,7 +599,7 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+RESULTS: ctrl-plot-pena-0
 :RESULTS:
 : Text(0.5, 0, 'number of beads')
-[[file:./.ob-jupyter/6df61be5c7d8e9cb67df5a9bf60bde59708b8d36.png]]
+[[file:./.ob-jupyter/bdc575a7a9ae991e5bc2ee130511b768c4ea7839.png]]
 :END:
 
 
@@ -607,13 +607,13 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+RESULTS: ctrl-plot-pena-1
 :RESULTS:
 : Text(0.5, 0, 'number of beads')
-[[file:./.ob-jupyter/14cd77d348672ef5fa59973dca4926fb6c5c56f9.png]]
+[[file:./.ob-jupyter/8f1d0c3b0d8ed685969c45af12bb4548d3a4a842.png]]
 :END:
 
 #+RESULTS: ctrl-plot-pena-2
 :RESULTS:
 : Text(0.5, 0, 'number of beads')
-[[file:./.ob-jupyter/58306c449ba16fc2ec82bfeb20b776ea4fea5bdd.png]]
+[[file:./.ob-jupyter/b242921a151f5c441afd290ef2496bdc88498fe0.png]]
 :END:
 
 

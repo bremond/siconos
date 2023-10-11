@@ -141,6 +141,7 @@ struct bounded_collection : undefined_bounded_collection,
                             with_type<Type> {
 };
 
+// xx should be elsewhere
 template <match::item T>
 struct item_ref : attribute<>, with_type<T> {
 };

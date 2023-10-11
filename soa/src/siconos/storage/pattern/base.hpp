@@ -50,8 +50,9 @@ struct text {
   static constexpr auto data = Text;
 };
 
+struct any_symbol {};
 template <string_literal Symbol>
-struct symbol : text<Symbol> {
+struct symbol : text<Symbol>, any_symbol {
 };
 
 template <string_literal Symbol>
@@ -82,6 +83,9 @@ concept scalar = std::is_scalar_v<T>;
 template <typename T>
 concept indice =
     std::is_scalar_v<T> && requires(T i) { std::array<double, 1>{}[i]; };
+
+template <typename T>
+concept symbol = std::derived_from<any_symbol, T>;
 
 template <typename T>
 concept ublas_matrix = requires(T m) { m(0, 0); };

@@ -1,5 +1,6 @@
 #include <concepts>
 
+#include "siconos/config/config.hpp"
 #include "siconos/siconos.hpp"
 #include "siconos/storage/pattern/base.hpp"
 #include "siconos/utils/print.hpp"
@@ -49,6 +50,37 @@ static_assert(
                        some::specific<pointer<float>>>::type,
                    pointer<float>>);
 
+static_assert(
+    match::abstract_matrix<
+        attribute<"attr0", some::matrix<some::scalar, some::indice_value<1>,
+                                        some::indice_value<1>>>>);
+
+struct item0 : item<> {
+  using attributes = gather<
+      attribute<"attr0", some::matrix<some::scalar, some::indice_value<1>,
+                                      some::indice_value<1>>>>;
+};
+
+static_assert(
+    match::diagonal_matrix<
+        decltype(storage::attr<"attr0">(storage::add<item0>(
+            storage::make_storage<standard_environment<int>, item0,
+                                  storage::with_properties<storage::diagonal<
+                                      item0, "attr0">>>())))>);
+
+static_assert(
+    match::matrix<decltype(storage::attr<"attr0">(storage::add<item0>(
+        storage::make_storage<standard_environment<int>,
+                              wrap<some::unbounded_collection, item0>>())))>);
+
+static_assert(
+    match::diagonal_matrix<
+        decltype(storage::attr<"attr0">(storage::add<item0>(
+            storage::make_storage<standard_environment<int>,
+                                  wrap<some::unbounded_collection, item0>,
+                                  storage::with_properties<storage::diagonal<
+                                      item0, "attr0">>>())))>);
+
 }  // namespace siconos
 
 using namespace boost::hana::literals;
@@ -63,6 +95,15 @@ using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
 using topo = simul::topology<ball, interaction>;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
+
+static_assert(
+    match::diagonal_matrix<
+        decltype(storage::attr<"mass_matrix">(storage::add<ball>(
+            storage::make_storage<
+                standard_environment<config::map<config::iparam<"dof", 3>>>,
+                simulation, ball, relation, interaction,
+                storage::with_properties<
+                    storage::diagonal<ball, "mass_matrix">>>())))>);
 
 template <typename T>
 struct is_polymorhic : std::integral_constant<bool, []() {
@@ -141,7 +182,8 @@ int main()
   static_assert(match::wrap<wrap<some::unbounded_diagonal_matrix, ball>>);
 
   static_assert(match::bounded_storage<
-                wrap<some::bounded_collection, ball, some::indice_value<1>>::template wrapper<some::scalar>>);
+                wrap<some::bounded_collection, ball,
+                     some::indice_value<1>>::template wrapper<some::scalar>>);
 
   static_assert(traits::translatable<int, env>);
 
@@ -176,12 +218,12 @@ int main()
                  interaction::h_matrix1, interaction::h_matrix2,
                  interaction::lambda, interaction::y, interaction::ydot>>);
 
-  static_assert(
-      std::is_same_v<decltype(all_attributes(interaction{})),
-                     gather<interaction::relation, interaction::nonsmooth_law,
-                            interaction::h_matrix1, interaction::h_matrix2,
-                            interaction::lambda, interaction::y,
-                            interaction::ydot, nslaw::e>>);
+  static_assert(std::is_same_v<
+                decltype(all_attributes(interaction{})),
+                gather<interaction::relation, interaction::nonsmooth_law,
+                       interaction::h_matrix1, interaction::h_matrix2,
+                       interaction::lambda, interaction::y, interaction::ydot,
+                       nslaw::e, relation::b, relation::h_matrix>>);
 
   //}
 
@@ -191,7 +233,10 @@ int main()
 
   bbb::attr::at(bob1).reset(new aaa);
 
-  using item1 = item<attribute<"one", some::scalar>>;
+  struct item1 : item<> {
+    using attributes = gather<attribute<"one", some::scalar>>;
+  };
+
   auto eee = storage::make_storage<env, item1>();
 
   auto h1 = storage::add<item1>(eee);

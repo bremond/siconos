@@ -16,10 +16,6 @@ namespace siconos::storage::pattern {
 // namespace some = storage::some;
 // namespace ground = storage::ground;
 
-struct empty {};
-struct linear {};
-struct time_invariant {};
-
 // let rec
 // https://stackoverflow.com/questions/2067988/recursive-lambda-functions-in-c11
 template <typename F>
@@ -303,7 +299,7 @@ struct any_bounded_wrapper : any_wrapper {};
 struct any_unbounded_wrapper : any_wrapper {};
 
 template <template <typename... Ts> typename Wrapper, match::item Item,
-          typename ...Args>
+          typename... Args>
 struct wrap : Wrapper<Item, Args...>, Item, any_wrapper {
   using wrap_t = void;
   template <typename T>
@@ -359,10 +355,40 @@ static auto item_attribute = [](concepts::tuple_like auto items) constexpr {
   return loop(items);
 };
 
+template <string_literal Name, match::attribute A>
+struct attribute : A, symbol<Name> {
+};
+
+template <match::item Item, match::attribute A>
+struct paired : A {
+  using item = Item;
+};
+
+template <match::item Item, match::attribute A>
+static constexpr decltype(auto) named_attribute(Item, A)
+{
+  if constexpr (std::derived_from<A, any_symbol>) {
+    // for an attribute declared inline inside attributes type, attach
+    // Item
+    if constexpr (match::wrap<Item>) {
+      return paired<typename Item::type, A>{};
+    }
+    else {
+      static_assert(!match::wrap<Item>);
+      return paired<Item, A>{};
+    }
+  }
+  else {
+    return A{};
+  }
+}
+
 static auto attributes =
     []<match::item Item>(Item) constexpr -> decltype(auto) {
   if constexpr (match::attributes<Item>) {
-    return typename Item::attributes{};
+    return ground::transform(
+        typename Item::attributes{},
+        []<match::attribute A>(A) { return named_attribute(Item{}, A{}); });
   }
   else {
     return gather<>{};
@@ -439,12 +465,14 @@ static auto all_properties = []<match::item Item>(Item) constexpr {
 //  };
 
 namespace match {
-template <typename H>
-concept half_handle = requires { typename H::half_handle_t; };
 
 template <typename H, typename A>
 concept handle_attribute = attribute<A> && item<typename H::type> &&
                            must::contains<A, typename H::type::attributes>;
+
+template <typename H, typename P>
+concept handle_property = property<P> && item<typename H::type> &&
+                          must::contains<P, typename H::type::properties>;
 
 template <typename H, typename A>
 concept handle_attached_storage =
@@ -495,7 +523,4 @@ struct param_type {
   using type = T;
 };
 
-template <string_literal Name, match::attribute A>
-struct attribute : A, symbol<Name> {
-};
 }  // namespace siconos::storage::pattern
