@@ -3,7 +3,7 @@
 #include "CSparseMatrix_internal.h"  // for CSparseMatrix
 #include "NumericsMatrix.h"
 #include "NumericsSparseMatrix.h"
-#include "siconos/algebra/eigen.hpp"
+#include "siconos/algebra/algebra.hpp"
 #include "siconos/algebra/linear_algebra.hpp"
 #include "siconos/storage/pattern/pattern.hpp"
 #include "siconos/storage/traits/traits.hpp"

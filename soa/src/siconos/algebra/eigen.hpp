@@ -19,7 +19,7 @@ concept diagonal_matrix = !matrix<T> && requires(T m) { m.diagonal()[0]; };
 template <typename T>
 concept any_matrix = (diagonal_matrix<T> || matrix<T>);
 
-}  // namespace match
+}  // namespace siconos::storage::pattern::match
 
 namespace siconos::algebra {
 
@@ -48,6 +48,12 @@ struct value_type {
   }());
 };
 
+namespace match = siconos::storage::pattern::match;
+template <size_t M>
+static constexpr decltype(auto) head(match::vector auto v)
+{
+  return v.head<M>(v);
+}
 // template specialization ok with clang, fails with gcc:
 //
 // template <typename T, size_t M, size_t N>
@@ -76,7 +82,6 @@ static_assert(std::is_same_v<prod_t<matrix<int, 1, 2>, matrix<int, 2, 1>>,
 static_assert(
     std::is_same_v<prod_t<matrix<int, 1, 2>, trans_t<matrix<int, 1, 2>>>,
                    matrix<int, 1, 1>>);
-
 
 template <typename T>
 static constexpr decltype(auto) nrows(T)
@@ -112,4 +117,4 @@ static constexpr decltype(auto) ncols(T)
   }
 }
 
-}  // namespace siconos
+}  // namespace siconos::algebra

@@ -20,6 +20,12 @@ check_cxx_compiler_flag("-fconcepts-diagnostics-depth=0" fconcepts_diagnostics)
 if(fconcepts_diagnostics)
   set(flags "${flags} -fconcepts-diagnostics-depth=0")
 endif()
+set(gdwarf4)
+check_cxx_compiler_flag("-gdwarf-4" gdwarf4) # clang / perf annotate
+if(gdwarf4)
+  set(flags "${flags} -gdwarf-4")
+endif()
+
 
 set_target_properties(ColumnOfBeadsTS PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
 set_target_properties(column_of_beads_ts PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")

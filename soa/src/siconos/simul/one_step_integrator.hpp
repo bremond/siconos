@@ -20,6 +20,7 @@ struct one_step_integrator {
   using y = typename interaction::y;
   using ydot = typename interaction::ydot;
   using lambda = typename interaction::lambda;
+  using relation = typename interaction::relation;
   using q = typename system::q;
   using velocity = typename system::velocity;
   using h_matrix1 = typename interaction::h_matrix1;
@@ -171,14 +172,12 @@ struct one_step_integrator {
         // global h_matrix is not assembled at this stage
         for (auto [y, ydot, hm1, hm2, ds1, ds2, nds] : views::zip(
                  ys, ydots, h_matrices1, h_matrices2, ds1s, ds2s, ndss)) {
-          if (nds == 1) {
-            y = hm1 * qs[ds1.get()];
-            ydot = hm1 * velocities[ds1.get()];
-          }
-          else {
-            assert(nds == 2);
-            y = hm1 * qs[ds1.get()] + hm2 * qs[ds2.get()];
-            ydot = hm1 * velocities[ds1.get()] + hm2 * velocities[ds2.get()];
+          y = hm1 * qs[ds1.get()];
+          ydot = hm1 * velocities[ds1.get()];
+
+          if (nds == 2) {
+            y += hm2 * qs[ds2.get()];
+            ydot += hm2 * velocities[ds2.get()];
           }
         }
       }
@@ -505,29 +504,34 @@ struct one_step_integrator {
         auto &h_matrices2 = storage::attr_values<h_matrix2>(data, step);
         auto &ndss = storage::prop_values<interaction, "nds">(data, step);
 
-        const auto &interactions = storage::handles<interaction>(data, step);
+        auto &ds1s = storage::prop_values<interaction, "ds1">(data, step);
+        auto &ds2s = storage::prop_values<interaction, "ds2">(data, step);
+        auto &relations = storage::attr_values<relation>(data, step);
 
-        for (auto [inter, hm1, hm2, nds] :
-             views::zip(interactions, h_matrices1, h_matrices2, ndss)) {
+        for (auto [rel, hm1, hm2, nds, ds1, ds2] :
+               views::zip(relations, h_matrices1, h_matrices2, ndss, ds1s, ds2s)) {
           // local binding not enough to be passed to lambda...
           auto &hhm1 = hm1;
           auto &hhm2 = hm2;
+          auto &q1 = storage::handle(ds1, data).q();
 
           if (nds == 2) {
+            auto &q2 = storage::handle(ds2, data).q();
+
             siconos::utils::apply_if_valid(
-                inter.relation(), false,
-                [&data, &step, &hhm1, &hhm2](auto &rrel) {
-                  storage::handle(rrel, data).compute_jachq(step, hhm1, hhm2);
+              rel, false,
+              [&data, &step, &hhm1, &hhm2, &q1, &q2](auto &rrel) {
+                storage::handle(rrel, data).compute_jachq(step, q1, q2, hhm1, hhm2);
                   return true;
                 });
           }
           else {
             // nds == 1
             siconos::utils::apply_if_valid(
-                inter.relation(), false, [&data, &step, &hhm1](auto &rrel) {
-                  storage::handle(rrel, data).compute_jachq(step, hhm1);
-                  return true;
-                });
+              rel, false, [&data, &step, &hhm1, &q1](auto &rrel) {
+                storage::handle(rrel, data).compute_jachq(step, q1, hhm1);
+                return true;
+              });
           }
         };
       }

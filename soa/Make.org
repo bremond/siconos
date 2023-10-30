@@ -2,6 +2,12 @@
 #+OPTIONS: tex:t
 #+STARTUP: latexpreview
 
+
+* notes
+
+https://indico.cern.ch/event/847626/contributions/3585861/attachments/1927626/3191493/pascal-pppp-jungle.pdf
+
+
 * internal
 #+name: src-dir
 #+begin_src elisp
@@ -9,6 +15,7 @@
     (mkdir "build-gcc-release" t)
     (mkdir "build-gcc-debug" t)
     (mkdir "build-gcc-debug-siconos" t)
+    (mkdir "build-gcc-relwithdebinfo-siconos" t)
     (mkdir "build-clang-release" t)
     (mkdir "build-clang-debug" t)
     (mkdir "build-clang-debug-siconos" t)
@@ -71,6 +78,58 @@
 #+begin_src elisp
 `("python-ipykernel" "python-numpy" "python-scipy" "python-matplotlib" "python-sympy" "python-pandas")
 #+end_src
+
+
+** ReWithDebInfoSiconos
+
+#+name: mybenchmarks-cmake-gcc-relwithdebinfo-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-gcc-relwithdebinfo-siconos
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment --pure siconos --ad-hoc siconos eigen suitesparse benchmark gcc-toolchain boost fmt range-v3 cmake make dash -- \
+       dash -c "cmake ${src_dir} -DGUIX_ENVIRONMENT=\${GUIX_ENVIRONMENT} -DCMAKE_CXX_STANDARD_LIBRARIES=-L/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 -DSICONOS_INSTALL_DIR=/scratch/maurice/install/maurice/siconos/mymaster/RelWithDebInfo/siconos -DCMAKE_BUILD_TYPE=RelWithDebInfo" 
+#+end_src
+
+#+name: mybenchmarks-make-gcc-relwithdebinfo-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-gcc-relwithdebinfo-siconos
+#+begin_src sh :compile :results output silent
+guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
+       environment --pure siconos --ad-hoc siconos eigen suitesparse benchmark gcc-toolchain boost fmt range-v3 cmake make dash -- \
+       make VERBOSE=1
+#+end_src
+
+#+name: mybenchmarks-make-gcc-relwithdebinfo-siconos-run-bouncing-balls
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-gcc-relwithdebinfo-siconos" "/src/siconos/tests")
+#+begin_src sh :compile :results output silent
+  LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/RelWithDebInfo/siconos/lib64 time ./bouncing_balls > /tmp/l
+#+end_src
+
+#+name: mybenchmarks-make-gcc-release-siconos-run-bouncing-balls
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-gcc-release-siconos" "/src/siconos/tests")
+#+begin_src gnuplot :file "./results.png"
+  #set  term X11
+#!tail -n 100000 result.dat > result-gp.dat
+resultfile = "result-many.dat"
+#resultfile = "BouncingBallSchatzmanPaoliOSI.ref"
+#resultfile = "result_tdg.dat"
+plot \
+resultfile every ::1 u 1:2 t "Ball1 position" w l,\
+resultfile every ::2 u 1:3 t "Ball2 position" w l,\
+#resultfile every ::2 u 1:4 t "Ball1 velocity" w l
+
+#,\
+#"result-gp.dat" u 1:5 t "Multiplier" w l
+#+end_src
+
+#+RESULTS: mybenchmarks-make-gcc-release-siconos-run-bouncing-balls
+[[file:build-gcc-release-siconos/src/siconos/tests/results.png]]
+
+
+
 
 
 
@@ -260,8 +319,8 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+header: :dir build-clang-relwithdebinfo-siconos
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
-       environment --pure --ad-hoc eigen suitesparse benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
-       dash -c "cmake ${src_dir} -DGUIX_ENVIRONMENT=\${GUIX_ENVIRONMENT} -DCMAKE_CXX_STANDARD_LIBRARIES=-L/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 -DSICONOS_INSTALL_DIR=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos -DCMAKE_BUILD_TYPE=RelWithDebInfo" 
+       environment --pure siconos --ad-hoc siconos eigen suitesparse benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
+       dash -c "cmake ${src_dir} -DGUIX_ENVIRONMENT=\${GUIX_ENVIRONMENT} -DCMAKE_CXX_STANDARD_LIBRARIES=-L/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 -DSICONOS_INSTALL_DIR=/scratch/maurice/install/maurice/siconos/mymaster/RelWithDebInfo/siconos -DCMAKE_BUILD_TYPE=RelWithDebInfo" 
 #+end_src
 
 #+name: mybenchmarks-make-clang-relwithdebinfo-siconos
@@ -269,7 +328,7 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+header: :dir build-clang-relwithdebinfo-siconos
 #+begin_src sh :compile :results output silent
 guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
-       environment --pure --ad-hoc eigen suitesparse benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
+       environment --pure siconos --ad-hoc siconos eigen suitesparse benchmark clang-toolchain boost fmt range-v3 cmake make dash -- \
        make VERBOSE=1
 #+end_src
 
@@ -277,7 +336,7 @@ guix time-machine -C ${src_dir}/siconos-2023-03-06.scm -- \
 #+header: :var src_dir=src-dir
 #+header: :dir (concat "build-clang-relwithdebinfo-siconos" "/src/siconos/tests")
 #+begin_src sh :compile :results output silent
-  LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/Release/siconos/lib64 time ./bouncing_balls > /tmp/l
+  LD_LIBRARY_PATH=/scratch/maurice/install/maurice/siconos/mymaster/RelWithDebInfo/siconos/lib64 time ./bouncing_balls > /tmp/l
 #+end_src
 
 #+name: mybenchmarks-make-clang-release-siconos-run-bouncing-balls
@@ -599,7 +658,7 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+RESULTS: ctrl-plot-pena-0
 :RESULTS:
 : Text(0.5, 0, 'number of beads')
-[[file:./.ob-jupyter/bdc575a7a9ae991e5bc2ee130511b768c4ea7839.png]]
+[[file:./.ob-jupyter/075aed16bbf4ee51a01df02efa610b31fbde4790.png]]
 :END:
 
 
@@ -607,13 +666,13 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+RESULTS: ctrl-plot-pena-1
 :RESULTS:
 : Text(0.5, 0, 'number of beads')
-[[file:./.ob-jupyter/8f1d0c3b0d8ed685969c45af12bb4548d3a4a842.png]]
+[[file:./.ob-jupyter/185f4a141745eaa8b436d795c8f6aa88eb83928f.png]]
 :END:
 
 #+RESULTS: ctrl-plot-pena-2
 :RESULTS:
 : Text(0.5, 0, 'number of beads')
-[[file:./.ob-jupyter/b242921a151f5c441afd290ef2496bdc88498fe0.png]]
+[[file:./.ob-jupyter/bf0535399773df492c20c12cb206ebddbb7ca973.png]]
 :END:
 
 
@@ -653,6 +712,38 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
       (progn
         (org-babel-jupyter-make-language-alias "python" "python")))
 #+end_src :results none
+
+
+* perf
+
+#+name: mybenchmarks-make-gcc-relwithdebinfo-siconos-perf-columnofbeads
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-gcc-relwithdebinfo-siconos" "/src/siconos/benchmarks")
+#+begin_src dash :compile :results none
+  sudo perf record -g --call-graph dwarf ./column_of_beads_ts 8192
+#+end_src
+
+
+#+name: mybenchmarks-make-clang-release-perf-columnofbeads
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-relwithdebinfo-siconos" "/src/siconos/benchmarks")
+#+begin_src dash :compile :results none
+  sudo perf record -g --call-graph dwarf ./column_of_beads_ts 300000
+#+end_src
+
+#+name: mybenchmarks-make-clang-release-perf-report
+#+header: :var src_dir=src-dir
+#+header: :dir (concat "build-clang-release" "/src/siconos/benchmarks")
+#+begin_src sh :compile output silent
+  perf report
+#+end_src
+
+#+RESULTS: mybenchmarks-make-clang-release-perf-report
+| WARNING: | The      | perf.data | file's  | data    | size     | field       | is  |      0 | which | is       | unexpected. |         |
+| Was      | the      | 'perf     | record' | command | properly | terminated? |     |        |       |          |             |         |
+| Your     | terminal | lacks     | the     | ability | to       | clear       | the | screen | or    | position | the         | cursor. |
+|          |          |           |         |         |          |             |     |        |       |          |             |         |
+
 
 
 ** COMMENT Org Babel settings
