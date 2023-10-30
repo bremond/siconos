@@ -144,10 +144,10 @@ struct diskdisk_r : item<>, any_lagrangian_relation {
 
     decltype(auto) compute_h(match::vector auto& q1, match::vector auto& q2)
     {
-      auto& x = q2[0]-q1[0];
-      auto& y = q2[1]-q2[1];
+      auto& dx = q2[0]-q1[0];
+      auto& dy = q2[1]-q2[1];
 
-      return sqrt(x*x + y*y) - (r1()+r2());
+      return algebra::hypot(dx, dy) - (r1()+r2());
 
     }
 
@@ -162,7 +162,7 @@ struct diskdisk_r : item<>, any_lagrangian_relation {
       auto dx = x2 - x1;
       auto dy = y2 - y1;
 
-      auto d = hypot(dx, dy);
+      auto d = algebra::hypot(dx, dy);
 
       auto dxsd = dx / d;
       auto dysd = dy / d;
