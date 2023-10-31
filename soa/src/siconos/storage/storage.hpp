@@ -389,19 +389,19 @@ decltype(auto) make_handle(auto& h)
 
 template <typename A>
 static auto get = ground::overload(
-    // get<Attr>(step, handle, data)
+    // get<Attr>(data, step, handle)
     []<match::handle_attribute<A> Handle, typename Data>(
-        auto step, Handle& handle, Data& data) constexpr -> decltype(auto) {
+        Data& data, auto step, Handle& handle) constexpr -> decltype(auto) {
       return memory(step, ground::get<A>(data))[handle.get()];
     },
-    // get<Attr>(handle, data)
+    // get<Attr>(data, handle)
     []<match::handle_attribute<A> Handle, typename Data>(
-        Handle& handle, Data& data) constexpr -> decltype(auto) {
+        Data& data, Handle& handle) constexpr -> decltype(auto) {
       return memory(0, ground::get<A>(data))[handle.get()];
     },
-    // get<Attached_storage>(step,h, data)
+    // get<Attached_storage>(data, step, h)
     []<match::handle_attached_storage<A> Handle, typename Data>(
-        auto step, Handle& handle, Data& data) constexpr -> decltype(auto) {
+        Data& data, auto step, Handle& handle) constexpr -> decltype(auto) {
       using item_t = typename Handle::type;
       using info_t = std::decay_t<decltype(ground::get<info>(data))>;
       constexpr auto tpl = ground::filter(
@@ -515,7 +515,7 @@ static auto make_storage = []() constexpr -> decltype(auto) {
       });
 };
 
-static auto remove = [](auto h, auto& data) {
+static auto remove = [](auto& data, auto& h) {
   using item_t = typename std::decay_t<decltype(h)>::type;
   using info_t = std::decay_t<decltype(ground::get<info>(data))>;
   using all_keeps_t = decltype(all_properties_as<property::keep>(data));
@@ -603,12 +603,12 @@ struct access {
              Handle>(Handle h, Data& data)
           ->decltype(auto) { return siconos::storage::get<U>(h, data); },
       []<typename U = T, typename FullHandle>(FullHandle h)->decltype(auto) {
-        return siconos::storage::get<U>(h, h.data());
+        return siconos::storage::get<U>(h.data(), h);
       },
       []<typename U = T, typename FullHandle>(
           FullHandle h, typename FullHandle::indice step)
           ->decltype(auto) {
-            return siconos::storage::get<U>(step, h, h.data());
+        return siconos::storage::get<U>(h.data(), step, h);
           });
 };
 
