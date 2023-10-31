@@ -85,10 +85,10 @@ struct time_stepping : item<> {
       }
 
       // do nothing if lagrangian_r is time_invariant
-      //osi.update_h_matrices(step);
+      // osi.update_h_matrices(step);
 
       // do nothing if fext is time_invariant
-      //osi.update_iteration_matrix(step);
+      // osi.update_iteration_matrix(step);
 
       current_step() += 1;
 
@@ -134,8 +134,8 @@ struct time_stepping : item<> {
       // Remove interactions from the index_set1
       for (auto v1next = ui1; ui1 != ui1end; ui1 = v1next) {
         ++v1next;
-        auto inter1 = storage::handle(index_set1.bundle(*ui1),
-                                      self()->data());  // get inter handle
+        auto inter1 = storage::handle(
+            self()->data(), index_set1.bundle(*ui1));  // get inter handle
         //          auto rel1 = inter1.relation();
 
         if (index_set0.is_vertex(inter1)) {
@@ -229,7 +229,7 @@ struct time_stepping : item<> {
             assert(index_set0.color(*ui0) == env::white_color);
 
             auto inter0 =
-                storage::handle(index_set0.bundle(*ui0), self()->data());
+              storage::handle(self()->data(), index_set0.bundle(*ui0));
             assert(!index_set1.is_vertex(inter0));
             bool activate = true;
             if constexpr (!std::derived_from<

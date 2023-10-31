@@ -115,7 +115,7 @@ struct diskplan_r : item<>, any_lagrangian_relation {
       auto& a = plan().a();
       auto& b = plan().b();
       auto& c = plan().c();
-      auto invsqrta2pb2 = plan().invsqrta2pb2();
+      auto& invsqrta2pb2 = plan().invsqrta2pb2();
 
       auto d1 = a * x + b * y + c;
       auto sd1 = copysign(1, d1);

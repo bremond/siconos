@@ -252,7 +252,7 @@ struct one_step_integrator {
              views::zip(ys, ydots, activations, ids1s, ids2s, interactions)) {
           auto b = siconos::utils::apply_if_valid(
               inter.relation(), 0., [&data](auto &real_relation) {
-                return storage::handle(real_relation, data).b();
+                return storage::handle(data, real_relation).b();
               });
           // on normal component
           activation = ((y + gamma_v * h * ydot)(0) + b <=
@@ -261,8 +261,8 @@ struct one_step_integrator {
           if (activation) {
             inter_counter++;
 
-            auto ds1 = storage::handle(ids1, data);
-            auto ds2 = storage::handle(ids2, data);
+            auto ds1 = storage::handle(data, ids1);
+            auto ds2 = storage::handle(data, ids2);
 
             if (!prop<"involved">(ds1)) {
               prop<"involved">(ds1) = true;
@@ -299,8 +299,8 @@ struct one_step_integrator {
           auto ids1 = prop<"ds1">(hi);
           auto ids2 = prop<"ds2">(hi);
 
-          auto j1 = prop<"index">(storage::handle(ids1, data));
-          auto j2 = prop<"index">(storage::handle(ids2, data));
+          auto j1 = prop<"index">(storage::handle(data, ids1));
+          auto j2 = prop<"index">(storage::handle(data, ids2));
 
           if (j1 == j2) {
             // one block
@@ -414,7 +414,7 @@ struct one_step_integrator {
 
         for (auto [ydot, ydot_next, inslaw] :
              views::zip(ydots, ydots_next, inslaws)) {
-          ydot_next += storage::handle(inslaw, data).e() * ydot;
+          ydot_next += storage::handle(data, inslaw).e() * ydot;
         }
       }
 
@@ -513,15 +513,15 @@ struct one_step_integrator {
           // local binding not enough to be passed to lambda...
           auto &hhm1 = hm1;
           auto &hhm2 = hm2;
-          auto &q1 = storage::handle(ds1, data).q();
+          auto &q1 = storage::handle(data, ds1).q();
 
           if (nds == 2) {
-            auto &q2 = storage::handle(ds2, data).q();
+            auto &q2 = storage::handle(data, ds2).q();
 
             siconos::utils::apply_if_valid(
               rel, false,
               [&data, &step, &hhm1, &hhm2, &q1, &q2](auto &rrel) {
-                storage::handle(rrel, data).compute_jachq(step, q1, q2, hhm1, hhm2);
+                storage::handle(data, rrel).compute_jachq(step, q1, q2, hhm1, hhm2);
                   return true;
                 });
           }
@@ -529,7 +529,7 @@ struct one_step_integrator {
             // nds == 1
             siconos::utils::apply_if_valid(
               rel, false, [&data, &step, &hhm1, &q1](auto &rrel) {
-                storage::handle(rrel, data).compute_jachq(step, q1, hhm1);
+                storage::handle(data, rrel).compute_jachq(step, q1, hhm1);
                 return true;
               });
           }

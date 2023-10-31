@@ -79,13 +79,13 @@ struct one_step_nonsmooth_problem : item<> {
 
     decltype(auto) options()
     {
-      return storage::handle(Handle::type::options::at(*self()),
-                             self()->data());
+      return storage::handle(self()->data(),
+                             Handle::type::options::at(*self()));
     };
     decltype(auto) problem()
     {
-      return storage::handle(Handle::type::problem::at(*self()),
-                             self()->data());
+      return storage::handle(self()->data(),
+                             Handle::type::problem::at(*self()));
     };
     decltype(auto) level() { return Handle ::type ::level ::at(*self()); };
 

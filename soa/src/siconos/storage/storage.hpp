@@ -167,11 +167,11 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
 
   decltype(auto) data() { return _data; };
 
-  explicit handle(R& ref, D& data) : index<T, R>{ref}, _data{data} {};
+  explicit handle(D& data, R& ref) : index<T, R>{ref}, _data{data} {};
 
-  explicit handle(index<T, R>& ha, D& data) : index<T, R>{ha}, _data{data} {};
+  explicit handle(D& data, index<T, R>& ha) : index<T, R>{ha}, _data{data} {};
 
-  explicit handle(index<T, R>&& ha, D& data)
+  explicit handle(D& data, index<T, R>&& ha)
       : index<T, R>{ha}, _data{data} {};
 
   handle() : index<T, R>{}, _data{} {};
@@ -215,7 +215,7 @@ static constexpr std::size_t memory_size = []() {
     }
   };
 
-  if constexpr (std::tuple_size_v<keeps_t> > 0) {
+  if constexpr (std::tuple_size_v < keeps_t >> 0) {
     return rec_loop(rec_loop, keeps_t{});
   }
   else {
@@ -225,7 +225,8 @@ static constexpr std::size_t memory_size = []() {
 }();
 
 template <match::property K>
-static auto all_properties_as = [](auto& data) constexpr -> auto {
+static auto all_properties_as = [](auto& data) constexpr -> auto
+{
   using info_t = std::decay_t<decltype(ground::get<info>(data))>;
   using all_properties_t = typename info_t::all_properties_t;
 
@@ -233,7 +234,8 @@ static auto all_properties_as = [](auto& data) constexpr -> auto {
 };
 
 template <match::attribute Attr>
-static auto attribute_properties = [](auto& data) constexpr -> auto {
+static auto attribute_properties = [](auto& data) constexpr -> auto
+{
   using info_t = std::decay_t<decltype(ground::get<info>(data))>;
   using all_properties_t = typename info_t::all_properties_t;
 
@@ -268,7 +270,7 @@ static auto refine_attribute = []<match::attribute Attr, typename D>(
   using refines = decltype(filter<hold<decltype([]<match::property P>(P) {
     return std::derived_from<Attr, typename P::type>;
   })>>(all_properties_as<property::refine>(data)));
-  if constexpr (std::tuple_size_v<refines> > 0) {
+  if constexpr (std::tuple_size_v < refines >> 0) {
     return typename nth_t<0, refines>::template refine<Attr>{};
   }
   else {
@@ -376,7 +378,7 @@ auto make_full_handle(const auto& indx, auto& data)
   using indice = typename info_t::env::indice;
 
   indice index = indx;
-  return handle<T, indice, data_t>{index, data};
+  return handle<T, indice, data_t>{data, index};
 }
 
 template <match::item T>
@@ -525,7 +527,7 @@ static auto remove = [](auto h, auto& data) {
 
   using attrs_t = std::decay_t<decltype(attrs)>;
 
-  if constexpr (std::tuple_size_v<attrs_t> > 0) {
+  if constexpr (std::tuple_size_v < attrs_t >> 0) {
     ground::for_each(attrs, [&data, &h]<match::attribute A>(A) {
       return ground::for_each(ground::range<memory_size<A, all_keeps_t>>,
                               [&data, &h](indice step) {
@@ -557,7 +559,7 @@ static auto add = [](auto&& data) constexpr -> decltype(auto) {
   // and what about using items = ... ?
 
   // attributes
-  if constexpr (std::tuple_size_v<attrs_t> > 0) {
+  if constexpr (std::tuple_size_v < attrs_t >> 0) {
     indice&& index = ground::fold_left(
         attrs, indice{0}, [&data]<match::attribute A>(indice k, A) {
           return ground::fold_left(
@@ -585,8 +587,10 @@ static auto add = [](auto&& data) constexpr -> decltype(auto) {
 
 template <match::item T>
 static auto for_each_attribute = [](auto&& fun, auto& data) constexpr {
-  ground::for_each(_attributes(T{}), [&fun]<match::attribute... Attrs>(
-                                         Attrs&...) { (fun(Attrs{}), ...); });
+  ground::for_each(
+      _attributes(T{}), [&fun]<match::attribute... Attrs>(Attrs & ...) {
+        (fun(Attrs{}), ...);
+      });
 };
 
 template <typename T>
@@ -619,8 +623,8 @@ static auto prop = [](auto h) constexpr -> decltype(auto) {
 };
 
 template <match::item Item, string_literal S>
-using attr_t = std::decay_t<decltype(std::get<0>(ground::filter(
-    attributes(Item{}), ground::derive_from<symbol<S>>)))>;
+using attr_t = std::decay_t<decltype(std::get<0>(
+    ground::filter(attributes(Item{}), ground::derive_from<symbol<S>>)))>;
 
 template <string_literal S>
 static auto attr = []<typename H>(H h, typename H::indice step =
@@ -696,7 +700,7 @@ static auto handles = [](auto& data, auto step) constexpr -> decltype(auto) {
   indice num = std::size(attr_values<nth_t<0, attributes_t>>(data, step));
   return views::iota((indice)0, num) | views::transform([&data](indice i) {
            return handle<I, indice, std::decay_t<decltype(data)>>(
-               index<I, indice>(i), data);
+               data, index<I, indice>(i));
          });
 };
 
