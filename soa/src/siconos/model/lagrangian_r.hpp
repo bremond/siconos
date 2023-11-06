@@ -7,16 +7,25 @@
 
 namespace siconos::storage::pattern::match {
 template <typename T>
-concept linear_relation = match::handle_property<T, model::linear> &&
-                          match::handle<T, model::any_lagrangian_relation>;
-}
+concept linear_relation = match::handle<T, model::linear>;
+
+template <typename T>
+concept relation1 = match::handle<T, model::relation1>;
+
+template <typename T>
+concept relation2 = match::handle<T, model::relation2>;
+
+}  // namespace siconos::storage::pattern::match
 
 namespace siconos::model {
 
-template <match::item Nslaw>
-struct lagrangian_r : item<>, any_lagrangian_relation {
-  using nslaw = Nslaw;
-  using nslaw_size = some::indice_value<nslaw::size>;
+template <auto NSLSize>
+struct lagrangian_r : item<>,
+                      linear,
+                      relation1,
+                      relation2,
+                      any_lagrangian_relation {
+  using nslaw_size = some::param_val<NSLSize>;
   using dof = some::indice_parameter<"dof">;
 
   struct h_matrix : some::matrix<some::scalar, nslaw_size, dof>,
@@ -40,8 +49,7 @@ struct lagrangian_r : item<>, any_lagrangian_relation {
       h_matrix1 = h_matrix();
       h_matrix2 = -h_matrix();
     }
-    decltype(auto) compute_jachq(auto step, auto&q,
-                                 auto& h_matrix1)
+    decltype(auto) compute_jachq(auto step, auto& q, auto& h_matrix1)
     {
       h_matrix1 << -h_matrix();
     }
@@ -79,7 +87,7 @@ struct plan : item<> {
     decltype(auto) c() { return attr<"coeffs">(*self())(2); };
 
     // 1/sqrt(a^2+b^2)
-    decltype(auto) invsqrta2pb2() { return attr<"coeffs">(*self()(3)); };
+    decltype(auto) invsqrta2pb2() { return attr<"coeffs">(*self())(3); };
 
     decltype(auto) distance(match::vector auto& q)
     {
@@ -88,20 +96,25 @@ struct plan : item<> {
 
       return fabs(a() * x + b() * y + c()) * invsqrta2pb2();
     }
-
   };
 };
 
-struct diskplan_r : item<>, any_lagrangian_relation {
-  using attributes = gather < attribute<"disk", some::item_ref<disk>>,
-    attribute<"plan", some::item_ref<plan>>>;
+  struct diskplan_r : item<>, relation1, any_lagrangian_relation {
+  using attributes = gather<attribute<"disk", some::item_ref<disk>>,
+                            attribute<"plan", some::item_ref<plan>>>;
 
-  template<typename Handle>
+  template <typename Handle>
   struct interface : default_interface<Handle> {
     using default_interface<Handle>::self;
 
-    decltype(auto) r() { return attr<"disk">(*self()).radius(); };
-    decltype(auto) plan() { return attr<"plan">(*self()); };
+    decltype(auto) r()
+    {
+      return handle(self()->data(), attr<"disk">(*self())).radius();
+    };
+    decltype(auto) plan()
+    {
+      return handle(self()->data(), attr<"plan">(*self()));
+    };
 
     decltype(auto) compute_h(match::vector auto& q)
     {
@@ -127,28 +140,32 @@ struct diskplan_r : item<>, any_lagrangian_relation {
       h_matrix1(0, 2) = 0;
       h_matrix1(1, 2) = -r();
     }
-
   };
 };
 
-struct diskdisk_r : item<>, any_lagrangian_relation {
-  using attributes = gather < attribute<"disk1", some::item_ref<disk>>,
-        attribute<"disk2", some::item_ref<disk>>>;
+  struct diskdisk_r : item<>, relation2, any_lagrangian_relation {
+  using attributes = gather<attribute<"disk1", some::item_ref<disk>>,
+                            attribute<"disk2", some::item_ref<disk>>>;
 
   template <typename Handle>
   struct interface : default_interface<Handle> {
     using default_interface<Handle>::self;
 
-    decltype(auto) r1() { return attr<"disk1">(*self()).radius(); };
-    decltype(auto) r2() { return attr<"disk2">(*self()).radius(); };
+    decltype(auto) r1()
+    {
+      return handle(self()->data(), attr<"disk1">(*self())).radius();
+    };
+    decltype(auto) r2()
+    {
+      return handle(self()->data(), attr<"disk2">(*self())).radius();
+    };
 
     decltype(auto) compute_h(match::vector auto& q1, match::vector auto& q2)
     {
-      auto& dx = q2[0]-q1[0];
-      auto& dy = q2[1]-q2[1];
+      auto& dx = q2[0] - q1[0];
+      auto& dy = q2[1] - q2[1];
 
-      return algebra::hypot(dx, dy) - (r1()+r2());
-
+      return algebra::hypot(dx, dy) - (r1() + r2());
     }
 
     decltype(auto) compute_jachq(auto step, auto& q1, auto& q2,

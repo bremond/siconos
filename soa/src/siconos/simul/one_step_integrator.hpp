@@ -1,6 +1,8 @@
 #pragma once
 
 #include "siconos/algebra/numerics.hpp"
+#include "siconos/model/lagrangian_r.hpp"
+#include "siconos/model/model.hpp"
 #include "siconos/simul/simul.hpp"
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/print.hpp"
@@ -250,10 +252,14 @@ struct one_step_integrator {
         indice inter_counter = 0;
         for (auto [y, ydot, activation, ids1, ids2, inter] :
              views::zip(ys, ydots, activations, ids1s, ids2s, interactions)) {
-          auto b = siconos::utils::apply_if_valid(
-              inter.relation(), 0., [&data](auto &real_relation) {
-                return storage::handle(data, real_relation).b();
-              });
+          auto b = siconos::variant::visit(
+              data, inter.relation(),
+              ground::overload(
+                  [](match::linear_relation auto &real_relation) {
+                    return real_relation.b();
+                  },
+                  // no b() present
+                  [](auto) { return 0.; }));
           // on normal component
           activation = ((y + gamma_v * h * ydot)(0) + b <=
                         self()->constraint_activation_threshold());
@@ -508,8 +514,8 @@ struct one_step_integrator {
         auto &ds2s = storage::prop_values<interaction, "ds2">(data, step);
         auto &relations = storage::attr_values<relation>(data, step);
 
-        for (auto [rel, hm1, hm2, nds, ds1, ds2] :
-               views::zip(relations, h_matrices1, h_matrices2, ndss, ds1s, ds2s)) {
+        for (auto [rel, hm1, hm2, nds, ds1, ds2] : views::zip(
+                 relations, h_matrices1, h_matrices2, ndss, ds1s, ds2s)) {
           // local binding not enough to be passed to lambda...
           auto &hhm1 = hm1;
           auto &hhm2 = hm2;
@@ -518,20 +524,24 @@ struct one_step_integrator {
           if (nds == 2) {
             auto &q2 = storage::handle(data, ds2).q();
 
-            siconos::utils::apply_if_valid(
-              rel, false,
-              [&data, &step, &hhm1, &hhm2, &q1, &q2](auto &rrel) {
-                storage::handle(data, rrel).compute_jachq(step, q1, q2, hhm1, hhm2);
-                  return true;
-                });
+            siconos::variant::visit(data, rel,
+                                    ground::overload(
+                                        [&step, &hhm1, &hhm2, &q1,
+                                         &q2](match::relation2 auto &rrel) {
+                                          rrel.compute_jachq(step, q1, q2,
+                                                             hhm1, hhm2);
+                                        },
+                                        [](auto) { assert(false); }));
           }
           else {
             // nds == 1
-            siconos::utils::apply_if_valid(
-              rel, false, [&data, &step, &hhm1, &q1](auto &rrel) {
-                storage::handle(data, rrel).compute_jachq(step, q1, hhm1);
-                return true;
-              });
+            siconos::variant::visit(
+                data, rel,
+                ground::overload(
+                    [&step, &hhm1, &q1](match::relation1 auto rrel) {
+                      rrel.compute_jachq(step, q1, hhm1);
+                    },
+                    [](auto rrel) { assert(false); }));
           }
         };
       }

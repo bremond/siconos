@@ -293,6 +293,7 @@ struct item {
                           const item<Args...>&) = default;
 };
 
+
 struct any_wrapper {};
 
 struct any_bounded_wrapper : any_wrapper {};
@@ -469,10 +470,6 @@ namespace match {
 template <typename H, typename A>
 concept handle_attribute = attribute<A> && item<typename H::type> &&
                            must::contains<A, typename H::type::attributes>;
-
-template <typename H, typename P>
-concept handle_property = property<P> && item<typename H::type> &&
-                          must::contains<P, typename H::type::properties>;
 
 template <typename H, typename A>
 concept handle_attached_storage =

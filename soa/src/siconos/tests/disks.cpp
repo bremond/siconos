@@ -3,15 +3,17 @@
 #include "siconos/utils/print.hpp"
 
 namespace siconos::config {
-using ball = model::lagrangian_ds;
+
+using disk = model::lagrangian_ds;
 using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
 using osnspb = simul::one_step_nonsmooth_problem<lcp>;
 using nslaw = model::newton_impact;
-using relation = model::lagrangian_r<nslaw::size>;
-using interaction = simul::interaction<nslaw, relation>;
-using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
+using diskdisk_r = model::diskdisk_r;
+using diskplan_r = model::diskplan_r;
+using interaction = simul::interaction<nslaw, diskdisk_r, diskplan_r>;
+using osi = simul::one_step_integrator<disk, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
-using topo = simul::topology<ball, interaction>;
+using topo = simul::topology<disk, interaction>;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
 
 using params = map<iparam<"dof", 3>>;
@@ -21,22 +23,24 @@ int main(int argc, char* argv[])
 {
   using namespace siconos;
   auto data = storage::make_storage<
-      standard_environment<config::params>, config::simulation, config::ball,
-      config::relation, config::interaction,
+      standard_environment<config::params>, config::simulation, config::disk,
+      config::diskdisk_r, config::diskplan_r, config::interaction,
       storage::with_properties<
-          storage::time_invariant<config::ball::fext>,
-          storage::diagonal<config::ball, "mass_matrix">,
+          storage::attached<config::disk, storage::pattern::symbol<"shape">,
+                            storage::some::item_ref<model::disk>>,
+          storage::time_invariant<config::disk::fext>,
+          storage::diagonal<config::disk, "mass_matrix">,
           storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
 
-  // unsigned int nDof = 3;         // degrees of freedom for the ball
+  // unsigned int nDof = 3;         // degrees of freedom for the disk
   double t0 = 0;               // initial computation time
   double tmax = 10;            // final computation time
   double h = 0.005;            // time step
   double position_init = 1.0;  // initial position for lowest bead.
   double velocity_init = 0.0;  // initial velocity for lowest bead.
   double theta = 0.5;          // theta for MoreauJeanOSI integrator
-  double radius = 0.1;         // Ball radius
-  double m = 1.;               // Ball mass
+  double radius = 0.1;         // Disk radius
+  double m = 1.;               // Disk mass
   double g = 9.81;             // Gravity
 
   print("====> Model loading ...\n");
@@ -44,22 +48,32 @@ int main(int argc, char* argv[])
   // --------------------------
   // -- The dynamical_system --
   // --------------------------
-  auto ball = storage::add<config::ball>(data);
+  auto d1 = storage::add<config::disk>(data);
+  auto d2 = storage::add<config::disk>(data);
 
-  ball.q() = {position_init, 0, 0};
-  ball.velocity() = {velocity_init, 0, 0};
-  ball.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
+  d1.q() = {position_init, 0, 0};
+  d1.velocity() = {velocity_init, 0, 0};
+  d1.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
+
+  d2.q() = {2 * position_init, 0.1, 0};
+  d2.velocity() = {velocity_init, 0, 0};
+  d2.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
+
+  storage::handle(data, prop<"shape">(d1)).radius() = 1;
+  storage::handle(data, prop<"shape">(d2)).radius() = 2;
 
   // -- Set external forces (weight) --
-  ball.fext() = {-m * g, 0., 0.};
+  d1.fext() = {-m * g, 0., 0.};
+  d2.fext() = {-m * g, 0., 0.};
 
   // ------------------
   // -- The relation --
   // ------------------
 
   // -- Lagrangian relation --
-  auto relation = storage::add<config::relation>(data);
-  relation.h_matrix() = {-1.0, 0., 0.};
+  auto dd_r = storage::add<config::diskdisk_r>(data);
+  auto d1p_r = storage::add<config::diskplan_r>(data);
+  auto d2p_r = storage::add<config::diskplan_r>(data);
 
   // -- nslaw --
   double e = 0.9;
@@ -89,12 +103,21 @@ int main(int argc, char* argv[])
   so.create();
   osnspb.options() = so;
 
-  // Interaction ball-floor
-  auto interaction = simulation.topology().link(ball);
-  // interaction.h_matrix1() = {1., 0., 0.};
+  // Interaction disk-disk
+  auto inter_dd = simulation.topology().link(d1, d2);
 
-  interaction.relation() = relation;
-  interaction.nonsmooth_law() = nslaw;
+  // Interaction disk-plan
+  auto inter_d1p = simulation.topology().link(d1);
+  auto inter_d2p = simulation.topology().link(d2);
+
+  inter_dd.relation() = dd_r;
+  inter_dd.nonsmooth_law() = nslaw;
+
+  inter_d1p.relation() = d1p_r;
+  inter_d1p.nonsmooth_law() = nslaw;
+
+  inter_d2p.relation() = d2p_r;
+  inter_d2p.nonsmooth_law() = nslaw;
 
   // =========================== End of model definition
   // ===========================
@@ -110,9 +133,9 @@ int main(int argc, char* argv[])
 
   out.print("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
             simulation.current_step() * simulation.time_step(),
-            config::ball::q::at(ball, simulation.current_step())(0),
-            config::ball::velocity::at(ball, simulation.current_step())(0),
-            0., 0.);
+            config::disk::q::at(d1, simulation.current_step())(0),
+            config::disk::velocity::at(d1, simulation.current_step())(0), 0.,
+            0.);
 
   while (simulation.has_next_event()) {
     auto ninvds = simulation.compute_one_step();
@@ -131,8 +154,8 @@ int main(int argc, char* argv[])
 
     out.print("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
               simulation.current_step() * simulation.time_step(),
-              config::ball::q::at(ball, simulation.current_step())(0),
-              config::ball::velocity::at(ball, simulation.current_step())(0),
+              config::disk::q::at(d1, simulation.current_step())(0),
+              config::disk::velocity::at(d1, simulation.current_step())(0),
               p0, lambda);
   }
   //  io::close(fd);

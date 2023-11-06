@@ -133,15 +133,8 @@ concept push_back = requires(T a) {
 };
 
 template <typename T, typename I>
-concept handle = item<I> && std::derived_from<I, typename T::type> &&
+concept handle = std::derived_from<typename T::type, I> &&
                  requires { typename T::handle_t; };
-
-template <typename T>
-concept any_full_handle = requires { typename T::full_handle_t; };
-
-template <typename T, typename I>
-concept full_handle =
-    any_full_handle<T> && item<I> && std::derived_from<I, typename T::type>;
 
 template <typename T>
 concept wrap = item<T> && requires { typename T::wrap_t; };

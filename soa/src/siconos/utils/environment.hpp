@@ -57,7 +57,7 @@ struct standard_environment {
   using item_ref = storage::index<T, indice>;
 
   template <typename ...Ts>
-  using poly = std::variant<Ts...>;
+  using variant = std::variant<Ts...>;
 
   template <typename T>
   using default_storage = std::array<T, 1>;

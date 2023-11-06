@@ -195,9 +195,11 @@ static constexpr const auto itransform_ct(const auto &a, auto &&f)
   using array_type = std::decay_t<decltype(a)>;
   using size_type = typename array_type::size_type;
   array_type ta;  // 'a' passed as const ref is not a constant expression
-  return [&f, &a]<size_type... I>(std::index_sequence<I...>) {
+  return [&f, &a ]<size_type... I>(std::index_sequence<I...>)
+  {
     return (array_type{f(I, a[I])...});
-  }(std::make_integer_sequence<size_type, std::size(ta)>{});
+  }
+  (std::make_integer_sequence<size_type, std::size(ta)>{});
 }
 
 static constexpr const auto itransform(const auto &array, auto &&func)
@@ -253,14 +255,18 @@ template <auto F, typename... Ts>
 static constexpr auto is_a_model =
     compose(trait<on_concept<F, Ts...>::template is_a_model>, typeid_);
 
-static constexpr auto is_integral = is_a_model<[]<typename T>() consteval {
+static constexpr auto is_integral = is_a_model < []<typename T>() consteval
+{
   return std::is_integral<T>::value;
-}>;
+}
+> ;
 
 template <typename B>
-static constexpr auto derive_from = is_a_model<[]<typename T>() consteval {
+static constexpr auto derive_from = is_a_model < []<typename T>() consteval
+{
   return std::derived_from<T, B>;
-}>;
+}
+> ;
 
 template <typename D>
 static constexpr auto dump_keys(D, auto &&fun)
@@ -276,9 +282,9 @@ static constexpr R call_with_integral_constant_if_valid(R &&def_val, F &&fun)
 {
   constexpr auto N = std::integral_constant<decltype(I), I>{};
 
-  if constexpr (is_valid([](auto K) -> decltype(F{fun}){
+  if constexpr (is_valid([](auto&& K) -> decltype(std::declval<F&&>()(K)){
       })(N)) {
-    return static_cast<F &&>(fun)(N);
+    return [&]() { return static_cast<F &&>(fun)(N); }();
   }
   else {
     return def_val;
@@ -289,13 +295,16 @@ template <auto NumOfCases, typename ReturnType, typename F>
 inline constexpr ReturnType call_with_index(auto index, ReturnType &&def_val,
                                             F &&f)
 {
-  constexpr auto fun_tab = []<std::size_t... I>(std::index_sequence<I...>) {
+  constexpr auto fun_tab = []<std::size_t... I>(std::index_sequence<I...>)
+  {
     return std::array{
         siconos::storage::ground::call_with_integral_constant_if_valid<
             I, ReturnType, F>...};
-  }(std::make_index_sequence<NumOfCases>{});
+  }
+  (std::make_index_sequence<NumOfCases>{});
 
-  return fun_tab[index](static_cast<ReturnType &&>(def_val), static_cast<F &&>(f));
+  return fun_tab[index](static_cast<ReturnType &&>(def_val),
+                        static_cast<F &&>(f));
 }
 
 }  // namespace siconos::storage::ground

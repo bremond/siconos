@@ -4,9 +4,9 @@
 
 namespace siconos::simul {
 
-template <match::item... Relations>
+template <match::item Nslaw, match::item... Relations>
 struct interaction : item<> {
-  using nslaw = typename nth_t<0, gather<Relations...>>::nslaw;  // one nslaw
+  using nslaw = Nslaw;
   using relations = gather<Relations...>;
 
   using dof = some::indice_parameter<"dof">;

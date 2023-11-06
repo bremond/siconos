@@ -658,7 +658,7 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+RESULTS: ctrl-plot-pena-0
 :RESULTS:
 : Text(0.5, 0, 'number of beads')
-[[file:./.ob-jupyter/f28dd9e643600a6f78e7c1efd365ca7278061248.png]]
+[[file:./.ob-jupyter/111f81766afab1708d7b813d7a1d1fc4c368b2a9.png]]
 :END:
 
 
@@ -666,13 +666,13 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+RESULTS: ctrl-plot-pena-1
 :RESULTS:
 : Text(0.5, 0, 'number of beads')
-[[file:./.ob-jupyter/b18246a56aa4b9c266f1b6ffa9c49fa340bc1339.png]]
+[[file:./.ob-jupyter/b673f4ac28b88e083c947ef8ea2c2b7f88254ef1.png]]
 :END:
 
 #+RESULTS: ctrl-plot-pena-2
 :RESULTS:
 : Text(0.5, 0, 'number of beads')
-[[file:./.ob-jupyter/69413191d2fbe956effaf8c45819844e095f8997.png]]
+[[file:./.ob-jupyter/f7dd4c068c7feef7d83a78478d61711e5463c325.png]]
 :END:
 
 

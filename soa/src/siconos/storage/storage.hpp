@@ -371,7 +371,7 @@ using attached_storages_t =
     std::decay_t<decltype(attached_storages(Handle{}, Data{}))>;
 
 template <typename T>
-auto make_full_handle(const auto& indx, auto& data)
+auto make_full_handle(auto& data, const auto& indx)
 {
   using data_t = std::decay_t<decltype(data)>;
   using info_t = std::decay_t<decltype(ground::get<info>(data))>;
@@ -384,7 +384,7 @@ auto make_full_handle(const auto& indx, auto& data)
 template <match::item T>
 decltype(auto) make_handle(auto& h)
 {
-  return make_full_handle<T>(h.get(), h.data());
+  return make_full_handle<T>(h.data(), h.get());
 }
 
 template <typename A>
@@ -578,15 +578,15 @@ static auto add = [](auto&& data) constexpr -> decltype(auto) {
                 }
               });
         });
-    return make_full_handle<Item>(index, data);
+    return make_full_handle<Item>(data, index);
   }
   else {
-    return make_full_handle<Item>(indice{0}, data);
+    return make_full_handle<Item>(data, indice{0});
   }
 };
 
 template <match::item T>
-static auto for_each_attribute = [](auto&& fun, auto& data) constexpr {
+static auto for_each_attribute = [](auto& data, auto&& fun) constexpr {
   ground::for_each(
       _attributes(T{}), [&fun]<match::attribute... Attrs>(Attrs & ...) {
         (fun(Attrs{}), ...);

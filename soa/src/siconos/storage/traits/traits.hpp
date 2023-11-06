@@ -26,7 +26,7 @@ static auto translate = rec([]<typename E, typename T>(auto&& translate, E,
   {
     return std::apply([]<typename ...Ts>(Ts...)
                       {
-                        return typename E::template poly<decltype(translate(E{}, Ts{}))...>{};
+                        return typename E::template variant<decltype(translate(E{}, Ts{}))...>{};
                       },
                       (typename T::types{}));
   }

@@ -14,8 +14,8 @@ using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
 using fc2d = simul::nonsmooth_problem<FrictionContactProblem>;
 using osnspb = simul::one_step_nonsmooth_problem<fc2d>;
 using nslaw = model::newton_impact_friction;
-using relation = model::lagrangian_r<nslaw>;
-using interaction = simul::interaction<relation>;
+using relation = model::lagrangian_r<nslaw::size>;
+using interaction = simul::interaction<nslaw, relation>;
 using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
 using topo = simul::topology<ball, interaction>;
@@ -37,12 +37,12 @@ int main(int argc, char* argv[])
       wrap<some::unbounded_collection, config::interaction>,
       storage::with_properties<
           storage::time_invariant<config::ball::fext>,
-        storage::diagonal<config::ball, "mass_matrix">,
+          storage::diagonal<config::ball, "mass_matrix">,
           storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
 
   // unsigned int nDof = 3;         // degrees of freedom for the ball
   double t0 = 0;               // initial computation time
-  double tmax = 1;            // final computation time
+  double tmax = 1;             // final computation time
   double h = 0.005;            // time step
   double position_init = 1.0;  // initial position for lowest bead.
   double velocity_init = 0.0;  // initial velocity for lowest bead.
@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
   auto relation_f = storage::add<config::relation>(data);
   auto relation_b = storage::add<config::relation>(data);
   relation_f.h_matrix() << 1., 0., 0., 0., 1., -radius;
-  relation_b.h_matrix() <<  -1., 0., 0., 0., 1., -radius;
+  relation_b.h_matrix() << -1., 0., 0., 0., 1., -radius;
   relation_f.b() = -radius;
   relation_b.b() = -2 * radius;
 
@@ -120,8 +120,8 @@ int main(int argc, char* argv[])
   //    first_ball)
   //    {
   auto interaction = simulation.topology().link(first_ball);
-//  interaction.h_matrix1() << 1., 0., 0., 0., 1., -radius;
-//  interaction.h_matrix2() << 1., 0., 0., 0., 1., -radius;
+  //  interaction.h_matrix1() << 1., 0., 0., 0., 1., -radius;
+  //  interaction.h_matrix2() << 1., 0., 0., 0., 1., -radius;
   interaction.relation() = relation_f;
   interaction.nonsmooth_law() = nslaw;
   //    });
@@ -129,8 +129,8 @@ int main(int argc, char* argv[])
   for (auto [ball1, ball2] : views::zip(balls, balls | views::drop(1))) {
     print("new interaction ball<->ball : {} {}\n", ball1.get(), ball2.get());
     auto interaction = simulation.topology().link(ball1, ball2);
-//    interaction.h_matrix1() << -1., 0., 0., 0., 1., -radius;
-//    interaction.h_matrix2() << 1., 0., 0., 0., 1., -radius;
+    //    interaction.h_matrix1() << -1., 0., 0., 0., 1., -radius;
+    //    interaction.h_matrix2() << 1., 0., 0., 0., 1., -radius;
     interaction.relation() = relation_b;
     interaction.nonsmooth_law() = nslaw;
   };
@@ -150,7 +150,6 @@ int main(int argc, char* argv[])
 
   // iteration matrix & h_matrices
   simulation.initialize();
-
 
   auto out = fmt::output_file("result-many.dat");
 
