@@ -1,8 +1,8 @@
 #pragma once
 
-#include "CSparseMatrix_internal.h"  // for CSparseMatrix
-#include "NumericsMatrix.h"
-#include "NumericsSparseMatrix.h"
+#include <siconos/numerics/CSparseMatrix_internal.h>  // for CSparseMatrix
+#include <siconos/numerics/NumericsMatrix.h>
+#include <siconos/numerics/NumericsSparseMatrix.h>
 #include "siconos/algebra/algebra.hpp"
 #include "siconos/algebra/linear_algebra.hpp"
 #include "siconos/storage/pattern/pattern.hpp"

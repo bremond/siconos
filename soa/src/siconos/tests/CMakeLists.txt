@@ -1,33 +1,9 @@
-
-include(CheckCXXCompilerFlag)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(
-  ${GUIX_ENVIRONMENT}/include/eigen3
-  ${SICONOS_INSTALL_DIR}/include
-  ${SICONOS_INSTALL_DIR}/include/siconos
-  ${SICONOS_INSTALL_DIR}/include/siconos/numerics
-  ${SICONOS_INSTALL_DIR}/include/siconos/kernel)
-link_directories(${CMAKE_BUILD_DIR})
-
 add_executable(t1 t1.cpp)
 #add_executable(t2 t2.cpp)
 add_executable(bouncing_ball  bouncing_ball.cpp)
 add_executable(bouncing_balls bouncing_balls.cpp)
 add_executable(disks disks.cpp)
 #add_executable(tnonos tnonos.cpp)
-
-
-set(flags "-Wall --std=c++20")
-set(fconcepts_diagnostics)
-check_cxx_compiler_flag("-fconcepts-diagnostics-depth=0" fconcepts_diagnostics)
-check_cxx_compiler_flag("-ftemplate-backtrace-limit=0" ftemplate_backtrace_limit)
-if(fconcepts_diagnostics)
-  set(flags "${flags} -fconcepts-diagnostics-depth=0")
-endif()
-if(ftemplate_backtrace_limit)
-  set(flags "${flags} -ftemplate-backtrace-limit=0")
-endif()
 
 set_target_properties(t1 PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
 
@@ -38,10 +14,10 @@ set_target_properties(bouncing_balls PROPERTIES COMPILE_FLAGS "${flags}")# -fcon
 set_target_properties(disks PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
 
 
-target_link_libraries(t1 siconos_numerics benchmark pthread fmt)
+target_link_libraries(t1 Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
+target_link_libraries(bouncing_ball  Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
+target_link_libraries(bouncing_balls Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
+target_link_libraries(disks Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
 
-#target_link_libraries(t2 siconos_numerics benchmark pthread fmt)
-#target_link_libraries(tnonos siconos_numerics benchmark pthread fmt)
-target_link_libraries(bouncing_ball siconos_numerics benchmark pthread fmt)
-target_link_libraries(bouncing_balls siconos_numerics benchmark pthread fmt)
-target_link_libraries(disks siconos_numerics benchmark pthread fmt)
+
+

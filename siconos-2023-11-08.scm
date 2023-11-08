@@ -14,4 +14,4 @@
         (url "https://gitlab.inria.fr/bremond/guix-hpc.git")
         (branch "add-siconos")
         (commit
-          "05b87e068001a7b00aa3b61eb21c89f83335c116")))
+         "f6d6373f6a4542585397178c2ec3e58c4990f0da")))

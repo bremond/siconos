@@ -33,7 +33,7 @@ int main(int argc, char* argv[])
   namespace some = siconos::storage::some;
   using siconos::storage::pattern::wrap;
 
-  auto data = storage::make_storage<
+  auto data = storage::make<
       standard_environment<config::params>, config::simulation,
       wrap<some::unbounded_collection, config::ball>,
       wrap<some::bounded_collection, config::relation, some::indice_value<1>>,

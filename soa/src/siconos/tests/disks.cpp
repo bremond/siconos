@@ -22,7 +22,7 @@ using params = map<iparam<"dof", 3>>;
 int main(int argc, char* argv[])
 {
   using namespace siconos;
-  auto data = storage::make_storage<
+  auto data = storage::make<
       standard_environment<config::params>, config::simulation, config::disk,
       config::diskdisk_r, config::diskplan_r, config::interaction,
       storage::with_properties<

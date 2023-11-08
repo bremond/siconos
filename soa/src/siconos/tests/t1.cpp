@@ -65,19 +65,19 @@ struct item0 : item<> {
 static_assert(
     match::diagonal_matrix<
         decltype(storage::attr<"attr0">(storage::add<item0>(
-            storage::make_storage<standard_environment<int>, item0,
+            storage::make<standard_environment<int>, item0,
                                   storage::with_properties<storage::diagonal<
                                       item0, "attr0">>>())))>);
 
 static_assert(
     match::matrix<decltype(storage::attr<"attr0">(storage::add<item0>(
-        storage::make_storage<standard_environment<int>,
+        storage::make<standard_environment<int>,
                               wrap<some::unbounded_collection, item0>>())))>);
 
 static_assert(
     match::diagonal_matrix<
         decltype(storage::attr<"attr0">(storage::add<item0>(
-            storage::make_storage<standard_environment<int>,
+            storage::make<standard_environment<int>,
                                   wrap<some::unbounded_collection, item0>,
                                   storage::with_properties<storage::diagonal<
                                       item0, "attr0">>>())))>);
@@ -100,7 +100,7 @@ using simulation = simul::time_stepping<td, osi, osnspb, topo>;
 static_assert(
     match::diagonal_matrix<
         decltype(storage::attr<"mass_matrix">(storage::add<ball>(
-            storage::make_storage<
+            storage::make<
                 standard_environment<config::map<config::iparam<"dof", 3>>>,
                 simulation, ball, relation, interaction,
                 storage::with_properties<
@@ -113,7 +113,7 @@ struct is_polymorhic : std::integral_constant<bool, []() {
 
 static_assert(
     match::relation1<storage::handle<
-        relation, int, decltype(storage::make_storage<env, relation>())>>);
+        relation, int, decltype(storage::make<env, relation>())>>);
 
 //  {
 static_assert(std::is_same_v<decltype(all_items(nslaw{})),
@@ -221,7 +221,7 @@ static_assert(std::is_same_v<
 
 int main()
 {
-  auto ddd = storage::make_storage<env, bbb>();
+  auto ddd = storage::make<env, bbb>();
 
   auto bob1 = storage::add<bbb>(ddd);
 
@@ -231,7 +231,7 @@ int main()
     using attributes = gather<attribute<"one", some::scalar>>;
   };
 
-  auto eee = storage::make_storage<env, item1>();
+  auto eee = storage::make<env, item1>();
 
   auto h1 = storage::add<item1>(eee);
 

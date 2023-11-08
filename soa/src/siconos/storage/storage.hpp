@@ -473,7 +473,7 @@ static constexpr auto attribute_storage_transform =
 };
 
 template <typename Env, match::item... Items>
-static auto make_storage = []() constexpr -> decltype(auto) {
+static auto make = []() constexpr -> decltype(auto) {
   auto base_storage = typename item_storage<Env, Items...>::type{};
   using info_t = std::decay_t<decltype(ground::get<info>(base_storage))>;
   return attribute_storage_transform(

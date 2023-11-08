@@ -51,7 +51,7 @@
 #include <boost/static_assert.hpp>
 #include <limits>
 
-#include "SiconosSerialization.hpp"
+#include "kernel/SiconosSerialization.hpp"
 
 enum vertex_properties_t { vertex_properties };
 enum edge_properties_t { edge_properties };
