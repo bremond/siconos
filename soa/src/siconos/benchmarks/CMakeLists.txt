@@ -21,4 +21,4 @@ set_target_properties(ColumnOfBeadsTS PROPERTIES COMPILE_FLAGS "${flags}")# -fco
 set_target_properties(column_of_beads_ts PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
 
 target_link_libraries(column_of_beads_ts PUBLIC Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
-target_link_libraries(ColumnOfBeadsTS PUBLIC siconos_kernel Siconos::numerics Siconos::kernel benchmark pthread fmt)
+target_link_libraries(ColumnOfBeadsTS PUBLIC Siconos::numerics Siconos::kernel benchmark pthread fmt)

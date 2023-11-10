@@ -2,7 +2,7 @@
 
 #include "siconos/siconos.hpp"
 
-namespace siconos::config {
+namespace siconos::config::disks {
 
 using disk = model::lagrangian_ds;
 using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
@@ -17,14 +17,17 @@ using topo = simul::topology<disk, interaction>;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
 
 using params = map<iparam<"dof", 3>>;
-}  // namespace siconos::config
+}  // namespace siconos::config::disks
+
+namespace siconos::python::disks {
 
 using namespace siconos;
 namespace py = pybind11;
 namespace some = siconos::storage::some;
+namespace config = siconos::config::disks;
 using siconos::storage::pattern::wrap;
 
-auto new_2d_disks_data()
+auto make_storage()
 {
   return storage::make<
       standard_environment<config::params>, config::simulation,
@@ -39,11 +42,17 @@ auto new_2d_disks_data()
           storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
 }
 
+using data_t = std::decay_t<decltype(make_storage())>;
+
+auto add_disk(data_t& data) { return storage::add<config::disk>(data); };
+}  // namespace siconos::python::disks
+
 PYBIND11_MODULE(nonos, m)
 {
-  m.doc() = R"pbdoc(
-        Nonos example
-        -------------
+  auto disks = m.def_submodule("disks");
+  disks.doc() = R"pbdoc(
+        Nonos disks
+        -----------
 
         .. currentmodule:: nonos
 
@@ -54,9 +63,13 @@ PYBIND11_MODULE(nonos, m)
            subtract
     )pbdoc";
 
-  m.def("new_2d_disks_data", &new_2d_disks_data, R"pbdoc(
+  disks.def("make_storage", &siconos::python::disks::make_storage, R"pbdoc(
         Create a new data object for 2D disks simulation
     )pbdoc");
 
-  m.attr("__version__") = "dev";
+  disks.def("add_disk", &siconos::python::disks::add_disk, R"pbdoc(
+        Add disk
+    )pbdoc");
+
+  disks.attr("__version__") = "dev";
 }
