@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.2)
-project(siconos)
+project(
+  ${SKBUILD_PROJECT_NAME}
+  VERSION ${SKBUILD_PROJECT_VERSION}
+  LANGUAGES CXX C)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -25,6 +28,13 @@ endif()
 if(ftemplate_backtrace_limit)
   set(flags "${flags} -ftemplate-backtrace-limit=0")
 endif()
+
+python_add_library(_nonos MODULE ./src/siconos/pybind/main.cpp WITH_SOABI)
+set_target_properties(_nonos PROPERTIES COMPILE_FLAGS "${flags}")
+target_link_libraries(_nonos PRIVATE Eigen3::Eigen Siconos::numerics benchmark pthread fmt pybind11::headers)
+target_compile_definitions(_nonos PRIVATE VERSION_INFO=${PROJECT_VERSION})
+
+install(TARGETS _nonos DESTINATION nonos)
 
 add_subdirectory(src)
 
