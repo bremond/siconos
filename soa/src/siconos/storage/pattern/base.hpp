@@ -34,7 +34,7 @@ struct string_literal {
 };
 
 template <string_literal a>
-decltype(auto) operator""_a()
+decltype(auto) operator""_x()
 {
   return a;
 };
@@ -47,7 +47,7 @@ constexpr auto make_string_literal(T&& t)
 
 template <string_literal Text>
 struct text {
-  static constexpr auto data = Text;
+  static constexpr auto str = Text;
 };
 
 struct any_symbol {};

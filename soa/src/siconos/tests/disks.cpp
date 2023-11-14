@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
       storage::with_properties<
           storage::attached<config::disk, storage::pattern::symbol<"shape">,
                             storage::some::item_ref<model::disk>>,
-          storage::time_invariant<config::disk::fext>,
+          storage::time_invariant<storage::attr_of<config::disk, "fext">>,
           storage::diagonal<config::disk, "mass_matrix">,
           storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
 
@@ -133,8 +133,8 @@ int main(int argc, char* argv[])
 
   out.print("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
             simulation.current_step() * simulation.time_step(),
-            config::disk::q::at(d1, simulation.current_step())(0),
-            config::disk::velocity::at(d1, simulation.current_step())(0), 0.,
+            storage::attr<"q">(d1, simulation.current_step())(0),
+            storage::attr<"velocity">(d1, simulation.current_step())(0), 0.,
             0.);
 
   while (simulation.has_next_event()) {
@@ -154,9 +154,9 @@ int main(int argc, char* argv[])
 
     out.print("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
               simulation.current_step() * simulation.time_step(),
-              config::disk::q::at(d1, simulation.current_step())(0),
-              config::disk::velocity::at(d1, simulation.current_step())(0),
-              p0, lambda);
+              storage::attr<"q">(d1, simulation.current_step())(0),
+              storage::attr<"velocity">(d1, simulation.current_step())(0), p0,
+              lambda);
   }
   //  io::close(fd);
 }

@@ -40,7 +40,7 @@ int main(int argc, char* argv[])
       wrap<some::unbounded_collection, config::interaction>,
       storage::with_properties<
           storage::time_invariant<config::interaction::h_matrix1>,
-          storage::time_invariant<config::ball::fext>,
+          storage::time_invariant<storage::attr_of<config::ball, "fext">>,
           storage::diagonal<config::ball, "mass_matrix">,
           storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
 
@@ -156,10 +156,10 @@ int main(int argc, char* argv[])
 
   out.print("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
             simulation.current_step() * simulation.time_step(),
-            config::ball::q::at(ball1, simulation.current_step())(0),
-            config::ball::q::at(ball2, simulation.current_step())(0),
-            config::ball::velocity::at(ball1, simulation.current_step())(0),
-            config::ball::velocity::at(ball2, simulation.current_step())(0),
+            storage::attr<"q">(ball1, simulation.current_step())(0),
+            storage::attr<"q">(ball2, simulation.current_step())(0),
+            storage::attr<"velocity">(ball1, simulation.current_step())(0),
+            storage::attr<"velocity">(ball2, simulation.current_step())(0),
             0., 0.);
 
   std::chrono::time_point<std::chrono::system_clock> start, end;

@@ -24,30 +24,34 @@ using simulation = simul::time_stepping<td, osi, osnspb, topo>;
 using params = map<iparam<"dof", 3>>;
 }  // namespace siconos::config::disks
 
-namespace siconos::python::disks {
-
 using namespace siconos;
 namespace some = siconos::storage::some;
+
+namespace pattern = siconos::storage::pattern;
+
+namespace siconos::python::disks {
+
 namespace config = siconos::config::disks;
-using siconos::storage::pattern::wrap;
 
 auto imake_storage()
 {
   return storage::make<
       standard_environment<config::params>, config::simulation,
-      wrap<some::unbounded_collection, config::disk>, config::diskdisk_r,
-      config::diskplan_r,
-      wrap<some::unbounded_collection, config::interaction>,
+      pattern::wrap<some::unbounded_collection, config::disk>,
+      config::diskdisk_r, config::diskplan_r,
+      pattern::wrap<some::unbounded_collection, config::interaction>,
       storage::with_properties<
           storage::attached<config::disk, storage::pattern::symbol<"shape">,
                             storage::some::item_ref<model::disk>>,
-          storage::time_invariant<config::disk::fext>,
+          storage::time_invariant<
+              storage::pattern::attr_of<config::disk, "fext">>,
           storage::diagonal<config::disk, "mass_matrix">,
           storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
 }
 
 using idata_t = std::decay_t<decltype(imake_storage())>;
 
+// just hide idata_t to pybind11
 struct data_t {
   data_t() : _data(imake_storage()){};
 
@@ -74,14 +78,29 @@ using disk_t = std::decay_t<decltype(storage::add<config::disk>(idata_t{}))>;
 // }}
 PYBIND11_MODULE(_nonos, m)
 {
+  namespace ground = siconos::storage::ground;
+  namespace match = siconos::storage::pattern::match;
+
   using disk_t = siconos::python::disks::disk_t;
   auto disks = m.def_submodule("disks");
-  py::class_<siconos::python::disks::data_t>(disks, "data_t");
-  py::class_<disk_t>(disks, "disk_t")
-      .def("q", &disk_t::q, py::return_value_policy::reference)
-      .def("velocity", &disk_t::velocity, py::return_value_policy::reference)
-      .def("mass_matrix", &disk_t::mass_matrix,
-           py::return_value_policy::reference);
+
+  auto data_class =
+      py::class_<siconos::python::disks::data_t>(disks, "data_t");
+  auto disk_class = py::class_<disk_t>(disks, "disk_t");
+
+  ground::fold_left(
+      pattern::attributes(typename disk_t::type{}), std::ref(disk_class),
+      []<match::attribute A>(py::class_<disk_t> dc, A a) {
+        return dc.def(pattern::attribute_name(a),
+                      [](disk_t& d) { return storage::get<A>(d.data(), d); });
+      });
+
+  //  py::class_<disk_t>(disks, "disk_t")
+  //      .def("q", &disk_t::q, py::return_value_policy::reference)
+  //      .def("velocity", &disk_t::velocity,
+  //      py::return_value_policy::reference) .def("mass_matrix",
+  //      &disk_t::mass_matrix,
+  //           py::return_value_policy::reference);
 
   disks.doc() = R"pbdoc(
         Nonos m

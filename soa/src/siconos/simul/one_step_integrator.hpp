@@ -23,15 +23,16 @@ struct one_step_integrator {
   using ydot = typename interaction::ydot;
   using lambda = typename interaction::lambda;
   using relation = typename interaction::relation;
-  using q = typename system::q;
-  using velocity = typename system::velocity;
   using h_matrix1 = typename interaction::h_matrix1;
   using h_matrix2 = typename interaction::h_matrix2;
-  using fext = typename system::fext;
+
+  using q = attr_of<system, "q">;
+  using velocity = attr_of<system, "velocity">;
+  using fext = attr_of<system, "fext">;
 
   struct euler : item<> {
-    using properties =
-        gather<storage::keep<q, 2>, storage::keep<velocity, 2>>;
+    using properties = gather<storage::keep<attr_of<system, "q">, 2>,
+                              storage::keep<attr_of<system, "velocity">, 2>>;
 
     using attributes = gather<>;
 
@@ -68,7 +69,7 @@ struct one_step_integrator {
     struct velocity_vector_assembled : some::unbounded_vector<velocity>,
                                        access<velocity_vector_assembled> {};
     struct free_velocity_vector_assembled
-        : some::unbounded_vector<velocity>,
+        : some::unbounded_vector<attr_of<system, "velocity">>,
           access<free_velocity_vector_assembled> {};
     struct y_vector_assembled : some::unbounded_vector<y>,
                                 access<y_vector_assembled> {};
@@ -99,8 +100,8 @@ struct one_step_integrator {
                           free_velocity_vector_assembled,
                           lambda_vector_assembled, p0_vector_assembled>;
 
-    using properties = gather<storage::keep<typename system::q, 2>,
-                              storage::keep<typename system::velocity, 2>,
+    using properties = gather<storage::keep<attr_of<system, "q">, 2>,
+                              storage::keep<attr_of<system, "velocity">, 2>,
                               storage::keep<y, 2>, storage::keep<ydot, 2>>;
 
     template <typename Handle>
@@ -163,8 +164,8 @@ struct one_step_integrator {
         auto &h_matrices1 = storage::attr_values<h_matrix1>(data, step);
         auto &h_matrices2 = storage::attr_values<h_matrix2>(data, step);
 
-        auto &qs = storage::attr_values<q>(data, step);
-        auto &velocities = storage::attr_values<velocity>(data, step);
+        auto &qs = storage::attr_values<system, "q">(data, step);
+        auto &velocities = storage::attr_values<attr_of<system, "velocity">>(data, step);
 
         auto &ds1s = storage::prop_values<interaction, "ds1">(data, step);
         auto &ds2s = storage::prop_values<interaction, "ds2">(data, step);
@@ -450,8 +451,8 @@ struct one_step_integrator {
       {
         auto &data = self()->data();
 
-        auto &xs = storage::attr_values<q>(data, step);
-        auto &xs_next = storage::attr_values<q>(data, step + 1);
+        auto &xs = storage::attr_values<system, "q">(data, step);
+        auto &xs_next = storage::attr_values<system, "q">(data, step + 1);
         auto &vs = storage::attr_values<velocity>(data, step);
         auto &vs_next = storage::attr_values<velocity>(data, step + 1);
 

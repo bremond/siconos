@@ -1,9 +1,9 @@
 #pragma once
 
+#include "siconos/model/model.hpp"
+
 #include "siconos/algebra/algebra.hpp"
 #include "siconos/model/lagrangian_ds.hpp"
-#include "siconos/model/model.hpp"
-#include "siconos/storage/pattern/pattern.hpp"
 
 namespace siconos::storage::pattern::match {
 template <typename T>

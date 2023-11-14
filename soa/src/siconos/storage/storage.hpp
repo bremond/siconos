@@ -81,8 +81,7 @@ struct time_invariant : property::time_invariant {
 
 template <match::item Item, string_literal S>
 struct diagonal : property::diagonal {
-  using type = std::decay_t<decltype(std::get<0>(
-      ground::filter(attributes(Item{}), ground::derive_from<symbol<S>>)))>;
+  using type = attr_of<Item, S>;
   static_assert(match::abstract_matrix<type>);
   using diagonal_t = void;
 };
@@ -586,11 +585,8 @@ static auto add = [](auto&& data) constexpr -> decltype(auto) {
 };
 
 template <match::item T>
-static auto for_each_attribute = [](auto& data, auto&& fun) constexpr {
-  ground::for_each(
-      _attributes(T{}), [&fun]<match::attribute... Attrs>(Attrs & ...) {
-        (fun(Attrs{}), ...);
-      });
+static constexpr void for_each_attribute(T) {
+  return ground::compose(ground::for_each, attributes)(T{});
 };
 
 template <typename T>
@@ -608,14 +604,15 @@ struct access {
       []<typename U = T, typename FullHandle>(
           FullHandle h, typename FullHandle::indice step)
           ->decltype(auto) {
-        return siconos::storage::get<U>(h.data(), step, h);
+            return siconos::storage::get<U>(h.data(), step, h);
           });
 };
 
-static auto for_each = [](auto m, auto&& fun) constexpr -> void {
-  ground::for_each(
-      m, ground::dup(ground::lockstep(fun)(ground::first, ground::second)));
-};
+// ?
+// static auto for_each = [](auto m, auto&& fun) constexpr -> void {
+//  ground::for_each(
+//      m, ground::dup(ground::lockstep(fun)(ground::first, ground::second)));
+//};
 
 template <string_literal S>
 static auto prop = [](auto h) constexpr -> decltype(auto) {
@@ -642,9 +639,7 @@ static constexpr decltype(auto) attr_memory(auto& data)
 template <match::item I, string_literal S>
 static constexpr decltype(auto) attr_memory(auto& data)
 {
-  using attr_n = std::decay_t<decltype(std::get<0>(
-      ground::filter(attributes(I{}), ground::derive_from<symbol<S>>)))>;
-  return ground::get<attr_n>(data);
+  return ground::get<attr_of<I, S>>(data);
 };
 
 template <match::item I, string_literal S>
@@ -706,6 +701,9 @@ static auto handles = [](auto& data, auto step) constexpr -> decltype(auto) {
 
 /*siconos::storage::ground::dump_keys(data, [](auto&& s) { std::cout << s<<
  * std::endl;});*/
+
+using pattern::attr_of;
+using pattern::wrap;
 
 }  // namespace siconos::storage
 

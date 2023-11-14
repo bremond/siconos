@@ -81,13 +81,13 @@ static auto cons = []<typename A, typename... As>(
 static_assert(std::is_same_v<decltype(cons(int{}, gather<float, char>{})),
                              gather<int, float, char>>);
 
-static auto append =
-    []<concepts::tuple_like... Tpls>(Tpls... tpls) constexpr {
-      return std::tuple_cat(tpls...);
-    };
+static auto append = []<concepts::tuple_like... Tpls>(Tpls... tpls) constexpr
+{
+  return std::tuple_cat(tpls...);
+};
 
 static auto flatten = []<concepts::tuple_like Tpl>(Tpl tpl) constexpr {
-  if constexpr (std::tuple_size_v<Tpl> > 0) {
+  if constexpr (std::tuple_size_v < Tpl >> 0) {
     if constexpr (concepts::tuple_like<decltype(car(tpl))>) {
       return std::apply(append, tpl);
     }
@@ -111,7 +111,7 @@ static auto filter = []<typename Tpl>(const Tpl tpl) constexpr {
     auto v = car(Itpl{});
     using v_t = std::decay_t<decltype(v)>;
     if constexpr (F{}.value(v_t{})) {
-      if constexpr (std::tuple_size_v<Itpl> > 1) {
+      if constexpr (std::tuple_size_v < Itpl >> 1) {
         return cons(v, loop(cdr(Itpl{})));
       }
       else {
@@ -126,7 +126,7 @@ static auto filter = []<typename Tpl>(const Tpl tpl) constexpr {
     }
   });
 
-  if constexpr (std::tuple_size_v<Tpl> > 0) {
+  if constexpr (std::tuple_size_v < Tpl >> 0) {
     return loop(Tpl{});
   }
   else {
@@ -190,10 +190,6 @@ template <typename T>
 concept attribute_or_item = attribute<T> || item<T>;
 
 template <typename T, typename I>
-concept attribute_of =
-    attribute<T> && item<I> && must::contains<T, typename I::attributes>;
-
-template <typename T, typename I>
 concept attached_storage =
     attribute<T> && item<I> &&
     (std::derived_from<I, typename T::item> ||
@@ -233,8 +229,9 @@ template <typename T, typename K>
 concept property_of = property<T> && property<K> && std::derived_from<T, K>;
 
 template <typename T, typename Ks>
-concept any_of_property = ground::any_of(
-    Ks{}, []<match::property K>(K) { return std::derived_from<T, K>; });
+concept any_of_property = ground::any_of(Ks{}, []<match::property K>(K) {
+  return std::derived_from<T, K>;
+});
 
 }  // namespace match
 
@@ -293,7 +290,6 @@ struct item {
                           const item<Args...>&) = default;
 };
 
-
 struct any_wrapper {};
 
 struct any_bounded_wrapper : any_wrapper {};
@@ -318,47 +314,14 @@ namespace concepts {
 // T is a tag
 template <typename T, typename Data>
 concept vertex_item_t = requires(T t) {
-  {
-    static_cast<typename Data::vertex_items>(t)
-  };
-};
+                          {
+                            static_cast<typename Data::vertex_items>(t)
+                          };
+                        };
 }  // namespace concepts
 
-template <match::attribute Attr>
-static auto item_attribute = [](concepts::tuple_like auto items) constexpr {
-  using items_t = std::decay_t<decltype(items)>;
-
-  auto loop = rec([]<typename Tpl>(auto&& loop, Tpl tpl) {
-    using tpl_t = std::decay_t<Tpl>;
-    using item_t = std::decay_t<decltype(car(tpl))>;
-
-    static_assert(match::item<item_t>);
-
-    if constexpr (match::attribute_of<Attr, item_t>) {
-      return item_t{};
-    }
-    else if constexpr (match::attached_storage<Attr, item_t>) {
-      return item_t{};
-    }
-    else if constexpr (std::tuple_size_v<tpl_t> > 1) {
-      return loop(cdr(tpl));
-    }
-    else {
-      []<typename Attribute = Attr, typename LastItem = item_t,
-         typename Items = items_t, bool flag = false>()
-      {
-        static_assert(flag, "item not found");
-      }
-      ();
-    }
-  });
-
-  return loop(items);
-};
-
 template <string_literal Name, match::attribute A>
-struct attribute : A, symbol<Name> {
-};
+struct attribute : A, symbol<Name> {};
 
 template <match::item Item, match::attribute A>
 struct paired : A {
@@ -366,7 +329,7 @@ struct paired : A {
 };
 
 template <match::item Item, match::attribute A>
-static constexpr decltype(auto) named_attribute(Item, A)
+static constexpr decltype(auto) named_attribute_maybe(Item, A)
 {
   if constexpr (std::derived_from<A, any_symbol>) {
     // for an attribute declared inline inside attributes type, attach
@@ -387,14 +350,19 @@ static constexpr decltype(auto) named_attribute(Item, A)
 static auto attributes =
     []<match::item Item>(Item) constexpr -> decltype(auto) {
   if constexpr (match::attributes<Item>) {
-    return ground::transform(
-        typename Item::attributes{},
-        []<match::attribute A>(A) { return named_attribute(Item{}, A{}); });
+    return ground::transform(typename Item::attributes{},
+                             []<match::attribute A>(A) {
+                               return named_attribute_maybe(Item{}, A{});
+                             });
   }
   else {
     return gather<>{};
   }
 };
+
+template <match::item Item, string_literal S>
+using attr_of = std::decay_t<decltype(std::get<0>(
+    ground::filter(attributes(Item{}), ground::derive_from<symbol<S>>)))>;
 
 static auto properties =
     []<match::item Item>(Item) constexpr -> decltype(auto) {
@@ -414,7 +382,7 @@ static auto all_items = rec([](auto&& all_items, match::item auto root_item) {
       return transform([]<typename T>(T) { return typename T::type{}; },
                        filter<hold<decltype([]<typename T>(T) {
                          return match::item_ref<T>;
-                       })>>(typename type_t::attributes{}));
+                       })>>(attributes(type_t{})));
     }
     else {
       return gather<>{};
@@ -428,7 +396,7 @@ static auto all_items = rec([](auto&& all_items, match::item auto root_item) {
           flatten(transform([]<typename T>(T) { return typename T::types{}; },
                             filter<hold<decltype([]<typename T>(T) {
                               return match::polymorphic_type<T>;
-                            })>>(typename type_t::attributes{}))));
+                            })>>(attributes(type_t{})))));
     }
     else {
       return gather<>{};
@@ -468,8 +436,10 @@ static auto all_properties = []<match::item Item>(Item) constexpr {
 namespace match {
 
 template <typename H, typename A>
-concept handle_attribute = attribute<A> && item<typename H::type> &&
-                           must::contains<A, typename H::type::attributes>;
+concept handle_attribute =
+    attribute<A> && item<typename H::type> &&
+    must::contains<A, decltype(siconos::storage::pattern::attributes(
+                          typename H::type{}))>;
 
 template <typename H, typename A>
 concept handle_attached_storage =
@@ -481,6 +451,10 @@ concept handle_attached_storage =
         })>>(typename H::info_t::all_properties_t{}))>> >=
         1;  // not an attached storage
 
+template <typename T, typename I>
+concept attribute_of =
+    attribute<T> && item<I> &&
+    must::contains<T, decltype(siconos::storage::pattern::attributes(I{}))>;
 }  // namespace match
 namespace types {
 template <template <typename T> typename Transform, typename... Args>
@@ -507,8 +481,7 @@ struct indice_value : symbol<S> {
 };
 
 template <string_literal S>
-struct param : symbol<S> {
-};
+struct param : symbol<S> {};
 
 template <auto V>
 struct param_val {
@@ -519,5 +492,39 @@ template <typename T>
 struct param_type {
   using type = T;
 };
+
+template <match::attribute Attr>
+static auto item_attribute = [](concepts::tuple_like auto items) constexpr {
+  using items_t = std::decay_t<decltype(items)>;
+
+  auto loop = rec([]<typename Tpl>(auto&& loop, Tpl tpl) {
+    using tpl_t = std::decay_t<Tpl>;
+    using item_t = std::decay_t<decltype(car(tpl))>;
+
+    static_assert(match::item<item_t>);
+
+    if constexpr (match::attribute_of<Attr, item_t>) {
+      return item_t{};
+    }
+    else if constexpr (match::attached_storage<Attr, item_t>) {
+      return item_t{};
+    }
+    else if constexpr (std::tuple_size_v<tpl_t> > 1) {
+      return loop(cdr(tpl));
+    }
+    else {
+      []<typename Attribute = Attr, typename LastItem = item_t,
+         typename Items = items_t, bool flag = false>()
+      {
+        static_assert(flag, "item not found");
+      }
+      ();
+    }
+  });
+
+  return loop(items);
+};
+
+static auto constexpr attribute_name(match::attribute auto a) { return a.str.value ; };
 
 }  // namespace siconos::storage::pattern

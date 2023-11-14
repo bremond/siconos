@@ -66,21 +66,21 @@ static_assert(
     match::diagonal_matrix<
         decltype(storage::attr<"attr0">(storage::add<item0>(
             storage::make<standard_environment<int>, item0,
-                                  storage::with_properties<storage::diagonal<
-                                      item0, "attr0">>>())))>);
+                          storage::with_properties<
+                              storage::diagonal<item0, "attr0">>>())))>);
 
 static_assert(
     match::matrix<decltype(storage::attr<"attr0">(storage::add<item0>(
         storage::make<standard_environment<int>,
-                              wrap<some::unbounded_collection, item0>>())))>);
+                      wrap<some::unbounded_collection, item0>>())))>);
 
 static_assert(
     match::diagonal_matrix<
         decltype(storage::attr<"attr0">(storage::add<item0>(
             storage::make<standard_environment<int>,
-                                  wrap<some::unbounded_collection, item0>,
-                                  storage::with_properties<storage::diagonal<
-                                      item0, "attr0">>>())))>);
+                          wrap<some::unbounded_collection, item0>,
+                          storage::with_properties<
+                              storage::diagonal<item0, "attr0">>>())))>);
 
 }  // namespace siconos
 
@@ -111,9 +111,8 @@ struct is_polymorhic : std::integral_constant<bool, []() {
   return match::polymorphic_type<T>;
 }()> {};
 
-static_assert(
-    match::relation1<storage::handle<
-        relation, int, decltype(storage::make<env, relation>())>>);
+static_assert(match::relation1<storage::handle<
+                  relation, int, decltype(storage::make<env, relation>())>>);
 
 //  {
 static_assert(std::is_same_v<decltype(all_items(nslaw{})),
@@ -137,7 +136,7 @@ static_assert(match::item<ball>);
 static_assert(match::attribute<nslaw::e>);
 
 static_assert(match::attribute_of<nslaw::e, nslaw>);
-static_assert(match::attribute_of<ball::velocity, ball>);
+static_assert(match::attribute_of<attr_of<ball, "velocity">, ball>);
 static_assert(match::attribute_of<td::step, td>);
 
 // static_assert(std::is_same_v<td,
@@ -198,10 +197,11 @@ static_assert(
                    ground::compose(ground::trait<std::is_floating_point>,
                                    ground::typeid_)) == std::tuple<double>{});
 
-static_assert(std::is_same_v<
-              decltype(ground::filter(std::tuple<nslaw::e, ball::velocity>{},
-                                      ground::derive_from<some::scalar>)),
-              std::tuple<nslaw::e>>);
+static_assert(
+    std::is_same_v<decltype(ground::filter(
+                       std::tuple<nslaw::e, attr_of<ball, "velocity">>{},
+                       ground::derive_from<some::scalar>)),
+                   std::tuple<nslaw::e>>);
 
 static_assert(
     std::is_same_v<
