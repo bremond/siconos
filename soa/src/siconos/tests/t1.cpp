@@ -133,9 +133,9 @@ static_assert(std::is_same_v<decltype(all_items(interaction{})),
 // decltype(all_items(simulation{}))>);
 
 static_assert(match::item<ball>);
-static_assert(match::attribute<nslaw::e>);
+static_assert(match::attribute<attr_of<nslaw, "e">>);
 
-static_assert(match::attribute_of<nslaw::e, nslaw>);
+static_assert(match::attribute_of<attr_of<nslaw, "e">, nslaw>);
 static_assert(match::attribute_of<attr_of<ball, "velocity">, ball>);
 static_assert(match::attribute_of<td::step, td>);
 
@@ -199,9 +199,9 @@ static_assert(
 
 static_assert(
     std::is_same_v<decltype(ground::filter(
-                       std::tuple<nslaw::e, attr_of<ball, "velocity">>{},
+                       std::tuple<attr_of<nslaw, "e">, attr_of<ball, "velocity">>{},
                        ground::derive_from<some::scalar>)),
-                   std::tuple<nslaw::e>>);
+                   std::tuple<attr_of<nslaw, "e">>>);
 
 static_assert(
     std::is_same_v<
@@ -215,7 +215,7 @@ static_assert(std::is_same_v<
               gather<interaction::relation, interaction::nonsmooth_law,
                      interaction::h_matrix1, interaction::h_matrix2,
                      interaction::lambda, interaction::y, interaction::ydot,
-                     nslaw::e, relation::b, relation::h_matrix>>);
+                     attr_of<nslaw, "e">, relation::b, relation::h_matrix>>);
 
 //}
 

@@ -81,6 +81,8 @@ static constexpr auto lockstep = hana::lockstep;
 
 static constexpr auto any_of = hana::any_of;
 
+static constexpr auto make_tuple = hana::make_tuple;
+
 template <std::size_t N>
 static constexpr auto range = hana::range_c<std::size_t, 0, N>;
 
@@ -283,8 +285,8 @@ static constexpr R call_with_integral_constant_if_valid(R &&def_val, F &&fun)
 {
   constexpr auto N = std::integral_constant<decltype(I), I>{};
 
-  if constexpr (is_valid([](auto&& K) -> decltype(std::declval<F&&>()(K)){
-      })(N)) {
+  if constexpr (is_valid([](auto &&K) -> decltype(std::declval<F &&>()(K)) {
+                })(N)) {
     return [&]() { return static_cast<F &&>(fun)(N); }();
   }
   else {

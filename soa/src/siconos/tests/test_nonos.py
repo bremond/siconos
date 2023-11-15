@@ -19,3 +19,10 @@ def test_q():
     q = disk.q()
     q = [1,2,3]
     assert list(q) == list(disk.q())
+
+def test_nslaw():
+    data = m.disks.make_storage()
+    nslaw = m.disks.add_nslaw(data)
+    e = nslaw.e()
+    e=0.7
+    assert nslaw.e() == 0.7

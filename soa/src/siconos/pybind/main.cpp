@@ -67,7 +67,14 @@ decltype(auto) add_disk(data_t& data)
   return storage::add<config::disk>(data());
 };
 
+decltype(auto) add_nslaw(data_t& data)
+{
+  return storage::add<config::nslaw>(data());
+};
+
 using disk_t = std::decay_t<decltype(storage::add<config::disk>(idata_t{}))>;
+using nslaw_t =
+    std::decay_t<decltype(storage::add<config::nslaw>(idata_t{}))>;
 
 }  // namespace siconos::python::disks
 
@@ -76,33 +83,47 @@ using disk_t = std::decay_t<decltype(storage::add<config::disk>(idata_t{}))>;
 // template <>
 // struct type_caster<siconos::python::disks::data_t> {};
 // }}
+
+using namespace boost::hana::literals;
 PYBIND11_MODULE(_nonos, m)
 {
   namespace ground = siconos::storage::ground;
   namespace match = siconos::storage::pattern::match;
 
   using disk_t = siconos::python::disks::disk_t;
+  using nslaw_t = siconos::python::disks::nslaw_t;
+
   auto disks = m.def_submodule("disks");
 
   auto data_class =
       py::class_<siconos::python::disks::data_t>(disks, "data_t");
   auto disk_class = py::class_<disk_t>(disks, "disk_t");
+  auto nslaw_class = py::class_<nslaw_t>(disks, "nslaw_t");
 
-  ground::fold_left(
-      pattern::attributes(typename disk_t::type{}), std::ref(disk_class),
-      []<match::attribute A>(py::class_<disk_t> dc, A a) {
-        return dc.def(pattern::attribute_name(a),
-                      [](disk_t& d) { return storage::get<A>(d.data(), d); });
-      });
+  auto pyhandles = ground::make_tuple(
+      ground::make_tuple(disk_class, ground::type_c<disk_t>),
+      ground::make_tuple(nslaw_class, ground::type_c<nslaw_t>));
+  //  ground::for_each(handles, [&]<typename Handle>(Handle) {});
 
-  //  py::class_<disk_t>(disks, "disk_t")
-  //      .def("q", &disk_t::q, py::return_value_policy::reference)
-  //      .def("velocity", &disk_t::velocity,
-  //      py::return_value_policy::reference) .def("mass_matrix",
-  //      &disk_t::mass_matrix,
-  //           py::return_value_policy::reference);
+  ground::for_each(pyhandles, [](auto pyhandle) {
+    using handle_t = typename decltype(+pyhandle[1_c])::type;
+    ground::fold_left(
+        pattern::attributes(typename handle_t::type{}), std::ref(pyhandle[0_c]),
+        []<match::attribute A>(py::class_<handle_t> dc, A a) {
+          return dc.def(
+              pattern::attribute_name(a),
+              [](handle_t& d) { return storage::get<A>(d.data(), d); },
+              py::return_value_policy::reference);
+        });});
 
-  disks.doc() = R"pbdoc(
+    //  py::class_<disk_t>(disks, "disk_t")
+    //      .def("q", &disk_t::q, py::return_value_policy::reference)
+    //      .def("velocity", &disk_t::velocity,
+    //      py::return_value_policy::reference) .def("mass_matrix",
+    //      &disk_t::mass_matrix,
+    //           py::return_value_policy::reference);
+
+    disks.doc() = R"pbdoc(
         Nonos m
         -----------
 
@@ -115,16 +136,21 @@ PYBIND11_MODULE(_nonos, m)
            subtract
     )pbdoc";
 
-  disks.def("make_storage", &siconos::python::disks::make_storage,
-            py::return_value_policy::reference, R"pbdoc(
+    disks.def("make_storage", &siconos::python::disks::make_storage,
+              py::return_value_policy::reference, R"pbdoc(
         Create a new data object for 2D disks simulation
     )pbdoc");
 
-  disks.def("add_disk", &siconos::python::disks::add_disk,
-            py::return_value_policy::reference, R"pbdoc(
+    disks.def("add_disk", &siconos::python::disks::add_disk,
+              py::return_value_policy::reference, R"pbdoc(
         Add disk
     )pbdoc");
 
-  disks.attr("__version__") = "dev";
-  m.attr("__version__") = "dev";
+    disks.def("add_nslaw", &siconos::python::disks::add_nslaw,
+              py::return_value_policy::reference, R"pbdoc(
+        Add nslaw
+    )pbdoc");
+
+    disks.attr("__version__") = "dev";
+    m.attr("__version__") = "dev";
 }

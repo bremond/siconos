@@ -48,22 +48,22 @@ int main()
   auto data0 = siconos::make_storage<env, nslaw>();
   auto nslaw0 = add<nslaw>(data0);
 
-  get<nslaw::e>(nslaw0, data0) = 0.6;
-  get<nslaw::e>(nslaw0, data0) = 0.7;
-  assert(get<nslaw::e>(nslaw0, data0) == 0.7);
+  get<attr_of<nslaw, "e">>(nslaw0, data0) = 0.6;
+  get<attr_of<nslaw, "e">>(nslaw0, data0) = 0.7;
+  assert(get<attr_of<nslaw, "e">>(nslaw0, data0) == 0.7);
 
-  auto x = get<nslaw::e>(nslaw0, data0);
+  auto x = get<attr_of<nslaw, "e">>(nslaw0, data0);
   x = 0.4;
 
-  nslaw::e::at(nslaw0) = 0.8;
+  attr_of<nslaw, "e">::at(nslaw0) = 0.8;
 
-  assert (get<nslaw::e>(nslaw0, data0) == 0.8);
+  assert (get<attr_of<nslaw, "e">>(nslaw0, data0) == 0.8);
 
   auto data1 = siconos::make_storage<env, wrap<some::unbounded_collection, nslaw>>();
 
   auto nslaw1 = add<nslaw>(data1);
 
-  nslaw::e::at(nslaw1) = 0.9;
+  attr_of<nslaw, "e">::at(nslaw1) = 0.9;
 
   auto data2 = siconos::make_storage<env,
                                      wrap<some::unbounded_collection, nslaw>,
@@ -166,25 +166,25 @@ int main()
    interaction::nonsmooth_law::at(inter1) = nslaw2;
    get<interaction::nonsmooth_law>(inter1, data) = nslaw2;
 
-   auto& e = siconos::get_memory<nslaw::e>(data);
+   auto& e = siconos::get_memory<attr_of<nslaw, "e">>(data);
    e[0][nslaw2.get()] = 0.7;
 
    nslaw2.e() = 0.6;
 
-   print("{}\n", siconos::get_memory<nslaw::e>(data));
+   print("{}\n", siconos::get_memory<attr_of<nslaw, "e">>(data));
 
    auto inter2 = add<interaction>(data);
    auto nslaw3 = add<nslaw>(data);
 
    interaction::nonsmooth_law::at(inter2) = nslaw3;
-   nslaw::e::at(interaction::nonsmooth_law::at(inter2), data) = 0.3;
+   attr_of<nslaw, "e">::at(interaction::nonsmooth_law::at(inter2), data) = 0.3;
 
    auto htopo = dsimul.topology();
    auto hosi = dsimul.one_step_integrator();
    auto ball1 = add<ball>(data);
    auto ball2 = add<ball>(data);
    auto ball3 = add<ball>(data);
-   print("e={}\n", nslaw::e::at(nslaw3));
+   print("e={}\n", attr_of<nslaw, "e">::at(nslaw3));
 
    auto intera = htopo.link(ball1);
    auto interb = htopo.link(ball1, ball2);
@@ -279,7 +279,7 @@ int main()
    print("ustore5 ball::velocity = {}\n", get<ball::velocity>(some_iball, ustore5));
 
    // ok, compilation failure:
-   // get<nslaw::e>(0, some_iball, ustore5);
+   // get<attr_of<nslaw, "e">>(0, some_iball, ustore5);
 
    // TD: remove, nsds::link
 
