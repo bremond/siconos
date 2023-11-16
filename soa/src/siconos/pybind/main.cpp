@@ -44,7 +44,7 @@ auto imake_storage()
           storage::attached<config::disk, storage::pattern::symbol<"shape">,
                             storage::some::item_ref<model::disk>>,
           storage::time_invariant<
-              storage::pattern::attr_of<config::disk, "fext">>,
+              storage::pattern::attr_t<config::disk, "fext">>,
           storage::diagonal<config::disk, "mass_matrix">,
           storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
 }

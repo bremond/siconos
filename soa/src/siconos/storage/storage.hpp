@@ -81,7 +81,7 @@ struct time_invariant : property::time_invariant {
 
 template <match::item Item, string_literal S>
 struct diagonal : property::diagonal {
-  using type = attr_of<Item, S>;
+  using type = attr_t<Item, S>;
   static_assert(match::abstract_matrix<type>);
   using diagonal_t = void;
 };
@@ -619,10 +619,6 @@ static auto prop = [](auto h) constexpr -> decltype(auto) {
   return h.template property<S>();
 };
 
-template <match::item Item, string_literal S>
-using attr_t = std::decay_t<decltype(std::get<0>(
-    ground::filter(attributes(Item{}), ground::derive_from<symbol<S>>)))>;
-
 template <string_literal S>
 static auto attr = []<typename H>(H h, typename H::indice step =
                                            0) constexpr -> decltype(auto) {
@@ -639,7 +635,7 @@ static constexpr decltype(auto) attr_memory(auto& data)
 template <match::item I, string_literal S>
 static constexpr decltype(auto) attr_memory(auto& data)
 {
-  return ground::get<attr_of<I, S>>(data);
+  return ground::get<attr_t<I, S>>(data);
 };
 
 template <match::item I, string_literal S>
@@ -702,7 +698,7 @@ static auto handles = [](auto& data, auto step) constexpr -> decltype(auto) {
 /*siconos::storage::ground::dump_keys(data, [](auto&& s) { std::cout << s<<
  * std::endl;});*/
 
-using pattern::attr_of;
+using pattern::attr_t;
 using pattern::wrap;
 
 }  // namespace siconos::storage

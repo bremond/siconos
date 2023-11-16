@@ -19,20 +19,20 @@ struct one_step_integrator {
   using dof = typename interaction::dof;
   using nslaw_size = typename interaction::nslaw_size;
   using nslaw = typename interaction::nslaw;
-  using y = typename interaction::y;
-  using ydot = typename interaction::ydot;
-  using lambda = typename interaction::lambda;
-  using relation = typename interaction::relation;
-  using h_matrix1 = typename interaction::h_matrix1;
-  using h_matrix2 = typename interaction::h_matrix2;
+  using y = attr_t<interaction, "y">;
+  using ydot = attr_t<interaction, "ydot">;
+  using lambda = attr_t<interaction, "lambda">;
+  using relation = attr_t<interaction, "relation">;
+  using h_matrix1 = attr_t<interaction, "h_matrix1">;
+  using h_matrix2 = attr_t<interaction, "h_matrix2">;
 
-  using q = attr_of<system, "q">;
-  using velocity = attr_of<system, "velocity">;
-  using fext = attr_of<system, "fext">;
+  using q = attr_t<system, "q">;
+  using velocity = attr_t<system, "velocity">;
+  using fext = attr_t<system, "fext">;
 
   struct euler : item<> {
-    using properties = gather<storage::keep<attr_of<system, "q">, 2>,
-                              storage::keep<attr_of<system, "velocity">, 2>>;
+    using properties = gather<storage::keep<attr_t<system, "q">, 2>,
+                              storage::keep<attr_t<system, "velocity">, 2>>;
 
     using attributes = gather<>;
 
@@ -69,7 +69,7 @@ struct one_step_integrator {
     struct velocity_vector_assembled : some::unbounded_vector<velocity>,
                                        access<velocity_vector_assembled> {};
     struct free_velocity_vector_assembled
-        : some::unbounded_vector<attr_of<system, "velocity">>,
+        : some::unbounded_vector<attr_t<system, "velocity">>,
           access<free_velocity_vector_assembled> {};
     struct y_vector_assembled : some::unbounded_vector<y>,
                                 access<y_vector_assembled> {};
@@ -100,8 +100,8 @@ struct one_step_integrator {
                           free_velocity_vector_assembled,
                           lambda_vector_assembled, p0_vector_assembled>;
 
-    using properties = gather<storage::keep<attr_of<system, "q">, 2>,
-                              storage::keep<attr_of<system, "velocity">, 2>,
+    using properties = gather<storage::keep<attr_t<system, "q">, 2>,
+                              storage::keep<attr_t<system, "velocity">, 2>,
                               storage::keep<y, 2>, storage::keep<ydot, 2>>;
 
     template <typename Handle>
@@ -165,7 +165,8 @@ struct one_step_integrator {
         auto &h_matrices2 = storage::attr_values<h_matrix2>(data, step);
 
         auto &qs = storage::attr_values<system, "q">(data, step);
-        auto &velocities = storage::attr_values<attr_of<system, "velocity">>(data, step);
+        auto &velocities =
+            storage::attr_values<attr_t<system, "velocity">>(data, step);
 
         auto &ds1s = storage::prop_values<interaction, "ds1">(data, step);
         auto &ds2s = storage::prop_values<interaction, "ds2">(data, step);
@@ -416,8 +417,7 @@ struct one_step_integrator {
         auto &ydots_next = storage::attr_values<ydot>(data, step + 1);
 
         auto &inslaws =
-            storage::attr_values<typename interaction::nonsmooth_law>(data,
-                                                                      step);
+            storage::attr_values<attr_t<interaction, "nslaw">>(data, step);
 
         for (auto [ydot, ydot_next, inslaw] :
              views::zip(ydots, ydots_next, inslaws)) {

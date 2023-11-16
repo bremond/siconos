@@ -31,9 +31,7 @@ struct aaa {
   int v = 1;
 };
 struct bbb : item<> {
-  struct attr : some::specific<pointer<aaa>>,
-                siconos::access<attr>,
-                some::attribute<> {};
+  struct attr : some::specific<pointer<aaa>>, siconos::access<attr> {};
   using attributes = gather<attr>;
   template <typename H>
   struct interface : siconos::default_interface<H> {};
@@ -133,19 +131,19 @@ static_assert(std::is_same_v<decltype(all_items(interaction{})),
 // decltype(all_items(simulation{}))>);
 
 static_assert(match::item<ball>);
-static_assert(match::attribute<attr_of<nslaw, "e">>);
+static_assert(match::attribute<attr_t<nslaw, "e">>);
 
-static_assert(match::attribute_of<attr_of<nslaw, "e">, nslaw>);
-static_assert(match::attribute_of<attr_of<ball, "velocity">, ball>);
-static_assert(match::attribute_of<td::step, td>);
+static_assert(match::attribute_of<attr_t<nslaw, "e">, nslaw>);
+static_assert(match::attribute_of<attr_t<ball, "velocity">, ball>);
+static_assert(match::attribute_of<attr_t<td, "step">, td>);
 
 // static_assert(std::is_same_v<td,
 // decltype(item_attribute<td::step>(all_items(simulation{})))>);
 
-static_assert(std::is_same_v<
-              typename siconos::traits::config<env>::convert<
-                  typename siconos::simul::time_discretization<>::step>::type,
-              typename env::indice>);
+static_assert(
+    std::is_same_v<typename siconos::traits::config<env>::convert<attr_t<
+                       siconos::simul::time_discretization<>, "step">>::type,
+                   typename env::indice>);
 
 static_assert(
     std::is_same_v<
@@ -197,25 +195,30 @@ static_assert(
                    ground::compose(ground::trait<std::is_floating_point>,
                                    ground::typeid_)) == std::tuple<double>{});
 
-static_assert(
-    std::is_same_v<decltype(ground::filter(
-                       std::tuple<attr_of<nslaw, "e">, attr_of<ball, "velocity">>{},
-                       ground::derive_from<some::scalar>)),
-                   std::tuple<attr_of<nslaw, "e">>>);
+static_assert(std::is_same_v<
+              decltype(ground::filter(
+                  std::tuple<attr_t<nslaw, "e">, attr_t<ball, "velocity">>{},
+                  ground::derive_from<some::scalar>)),
+              std::tuple<attr_t<nslaw, "e">>>);
 
 static_assert(
     std::is_same_v<
         decltype(attributes(interaction{})),
-        gather<interaction::relation, interaction::nonsmooth_law,
-               interaction::h_matrix1, interaction::h_matrix2,
-               interaction::lambda, interaction::y, interaction::ydot>>);
+        gather<attr_t<interaction, "relation">, attr_t<interaction, "nslaw">,
+               attr_t<interaction, "h_matrix1">,
+               attr_t<interaction, "h_matrix2">,
+               attr_t<interaction, "lambda">, attr_t<interaction, "y">,
+               attr_t<interaction, "ydot">>>);
 
-static_assert(std::is_same_v<
-              decltype(all_attributes(interaction{})),
-              gather<interaction::relation, interaction::nonsmooth_law,
-                     interaction::h_matrix1, interaction::h_matrix2,
-                     interaction::lambda, interaction::y, interaction::ydot,
-                     attr_of<nslaw, "e">, relation::b, relation::h_matrix>>);
+static_assert(
+    std::is_same_v<
+        decltype(all_attributes(interaction{})),
+        gather<attr_t<interaction, "relation">, attr_t<interaction, "nslaw">,
+               attr_t<interaction, "h_matrix1">,
+               attr_t<interaction, "h_matrix2">,
+               attr_t<interaction, "lambda">, attr_t<interaction, "y">,
+               attr_t<interaction, "ydot">, attr_t<nslaw, "e">,
+               attr_t<relation, "b">, attr_t<relation, "h_matrix">>>);
 
 //}
 

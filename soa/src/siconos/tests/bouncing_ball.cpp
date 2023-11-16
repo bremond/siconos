@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
       standard_environment<config::params>, config::simulation, config::ball,
       config::relation, config::interaction,
       storage::with_properties<
-        storage::time_invariant<storage::attr_of<config::ball, "fext">>,
+        storage::time_invariant<storage::attr_t<config::ball, "fext">>,
         storage::diagonal<config::ball, "mass_matrix">,
         storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
 
@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
   // interaction.h_matrix1() = {1., 0., 0.};
 
   interaction.relation() = relation;
-  interaction.nonsmooth_law() = nslaw;
+  interaction.nslaw() = nslaw;
 
   // =========================== End of model definition
   // ===========================

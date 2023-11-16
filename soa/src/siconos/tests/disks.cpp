@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
       storage::with_properties<
           storage::attached<config::disk, storage::pattern::symbol<"shape">,
                             storage::some::item_ref<model::disk>>,
-          storage::time_invariant<storage::attr_of<config::disk, "fext">>,
+          storage::time_invariant<storage::attr_t<config::disk, "fext">>,
           storage::diagonal<config::disk, "mass_matrix">,
           storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
 
@@ -111,13 +111,13 @@ int main(int argc, char* argv[])
   auto inter_d2p = simulation.topology().link(d2);
 
   inter_dd.relation() = dd_r;
-  inter_dd.nonsmooth_law() = nslaw;
+  inter_dd.nslaw() = nslaw;
 
   inter_d1p.relation() = d1p_r;
-  inter_d1p.nonsmooth_law() = nslaw;
+  inter_d1p.nslaw() = nslaw;
 
   inter_d2p.relation() = d2p_r;
-  inter_d2p.nonsmooth_law() = nslaw;
+  inter_d2p.nslaw() = nslaw;
 
   // =========================== End of model definition
   // ===========================

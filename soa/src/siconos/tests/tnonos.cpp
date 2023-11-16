@@ -105,25 +105,25 @@ int main()
    interaction::nonsmooth_law::at(inter1) = nslaw2;
    get<interaction::nonsmooth_law>(inter1, data) = nslaw2;
 
-   auto& e = siconos::get_memory<attr_of<nslaw, "e">>(data);
+   auto& e = siconos::get_memory<attr_t<nslaw, "e">>(data);
    e[0][nslaw2.get()] = 0.7;
 
    nslaw2.e() = 0.6;
 
-   print("{}\n", siconos::get_memory<attr_of<nslaw, "e">>(data));
+   print("{}\n", siconos::get_memory<attr_t<nslaw, "e">>(data));
 
    auto inter2 = add<interaction>(data);
    auto nslaw3 = add<nslaw>(data);
 
    interaction::nonsmooth_law::at(inter2) = nslaw3;
-   attr_of<nslaw, "e">::at(interaction::nonsmooth_law::at(inter2), data) = 0.3;
+   attr_t<nslaw, "e">::at(interaction::nonsmooth_law::at(inter2), data) = 0.3;
 
    auto htopo = dsimul.topology();
    auto hosi = dsimul.one_step_integrator();
    auto ball1 = add<ball>(data);
    auto ball2 = add<ball>(data);
    auto ball3 = add<ball>(data);
-   print("e={}\n", attr_of<nslaw, "e">::at(nslaw3));
+   print("e={}\n", attr_t<nslaw, "e">::at(nslaw3));
 
    auto intera = htopo.link(ball1);
    auto interb = htopo.link(ball1, ball2);

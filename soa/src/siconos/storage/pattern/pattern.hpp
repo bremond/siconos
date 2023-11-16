@@ -360,8 +360,12 @@ static auto attributes =
   }
 };
 
+template <typename Attrs, string_literal S>
+using get_attr_t = std::decay_t<decltype(std::get<0>(
+    ground::filter(Attrs{}, ground::derive_from<symbol<S>>)))>;
+
 template <match::item Item, string_literal S>
-using attr_of = std::decay_t<decltype(std::get<0>(
+using attr_t = std::decay_t<decltype(std::get<0>(
     ground::filter(attributes(Item{}), ground::derive_from<symbol<S>>)))>;
 
 static auto properties =
@@ -525,6 +529,9 @@ static auto item_attribute = [](concepts::tuple_like auto items) constexpr {
   return loop(items);
 };
 
-static auto constexpr attribute_name(match::attribute auto a) { return a.str.value ; };
+static auto constexpr attribute_name(match::attribute auto a)
+{
+  return a.str.value;
+};
 
 }  // namespace siconos::storage::pattern

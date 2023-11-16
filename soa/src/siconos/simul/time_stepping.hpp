@@ -144,7 +144,8 @@ struct time_stepping : item<> {
 
           index_set0.color(inter1_descr0) = env::gray_color;
           if constexpr (!std::derived_from<
-                            typename topology_t::interaction::nonsmooth_law,
+                            attr_t<typename topology_t::interaction,
+                                    "nslaw">,
                             model::equality_condition>) {
             // We assume that the integrator of the ds1 drive the update of
             // the index set SP::OneStepIntegrator Osi =
@@ -229,15 +230,16 @@ struct time_stepping : item<> {
             assert(index_set0.color(*ui0) == env::white_color);
 
             auto inter0 =
-              storage::handle(self()->data(), index_set0.bundle(*ui0));
+                storage::handle(self()->data(), index_set0.bundle(*ui0));
             assert(!index_set1.is_vertex(inter0));
             bool activate = true;
-            if constexpr (!std::derived_from<
-                              typename topology_t::interaction::nonsmooth_law,
-                              model::equality_condition> &&
-                          !std::derived_from<
-                              typename topology_t::interaction::nonsmooth_law,
-                              model::relay>)
+            if constexpr (
+                !std::derived_from<
+                    attr_t<typename topology_t::interaction, "nslaw">,
+                    model::equality_condition> &&
+                !std::derived_from<
+                    attr_t<typename topology_t::interaction, "nslaw">,
+                    model::relay>)
             //             && Type::value(*(inter0->nonSmoothLaw())) !=
             //             Type::RelayNSL)
             {

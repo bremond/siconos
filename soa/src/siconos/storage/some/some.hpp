@@ -161,7 +161,7 @@ struct polymorphic_attribute : attribute<>,
 struct given_type {};
 
 template <typename T>
-struct specific : given_type {
+struct specific : given_type, attribute<> {
   using xtype = T;
   using type_t = void;
 };

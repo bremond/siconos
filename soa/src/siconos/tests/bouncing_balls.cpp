@@ -36,7 +36,7 @@ int main(int argc, char* argv[])
       wrap<some::bounded_collection, config::relation, some::indice_value<1>>,
       wrap<some::unbounded_collection, config::interaction>,
       storage::with_properties<
-          storage::time_invariant<storage::attr_of<config::ball, "fext">>,
+          storage::time_invariant<storage::attr_t<config::ball, "fext">>,
           storage::diagonal<config::ball, "mass_matrix">,
           storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
 
@@ -123,7 +123,7 @@ int main(int argc, char* argv[])
   //  interaction.h_matrix1() << 1., 0., 0., 0., 1., -radius;
   //  interaction.h_matrix2() << 1., 0., 0., 0., 1., -radius;
   interaction.relation() = relation_f;
-  interaction.nonsmooth_law() = nslaw;
+  interaction.nslaw() = nslaw;
   //    });
 
   for (auto [ball1, ball2] : views::zip(balls, balls | views::drop(1))) {
@@ -132,7 +132,7 @@ int main(int argc, char* argv[])
     //    interaction.h_matrix1() << -1., 0., 0., 0., 1., -radius;
     //    interaction.h_matrix2() << 1., 0., 0., 0., 1., -radius;
     interaction.relation() = relation_b;
-    interaction.nonsmooth_law() = nslaw;
+    interaction.nslaw() = nslaw;
   };
 
   // =========================== End of model definition

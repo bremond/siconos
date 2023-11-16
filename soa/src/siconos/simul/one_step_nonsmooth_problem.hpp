@@ -15,17 +15,14 @@ namespace simul {
 
 template <typename Struct>
 struct data_holder : item<> {
-  struct instance : some::specific<pointer<Struct>>,
-                    access<instance>,
-                    some::attribute<> {};
-
-  using attributes = gather<instance>;
+  using attributes =
+      gather<attribute<"instance", some::specific<pointer<Struct>>>>;
 
   template <typename Handle>
   struct interface : default_interface<Handle> {
     using default_interface<Handle>::self;
 
-    decltype(auto) instance() { return Handle::type::instance::at(*self()); };
+    decltype(auto) instance() { return attr<"instance">(*self()); };
   };
 };
 
@@ -66,12 +63,11 @@ struct nonsmooth_problem : data_holder<Formulation> {
 
 template <typename NonsmoothProblem>
 struct one_step_nonsmooth_problem : item<> {
-  struct options : some::item_ref<solver_options>, access<options> {};
-  struct problem : some::item_ref<NonsmoothProblem>, access<problem> {};
-  struct level : some::indice, access<level> {};
-
   using problem_t = NonsmoothProblem;
-  using attributes = gather<level, options, problem>;
+  using attributes =
+      gather<attribute<"level", some::indice>,
+             attribute<"options", some::item_ref<solver_options>>,
+             attribute<"problem", some::item_ref<NonsmoothProblem>>>;
 
   template <typename Handle>
   struct interface : default_interface<Handle> {
@@ -80,14 +76,14 @@ struct one_step_nonsmooth_problem : item<> {
     decltype(auto) options()
     {
       return storage::handle(self()->data(),
-                             Handle::type::options::at(*self()));
+                             attr<"options">(*self()));
     };
     decltype(auto) problem()
     {
       return storage::handle(self()->data(),
-                             Handle::type::problem::at(*self()));
+                             attr<"problem">(*self()));
     };
-    decltype(auto) level() { return Handle ::type ::level ::at(*self()); };
+    decltype(auto) level() { return attr<"level">(*self()); };
 
     template <typename Formulation, match::matrix W, match::vector V>
     void solve(algebra::mat<W>& w_mat, algebra::vec<V>& q_vec,

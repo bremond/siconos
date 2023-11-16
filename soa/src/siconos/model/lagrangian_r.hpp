@@ -1,9 +1,8 @@
 #pragma once
 
-#include "siconos/model/model.hpp"
-
 #include "siconos/algebra/algebra.hpp"
 #include "siconos/model/lagrangian_ds.hpp"
+#include "siconos/model/model.hpp"
 
 namespace siconos::storage::pattern::match {
 template <typename T>
@@ -25,23 +24,21 @@ struct lagrangian_r : item<>,
                       relation1,
                       relation2,
                       any_lagrangian_relation {
+
   using nslaw_size = some::param_val<NSLSize>;
   using dof = some::indice_parameter<"dof">;
 
-  struct h_matrix : some::matrix<some::scalar, nslaw_size, dof>,
-                    access<h_matrix> {};
-
-  struct b : some::scalar, access<b> {};
-
-  using attributes = gather<b, h_matrix>;
+  using attributes = gather<
+      attribute<"b", some::scalar>,
+      attribute<"h_matrix", some::matrix<some::scalar, nslaw_size, dof>>>;
 
   template <typename Handle>
   struct interface : default_interface<Handle> {
     using default_interface<Handle>::self;
 
-    decltype(auto) h_matrix() { return Handle::type::h_matrix::at(*self()); }
+    decltype(auto) h_matrix() { return attr<"h_matrix">(*self()); }
 
-    decltype(auto) b() { return Handle::type::b::at(*self()); }
+    decltype(auto) b() { return attr<"b">(*self()); }
 
     decltype(auto) compute_jachq(auto step, auto& q1, auto& q2,
                                  auto& h_matrix1, auto& h_matrix2)
@@ -99,7 +96,7 @@ struct plan : item<> {
   };
 };
 
-  struct diskplan_r : item<>, relation1, any_lagrangian_relation {
+struct diskplan_r : item<>, relation1, any_lagrangian_relation {
   using attributes = gather<attribute<"disk", some::item_ref<disk>>,
                             attribute<"plan", some::item_ref<plan>>>;
 
@@ -143,7 +140,7 @@ struct plan : item<> {
   };
 };
 
-  struct diskdisk_r : item<>, relation2, any_lagrangian_relation {
+struct diskdisk_r : item<>, relation2, any_lagrangian_relation {
   using attributes = gather<attribute<"disk1", some::item_ref<disk>>,
                             attribute<"disk2", some::item_ref<disk>>>;
 
