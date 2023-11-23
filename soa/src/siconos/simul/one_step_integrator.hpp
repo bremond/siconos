@@ -55,50 +55,29 @@ struct one_step_integrator {
   };
 
   struct moreau_jean : item<> {
-    struct theta : some::scalar, access<theta> {};
-    struct gamma : some::scalar, access<gamma> {};
-    struct constraint_activation_threshold
-        : some::scalar,
-          access<constraint_activation_threshold> {};
 
-    struct h_matrix_assembled : some::unbounded_matrix<h_matrix1>,
-                                access<h_matrix_assembled> {};
-    struct q_nsp_vector_assembled
-        : some::unbounded_vector<some::vector<some::scalar, nslaw_size>>,
-          access<q_nsp_vector_assembled> {};
-    struct velocity_vector_assembled : some::unbounded_vector<velocity>,
-                                       access<velocity_vector_assembled> {};
-    struct free_velocity_vector_assembled
-        : some::unbounded_vector<attr_t<system, "velocity">>,
-          access<free_velocity_vector_assembled> {};
-    struct y_vector_assembled : some::unbounded_vector<y>,
-                                access<y_vector_assembled> {};
-
-    struct ydot_vector_assembled : some::unbounded_vector<ydot>,
-                                   access<ydot_vector_assembled> {};
-
-    struct lambda_vector_assembled : some::unbounded_vector<lambda>,
-                                     access<lambda_vector_assembled> {};
-
-    struct p0_vector_assembled
-        : some::unbounded_vector<some::vector<some::scalar, dof>>,
-          access<p0_vector_assembled> {};
-    struct mass_matrix_assembled
-        : some::unbounded_matrix<attr_t<system, "mass_matrix">>,
-          access<mass_matrix_assembled> {};
-    struct w_matrix
-        : some::unbounded_matrix<
-              some::matrix<some::scalar, nth_t<0, typename h_matrix1::sizes>,
-                           nth_t<0, typename h_matrix1::sizes>>>,
-          access<w_matrix> {};
-
-    using attributes =
-        types::attributes<theta, gamma, constraint_activation_threshold,
-                          h_matrix_assembled, mass_matrix_assembled, w_matrix,
-                          q_nsp_vector_assembled, velocity_vector_assembled,
-                          y_vector_assembled, ydot_vector_assembled,
-                          free_velocity_vector_assembled,
-                          lambda_vector_assembled, p0_vector_assembled>;
+    using attributes = types::attributes<
+        attribute<"theta", some::scalar>, attribute<"gamma", some::scalar>,
+        attribute<"constraint_activation_threshold", some::scalar>,
+        attribute<"h_matrix_assembled", some::unbounded_matrix<h_matrix1>>,
+        attribute<"mass_matrix_assembled",
+                  some::unbounded_matrix<attr_t<system, "mass_matrix">>>,
+        attribute<"w_matrix",
+                   some::unbounded_matrix<some::matrix<
+                       some::scalar, nth_t<0, typename h_matrix1::sizes>,
+                       nth_t<0, typename h_matrix1::sizes>>>>,
+        attribute<
+            "q_nsp_vector_assembled",
+            some::unbounded_vector<some::vector<some::scalar, nslaw_size>>>,
+        attribute<"velocity_vector_assembled",
+                  some::unbounded_vector<velocity>>,
+        attribute<"y_vector_assembled", some::unbounded_vector<ydot>>,
+        attribute<"ydot_vector_assembled", some::unbounded_vector<ydot>>,
+        attribute<"free_velocity_vector_assembled",
+                  some::unbounded_vector<attr_t<system, "velocity">>>,
+        attribute<"lambda_vector_assembled", some::unbounded_vector<lambda>>,
+        attribute<"p0_vector_assembled",
+                  some::unbounded_vector<some::vector<some::scalar, dof>>>>;
 
     using properties = gather<storage::keep<attr_t<system, "q">, 2>,
                               storage::keep<attr_t<system, "velocity">, 2>,
@@ -108,51 +87,51 @@ struct one_step_integrator {
     struct interface : default_interface<Handle> {
       using default_interface<Handle>::self;
 
-      decltype(auto) theta() { return Handle ::type ::theta ::at(*self()); }
-      decltype(auto) gamma() { return Handle ::type ::gamma ::at(*self()); }
+      decltype(auto) theta() { return attr<"theta">(*self()); }
+      decltype(auto) gamma() { return attr<"gamma">(*self()); }
       decltype(auto) constraint_activation_threshold()
       {
-        return Handle ::type ::constraint_activation_threshold ::at(*self());
+        return attr<"constraint_activation_threshold">(*self());
       }
       decltype(auto) h_matrix_assembled()
       {
-        return Handle ::type ::h_matrix_assembled ::at(*self());
+        return attr<"h_matrix_assembled">(*self());
       }
       decltype(auto) q_nsp_vector_assembled()
       {
-        return Handle ::type ::q_nsp_vector_assembled ::at(*self());
+        return attr<"q_nsp_vector_assembled">(*self());
       }
       decltype(auto) velocity_vector_assembled()
       {
-        return Handle ::type ::velocity_vector_assembled ::at(*self());
+        return attr<"velocity_vector_assembled">(*self());
       }
       decltype(auto) free_velocity_vector_assembled()
       {
-        return Handle ::type ::free_velocity_vector_assembled ::at(*self());
+        return attr<"free_velocity_vector_assembled">(*self());
       }
       decltype(auto) lambda_vector_assembled()
       {
-        return Handle ::type ::lambda_vector_assembled ::at(*self());
+        return attr<"lambda_vector_assembled">(*self());
       }
       decltype(auto) p0_vector_assembled()
       {
-        return Handle ::type ::p0_vector_assembled ::at(*self());
+        return attr<"p0_vector_assembled">(*self());
       }
       decltype(auto) y_vector_assembled()
       {
-        return Handle ::type ::y_vector_assembled ::at(*self());
+        return attr<"y_vector_assembled">(*self());
       }
       decltype(auto) ydot_vector_assembled()
       {
-        return Handle ::type ::ydot_vector_assembled ::at(*self());
+        return attr<"ydot_vector_assembled">(*self());
       }
       decltype(auto) mass_matrix_assembled()
       {
-        return Handle ::type ::mass_matrix_assembled ::at(*self());
+        return attr<"mass_matrix_assembled">(*self());
       }
       decltype(auto) w_matrix()
       {
-        return Handle ::type ::w_matrix ::at(*self());
+        return attr<"w_matrix">(*self());
       }
 
       void compute_output(auto step)

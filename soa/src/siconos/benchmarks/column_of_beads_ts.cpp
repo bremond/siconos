@@ -31,8 +31,8 @@ int main(int argc, char* argv[])
   unsigned int nballs = atoi(argv[1]);
   using namespace siconos;
   namespace some = siconos::storage::some;
-  using siconos::storage::pattern::wrap;
   using siconos::storage::pattern::attr_t;
+  using siconos::storage::pattern::wrap;
 
   auto data = storage::make<
       standard_environment<config::params>, config::simulation,
@@ -43,7 +43,8 @@ int main(int argc, char* argv[])
           storage::time_invariant<attr_t<config::interaction, "h_matrix1">>,
           storage::time_invariant<storage::attr_t<config::ball, "fext">>,
           storage::diagonal<config::ball, "mass_matrix">,
-          storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
+          storage::unbounded_diagonal<
+              storage::attr_t<config::osi, "mass_matrix_assembled">>>>();
 
   // unsigned int nDof = 3;         // degrees of freedom for the ball
   double t0 = 0;               // initial computation time

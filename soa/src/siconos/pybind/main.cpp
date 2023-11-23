@@ -8,12 +8,13 @@
 namespace py = pybind11;
 
 namespace siconos::config::disks {
-
-using disk = model::lagrangian_ds;
-using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
-using osnspb = simul::one_step_nonsmooth_problem<lcp>;
-using nslaw = model::newton_impact;
-using diskdisk_r = model::diskdisk_r;
+using siconos::storage::pattern::with_name;
+using disk = with_name<"disk", model::lagrangian_ds>;
+using lcp =
+    with_name<"lcp", simul::nonsmooth_problem<LinearComplementarityProblem>>;
+using osnspb = with_name<"osnspb", simul::one_step_nonsmooth_problem<lcp>>;
+using nslaw = with_name<"nslaw", model::newton_impact>;
+using diskdisk_r = with_name<"diskdisk_r", model::diskdisk_r>;
 using diskplan_r = model::diskplan_r;
 using interaction = simul::interaction<nslaw, diskdisk_r, diskplan_r>;
 using osi = simul::one_step_integrator<disk, interaction>::moreau_jean;
@@ -46,7 +47,8 @@ auto imake_storage()
           storage::time_invariant<
               storage::pattern::attr_t<config::disk, "fext">>,
           storage::diagonal<config::disk, "mass_matrix">,
-          storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
+          storage::unbounded_diagonal<storage::pattern::attr_t<
+              config::osi, "mass_matrix_assembled">>>>();
 }
 
 using idata_t = std::decay_t<decltype(imake_storage())>;
@@ -90,40 +92,57 @@ PYBIND11_MODULE(_nonos, m)
   namespace ground = siconos::storage::ground;
   namespace match = siconos::storage::pattern::match;
 
-  using disk_t = siconos::python::disks::disk_t;
-  using nslaw_t = siconos::python::disks::nslaw_t;
-
+  // sub module disks
   auto disks = m.def_submodule("disks");
 
   auto data_class =
       py::class_<siconos::python::disks::data_t>(disks, "data_t");
-  auto disk_class = py::class_<disk_t>(disks, "disk_t");
-  auto nslaw_class = py::class_<nslaw_t>(disks, "nslaw_t");
+  //  auto disk_class = py::class_<disk_t>(disks, "disk_t");
+  //  auto nslaw_class = py::class_<nslaw_t>(disks, "nslaw_t");
 
-  auto pyhandles = ground::make_tuple(
-      ground::make_tuple(disk_class, ground::type_c<disk_t>),
-      ground::make_tuple(nslaw_class, ground::type_c<nslaw_t>));
-  //  ground::for_each(handles, [&]<typename Handle>(Handle) {});
+  using disks_info_t = std::decay_t<decltype(ground::get<storage::info>(
+      siconos::python::disks::idata_t{}))>;
+
+  using disks_items_t = typename disks_info_t::all_items_t;
+
+  auto disks_handles = ground::transform(
+      // only named items
+      ground::filter(disks_items_t{},
+                     ground::derive_from<pattern::any_symbol>),
+      []<match::item I>(I item) {
+        return storage::add<I>(siconos::python::disks::idata_t{});
+      });
+
+  auto pyhandles =
+      ground::transform(disks_handles, [&disks]<typename H>(H handle) {
+        using item_t = typename H::type;
+        return ground::make_tuple(
+
+            py::class_<H>(disks, pattern::item_name(item_t{})),
+            ground::type_c<H>);
+      });
 
   ground::for_each(pyhandles, [](auto pyhandle) {
     using handle_t = typename decltype(+pyhandle[1_c])::type;
     ground::fold_left(
-        pattern::attributes(typename handle_t::type{}), std::ref(pyhandle[0_c]),
+        pattern::attributes(typename handle_t::type{}),
+        std::ref(pyhandle[0_c]),
         []<match::attribute A>(py::class_<handle_t> dc, A a) {
           return dc.def(
               pattern::attribute_name(a),
               [](handle_t& d) { return storage::get<A>(d.data(), d); },
               py::return_value_policy::reference);
-        });});
+        });
+  });
 
-    //  py::class_<disk_t>(disks, "disk_t")
-    //      .def("q", &disk_t::q, py::return_value_policy::reference)
-    //      .def("velocity", &disk_t::velocity,
-    //      py::return_value_policy::reference) .def("mass_matrix",
-    //      &disk_t::mass_matrix,
-    //           py::return_value_policy::reference);
+  //  py::class_<disk_t>(disks, "disk_t")
+  //      .def("q", &disk_t::q, py::return_value_policy::reference)
+  //      .def("velocity", &disk_t::velocity,
+  //      py::return_value_policy::reference) .def("mass_matrix",
+  //      &disk_t::mass_matrix,
+  //           py::return_value_policy::reference);
 
-    disks.doc() = R"pbdoc(
+  disks.doc() = R"pbdoc(
         Nonos m
         -----------
 
@@ -136,21 +155,25 @@ PYBIND11_MODULE(_nonos, m)
            subtract
     )pbdoc";
 
-    disks.def("make_storage", &siconos::python::disks::make_storage,
-              py::return_value_policy::reference, R"pbdoc(
+  disks.def("make_storage", &siconos::python::disks::make_storage,
+            py::return_value_policy::reference, R"pbdoc(
         Create a new data object for 2D disks simulation
     )pbdoc");
 
-    disks.def("add_disk", &siconos::python::disks::add_disk,
-              py::return_value_policy::reference, R"pbdoc(
-        Add disk
-    )pbdoc");
+  ground::for_each(pyhandles, [&disks](auto pyhandle) {
+    using handle_t = typename decltype(+pyhandle[1_c])::type;
+    using item_t = typename handle_t::type;
+    auto item_name = pattern::item_name(item_t{});
 
-    disks.def("add_nslaw", &siconos::python::disks::add_nslaw,
-              py::return_value_policy::reference, R"pbdoc(
-        Add nslaw
+    disks.def(fmt::format("add_{}", item_name).c_str(),
+        [](siconos::python::disks::idata_t& data) {
+          return siconos::storage::add<item_t>(data);
+        },
+        py::return_value_policy::reference, R"pbdoc(
+        Add
     )pbdoc");
+  });
 
-    disks.attr("__version__") = "dev";
-    m.attr("__version__") = "dev";
+  disks.attr("__version__") = "dev";
+  m.attr("__version__") = "dev";
 }

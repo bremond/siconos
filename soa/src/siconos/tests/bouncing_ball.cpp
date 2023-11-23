@@ -24,9 +24,10 @@ int main(int argc, char* argv[])
       standard_environment<config::params>, config::simulation, config::ball,
       config::relation, config::interaction,
       storage::with_properties<
-        storage::time_invariant<storage::attr_t<config::ball, "fext">>,
-        storage::diagonal<config::ball, "mass_matrix">,
-        storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
+          storage::time_invariant<storage::attr_t<config::ball, "fext">>,
+          storage::diagonal<config::ball, "mass_matrix">,
+          storage::unbounded_diagonal<
+              storage::attr_t<config::osi, "mass_matrix_assembled">>>>();
 
   // unsigned int nDof = 3;         // degrees of freedom for the ball
   double t0 = 0;               // initial computation time
@@ -111,8 +112,8 @@ int main(int argc, char* argv[])
   out.print("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
             simulation.current_step() * simulation.time_step(),
             storage::attr<"q">(ball, simulation.current_step())(0),
-            storage::attr<"velocity">(ball, simulation.current_step())(0),
-            0., 0.);
+            storage::attr<"velocity">(ball, simulation.current_step())(0), 0.,
+            0.);
 
   while (simulation.has_next_event()) {
     auto ninvds = simulation.compute_one_step();

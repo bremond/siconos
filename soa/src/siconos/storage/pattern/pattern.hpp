@@ -269,7 +269,6 @@ struct frame {
           })
           .value;
 };
-
 template <typename... Args>
 struct item {
   using item_t = void;
@@ -320,9 +319,11 @@ concept vertex_item_t = requires(T t) {
                         };
 }  // namespace concepts
 
+// rename to attr_name ? (cf with_name)
 template <string_literal Name, match::attribute A>
 struct attribute : A, symbol<Name> {};
 
+// association for non nested type (should be the default now)
 template <match::item Item, match::attribute A>
 struct paired : A {
   using item = Item;
@@ -468,8 +469,8 @@ template <match::attribute... Attrs>
 using attributes = gather<Attrs...>;
 
 template <match::item... Items>
-using attributes_of_items =
-    decltype(flatten(append(typename Items::attributes{}...)));
+using attributes_of_items = decltype(flatten(
+    append(siconos::storage::pattern::attributes(Items{})...)));
 
 template <match::item... Items>
 using properties_of_items =
@@ -532,6 +533,15 @@ static auto item_attribute = [](concepts::tuple_like auto items) constexpr {
 static auto constexpr attribute_name(match::attribute auto a)
 {
   return a.str.value;
+};
+
+// same as attribute!
+template <string_literal S, match::item I>
+struct with_name : I, symbol<S> {};
+
+static auto constexpr item_name(match::item auto item)
+{
+  return item.str.value;
 };
 
 }  // namespace siconos::storage::pattern

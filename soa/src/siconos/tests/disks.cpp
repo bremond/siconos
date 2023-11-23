@@ -30,7 +30,8 @@ int main(int argc, char* argv[])
                             storage::some::item_ref<model::disk>>,
           storage::time_invariant<storage::attr_t<config::disk, "fext">>,
           storage::diagonal<config::disk, "mass_matrix">,
-          storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
+          storage::unbounded_diagonal<
+              storage::attr_t<config::osi, "mass_matrix_assembled">>>>();
 
   // unsigned int nDof = 3;         // degrees of freedom for the disk
   double t0 = 0;               // initial computation time

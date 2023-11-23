@@ -38,7 +38,8 @@ int main(int argc, char* argv[])
       storage::with_properties<
           storage::time_invariant<storage::attr_t<config::ball, "fext">>,
           storage::diagonal<config::ball, "mass_matrix">,
-          storage::unbounded_diagonal<config::osi::mass_matrix_assembled>>>();
+          storage::unbounded_diagonal<
+              storage::attr_t<config::osi, "mass_matrix_assembled">>>>();
 
   // unsigned int nDof = 3;         // degrees of freedom for the ball
   double t0 = 0;               // initial computation time
