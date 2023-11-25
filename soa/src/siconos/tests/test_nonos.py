@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import numpy as np
 import nonos as m
 
 def test_version():
@@ -16,13 +16,12 @@ def test_q():
     import numpy
     data = m.disks.make_storage()
     disk = m.disks.add_disk(data)
+    disk.set_q(np.array([1,2,3]))
     q = disk.q()
-    q = [1,2,3]
-    assert list(q) == list(disk.q())
+    assert list(q) == [1,2,3]
 
 def test_nslaw():
     data = m.disks.make_storage()
     nslaw = m.disks.add_nslaw(data)
-    e = nslaw.e()
-    e=0.7
+    nslaw.set_e(0.7)
     assert nslaw.e() == 0.7

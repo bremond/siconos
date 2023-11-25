@@ -33,6 +33,9 @@ template <typename T>
 using matrix_view = Eigen::Map<T>;
 static_assert(vector<int, 3>::ColsAtCompileTime == 1);
 
+template <typename T>
+using matrix_ref = Eigen::Ref<T>;
+
 template <typename T, size_t M>
 using diagonal_matrix = Eigen::DiagonalMatrix<T, M>;
 

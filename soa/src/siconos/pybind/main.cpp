@@ -15,12 +15,17 @@ using lcp =
 using osnspb = with_name<"osnspb", simul::one_step_nonsmooth_problem<lcp>>;
 using nslaw = with_name<"nslaw", model::newton_impact>;
 using diskdisk_r = with_name<"diskdisk_r", model::diskdisk_r>;
-using diskplan_r = model::diskplan_r;
-using interaction = simul::interaction<nslaw, diskdisk_r, diskplan_r>;
-using osi = simul::one_step_integrator<disk, interaction>::moreau_jean;
-using td = simul::time_discretization<>;
-using topo = simul::topology<disk, interaction>;
-using simulation = simul::time_stepping<td, osi, osnspb, topo>;
+using diskplan_r = with_name<"diskplan_r", model::diskplan_r>;
+using interaction =
+    with_name<"interaction",
+              simul::interaction<nslaw, diskdisk_r, diskplan_r>>;
+using osi =
+    with_name<"osi",
+              simul::one_step_integrator<disk, interaction>::moreau_jean>;
+using td = with_name<"time_discretization", simul::time_discretization<>>;
+using topo = with_name<"topology", simul::topology<disk, interaction>>;
+using simulation =
+    with_name<"simulation", simul::time_stepping<td, osi, osnspb, topo>>;
 
 using params = map<iparam<"dof", 3>>;
 }  // namespace siconos::config::disks
@@ -52,6 +57,11 @@ auto imake_storage()
 }
 
 using idata_t = std::decay_t<decltype(imake_storage())>;
+
+static_assert(storage::pattern::match::diagonal_matrix<
+              decltype(storage::get<
+                       storage::pattern::attr_t<config::disk, "mass_matrix">>(
+                  idata_t{}, 0, storage::add<config::disk>(idata_t{})))>);
 
 // just hide idata_t to pybind11
 struct data_t {
@@ -128,10 +138,23 @@ PYBIND11_MODULE(_nonos, m)
         pattern::attributes(typename handle_t::type{}),
         std::ref(pyhandle[0_c]),
         []<match::attribute A>(py::class_<handle_t> dc, A a) {
-          return dc.def(
-              pattern::attribute_name(a),
-              [](handle_t& d) { return storage::get<A>(d.data(), d); },
-              py::return_value_policy::reference);
+          using attr_value_t = std::decay_t<decltype(storage::get<A>(
+              handle_t{}.data(), 0, handle_t{}))>;
+          if constexpr (!pattern::match::diagonal_matrix<attr_value_t>) {
+            return dc
+                .def(
+                    fmt::format("{}", pattern::attribute_name(a)).c_str(),
+                    [](handle_t& h) { return storage::get<A>(h.data(), h); },
+                    py::return_value_policy::reference)
+                .def(
+                    fmt::format("set_{}", pattern::attribute_name(a)).c_str(),
+                    [](handle_t& h, attr_value_t v) {
+                      storage::get<A>(h.data(), h) = v;
+                    });
+          }
+          else {
+            return dc;
+          }
         });
   });
 
@@ -165,9 +188,10 @@ PYBIND11_MODULE(_nonos, m)
     using item_t = typename handle_t::type;
     auto item_name = pattern::item_name(item_t{});
 
-    disks.def(fmt::format("add_{}", item_name).c_str(),
-        [](siconos::python::disks::idata_t& data) {
-          return siconos::storage::add<item_t>(data);
+    disks.def(
+        fmt::format("add_{}", item_name).c_str(),
+        [](siconos::python::disks::data_t& data) {
+          return siconos::storage::add<item_t>(data());
         },
         py::return_value_policy::reference, R"pbdoc(
         Add

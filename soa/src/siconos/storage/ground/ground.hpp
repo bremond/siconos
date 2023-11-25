@@ -135,6 +135,13 @@ static auto second = hana::second;
 
 static auto front = hana::front;
 
+static auto reverse = hana::reverse;
+
+static auto scan_left = hana::scan_left;
+
+static auto contains = hana::contains;
+static auto append = hana::append;
+static auto prepend = hana::prepend;
 // f(T{}, ...) -> f<T>(...)
 template <typename T>
 static auto t_arg = []<typename F>(F &&f) { return ground::partial(f, T{}); };
@@ -162,7 +169,7 @@ concept has_key = requires(Data m) { m[hana::type_c<Key>]; };
 
 template <typename T>
 static auto get = []<has_key<T> D>(D &&data) constexpr -> decltype(auto) {
-  return data[hana::type_c<T>];
+  return static_cast<D &&>(data)[hana::type_c<T>];
 };
 
 static auto transform = hana::transform;
@@ -309,5 +316,13 @@ inline constexpr ReturnType call_with_index(auto index, ReturnType &&def_val,
   return fun_tab[index](static_cast<ReturnType &&>(def_val),
                         static_cast<F &&>(f));
 }
+
+template <typename... Ts>
+auto std_tuple(const hana::tuple<Ts...>& htpl) {
+  return hana::unpack(htpl, [](const auto&... elems) {
+    return std::make_tuple(elems...);
+  });
+}
+
 
 }  // namespace siconos::storage::ground
