@@ -29,6 +29,10 @@ test = ["pytest"]
 
 
 [tool.scikit-build]
+cmake.verbose = true
+logging.level = "INFO"
+
+cmake.targets=["_nonos"]
 wheel.expand-macos-universal-tags = true
 wheel.packages = ["src/siconos/pybind/nonos"]
 

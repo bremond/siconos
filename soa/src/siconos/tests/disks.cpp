@@ -27,9 +27,9 @@ int main(int argc, char* argv[])
       config::diskdisk_r, config::diskplan_r, config::interaction,
       storage::with_properties<
           storage::attached<config::disk, storage::pattern::symbol<"shape">,
-                            storage::some::item_ref<model::disk>>,
+                            storage::some::item_ref<model::disk_shape>>,
           storage::time_invariant<storage::attr_t<config::disk, "fext">>,
-          storage::diagonal<config::disk, "mass_matrix">,
+          storage::diagonal<storage::attr_t<config::disk, "mass_matrix">>,
           storage::unbounded_diagonal<
               storage::attr_t<config::osi, "mass_matrix_assembled">>>>();
 

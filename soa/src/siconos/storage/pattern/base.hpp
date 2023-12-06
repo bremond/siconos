@@ -85,7 +85,7 @@ concept indice =
     std::is_scalar_v<T> && requires(T i) { std::array<double, 1>{}[i]; };
 
 template <typename T>
-concept symbol = std::derived_from<any_symbol, T>;
+concept symbol = std::derived_from<T, any_symbol>;
 
 template <typename T>
 concept ublas_matrix = requires(T m) { m(0, 0); };

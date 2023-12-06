@@ -4,6 +4,7 @@
 #include "siconos/model/lagrangian_r.hpp"
 #include "siconos/model/model.hpp"
 #include "siconos/simul/simul.hpp"
+#include "siconos/storage/ground/ground.hpp"
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/print.hpp"
 #include "siconos/utils/range.hpp"
@@ -55,7 +56,6 @@ struct one_step_integrator {
   };
 
   struct moreau_jean : item<> {
-
     using attributes = types::attributes<
         attribute<"theta", some::scalar>, attribute<"gamma", some::scalar>,
         attribute<"constraint_activation_threshold", some::scalar>,
@@ -63,9 +63,9 @@ struct one_step_integrator {
         attribute<"mass_matrix_assembled",
                   some::unbounded_matrix<attr_t<system, "mass_matrix">>>,
         attribute<"w_matrix",
-                   some::unbounded_matrix<some::matrix<
-                       some::scalar, nth_t<0, typename h_matrix1::sizes>,
-                       nth_t<0, typename h_matrix1::sizes>>>>,
+                  some::unbounded_matrix<some::matrix<
+                      some::scalar, nth_t<0, typename h_matrix1::sizes>,
+                      nth_t<0, typename h_matrix1::sizes>>>>,
         attribute<
             "q_nsp_vector_assembled",
             some::unbounded_vector<some::vector<some::scalar, nslaw_size>>>,
@@ -129,10 +129,7 @@ struct one_step_integrator {
       {
         return attr<"mass_matrix_assembled">(*self());
       }
-      decltype(auto) w_matrix()
-      {
-        return attr<"w_matrix">(*self());
-      }
+      decltype(auto) w_matrix() { return attr<"w_matrix">(*self()); }
 
       void compute_output(auto step)
       {
@@ -539,12 +536,59 @@ struct one_step_integrator {
       void update_iteration_matrix(auto current_step)
       {
         using data_t = const std::decay_t<decltype(self()->data())>;
-        if constexpr (!storage::has_property_t<typename system::fext,
+        if constexpr (!storage::has_property_t<attr_t<system, "fext">,
                                                property::time_invariant,
                                                data_t>()) {
           // constant fext => constant iteration matrix
           compute_iteration_matrix(current_step);
         }
+      }
+
+      auto methods()
+      {
+        using env_t = decltype(self()->env());
+        using indice = typename env_t::indice;
+        using scalar = typename env_t::scalar;
+
+        return collect(
+            method("compute_output",
+                   &interface<Handle>::compute_output<indice>),
+            method("compute_input", &interface<Handle>::compute_input),
+            method("compute_active_interactions",
+                   &interface<Handle>::compute_active_interactions<indice,
+                                                                   scalar>),
+            method("assemble_mass_matrix_for_involved_ds",
+                   &interface<Handle>::assemble_h_matrix_for_involved_ds<
+                       indice, indice, indice>),
+            method(
+                "resize_assembled_vectors",
+                &interface<Handle>::resize_assembled_vectors<indice, indice>),
+            method("assemble_mass_matrix_for_involved_ds",
+                   &interface<Handle>::assemble_mass_matrix_for_involved_ds<
+                       indice, indice>),
+            method(
+                "compute_q_nsp_vector_assembled",
+                &interface<Handle>::compute_q_nsp_vector_assembled<indice,
+                                                                   indice>),
+            method("compute_w_matrix",
+                   &interface<Handle>::compute_w_matrix<indice>),
+            method("update_velocity_for_involved_ds",
+                   &interface<Handle>::update_velocity_for_involved_ds),
+            method("nsl_effect_on_free_output",
+                   &interface<Handle>::nsl_effect_on_free_output<indice>),
+            method("update_all_velocities",
+                   &interface<Handle>::update_all_velocities<indice>),
+            method("update_positions",
+                   &interface<Handle>::update_positions<indice, indice>),
+            method("compute_iteration_matrix",
+                   &interface<Handle>::compute_iteration_matrix<indice>),
+            method("compute_free_state",
+                   &interface<Handle>::compute_free_state<indice, scalar>),
+            method("initialize", &interface<Handle>::initialize<indice>),
+            method("compute_h_matrices",
+                   &interface<Handle>::compute_h_matrices<indice>),
+            method("update_iteration_matrix",
+                   &interface<Handle>::update_iteration_matrix<indice>));
       }
     };
   };

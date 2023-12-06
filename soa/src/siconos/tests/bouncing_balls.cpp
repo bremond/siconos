@@ -37,7 +37,7 @@ int main(int argc, char* argv[])
       wrap<some::unbounded_collection, config::interaction>,
       storage::with_properties<
           storage::time_invariant<storage::attr_t<config::ball, "fext">>,
-          storage::diagonal<config::ball, "mass_matrix">,
+          storage::diagonal<storage::attr_t<config::ball, "mass_matrix">>,
           storage::unbounded_diagonal<
               storage::attr_t<config::osi, "mass_matrix_assembled">>>>();
 

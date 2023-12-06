@@ -39,6 +39,11 @@ constexpr decltype(auto) debug_type(Y)
   return boost::typeindex::type_id_with_cvr<Y>();
 }
 
+struct no_trace {};
+
+template <typename T>
+concept xdebug_type = std::derived_from<T, no_trace>;
+
 // debug (see_below for clang, gcc above...)
 #if defined(__clang__)
 template <typename... Ts>
@@ -71,6 +76,7 @@ using hana::eval;
 using hana::is_valid;
 using hana::make_lazy;
 using hana::tuple;
+using hana::unpack;
 static constexpr auto typeid_ = hana::typeid_;
 
 template <template <typename... Ts> typename F>
@@ -142,27 +148,33 @@ static auto scan_left = hana::scan_left;
 static auto contains = hana::contains;
 static auto append = hana::append;
 static auto prepend = hana::prepend;
+static auto concat = hana::concat;
+
 // f(T{}, ...) -> f<T>(...)
 template <typename T>
 static auto t_arg = []<typename F>(F &&f) { return ground::partial(f, T{}); };
 
 template <typename First, typename Second>
-using pair = hana::pair<std::decay_t<decltype(hana::type_c<First>)>, Second>;
+using key_value =
+    hana::pair<std::decay_t<decltype(hana::type_c<First>)>, Second>;
 
-template <typename First, typename Second>
-using ipair = hana::pair<First, Second>;
+// using hana::pair;
 
 template <typename T>
 static auto type_c = hana::type_c<T>;
 
-static auto make_pair = []<typename First, typename Second>(
-                            First,
-                            Second &&second) constexpr -> decltype(auto) {
+static auto make_key_value =
+    []<typename First, typename Second>(
+        First, Second &&second) constexpr -> decltype(auto) {
   return hana::make_pair(hana::type_c<First>, std::forward<Second>(second));
 };
 
+using hana::make_pair;
+
 template <typename... Pairs>
 using map = hana::map<Pairs...>;
+
+using hana::make_map;
 
 template <typename Data, typename Key>
 concept has_key = requires(Data m) { m[hana::type_c<Key>]; };
@@ -318,11 +330,10 @@ inline constexpr ReturnType call_with_index(auto index, ReturnType &&def_val,
 }
 
 template <typename... Ts>
-auto std_tuple(const hana::tuple<Ts...>& htpl) {
-  return hana::unpack(htpl, [](const auto&... elems) {
-    return std::make_tuple(elems...);
-  });
+auto std_tuple(const hana::tuple<Ts...> &htpl)
+{
+  return hana::unpack(
+      htpl, [](const auto &...elems) { return std::make_tuple(elems...); });
 }
-
 
 }  // namespace siconos::storage::ground

@@ -191,7 +191,7 @@ concept attribute_or_item = attribute<T> || item<T>;
 
 template <typename T, typename I>
 concept attached_storage =
-    attribute<T> && item<I> &&
+    requires { typename T::tag; } && attribute<T> && item<I> &&
     (std::derived_from<I, typename T::item> ||
      std::derived_from<typename T::item, I>
      // wrap case
@@ -284,6 +284,9 @@ struct item {
       return static_cast<H*>(this);  // handle inherits from default_interface
     }
   };
+
+  template <typename T>
+  using methods = gather<>;
 
   friend auto operator<=>(const item<Args...>&,
                           const item<Args...>&) = default;
@@ -440,6 +443,9 @@ static auto all_properties = []<match::item Item>(Item) constexpr {
 
 namespace match {
 
+template <typename I>
+concept index = requires { typename I::index_t; };
+
 template <typename H, typename A>
 concept handle_attribute =
     attribute<A> && item<typename H::type> &&
@@ -543,5 +549,43 @@ static auto constexpr item_name(match::item auto item)
 {
   return item.str.value;
 };
+
+template <typename... Ts>
+std::tuple<Ts...> collect(Ts... ts)
+{
+  return std::make_tuple(ts...);
+};
+
+template <typename F>
+auto method(auto s, F f, auto doc)
+{
+  return std::make_tuple(s, f, doc);
+};
+
+template <typename F>
+auto method(auto s, F f)
+{
+  return std::make_tuple(s, f);
+};
+
+namespace match {
+
+template <typename T>
+concept def_method = requires { typename T::def_method_t; };
+
+template <typename T>
+concept methods = requires(T h) { h.methods(); };
+}  // namespace match
+
+static auto constexpr method_name(auto m) { return std::get<0>(m); }
+
+static auto constexpr method_def(auto m) { return std::get<1>(m); }
+
+namespace match {
+template <typename T>
+concept npy_format = std::is_scalar_v<T> ||
+                     (requires { typename T::value_type; } &&
+                      std::is_scalar_v<typename T::value_type>);
+}
 
 }  // namespace siconos::storage::pattern

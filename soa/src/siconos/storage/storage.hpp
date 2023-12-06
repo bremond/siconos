@@ -79,10 +79,10 @@ struct time_invariant : property::time_invariant {
 // struct diagonal {
 //};
 
-template <match::item Item, string_literal S>
+template <match::attribute Attr>
 struct diagonal : property::diagonal {
-  using type = attr_t<Item, S>;
-  static_assert(match::abstract_matrix<type>);
+  static_assert(match::abstract_matrix<Attr>);
+  using type = Attr;
   using diagonal_t = void;
 };
 
@@ -100,7 +100,8 @@ struct unbounded_diagonal : property::unbounded_diagonal {
 
 template <match::item T, typename R>
 struct index {
-  using handle_t = void;
+  using index_t = void;
+  using handle_t = void; // remove this
   using type = T;
   using value_t = R;
 
@@ -122,19 +123,35 @@ struct default_interface {
     return static_cast<Handle*>(
         this);  // handle inherits from default_interface
   };
+
+  auto env()
+  {
+    auto& data = self()->data();
+    using info_t = std::decay_t<decltype(ground::get<storage::info>(data))>;
+    return typename info_t::env{};
+  }
+
+  auto params() { return typename decltype(env())::params{}; }
+
+  template <string_literal S>
+  constexpr auto env_param()
+  {
+    return ground::get<pattern::param<S>>(self()->params()).value;
+  }
 };
 
 template <match::item T, typename R, typename D>
 struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
   using full_handle_t = void;
   using info_t = std::decay_t<decltype(ground::get<info>(D{}))>;
+  using data_t = D;
   using indice = typename info_t::env::indice;
   using attached_storages_t =
       decltype(filter<hold<decltype([]<typename X>(X) {
         return match::attached_storage<X, T>;
       })>>(typename info_t::all_properties_t{}));
 
-  D& _data;
+  data_t& _data;
 
   constexpr decltype(auto) attributes()
   {
@@ -316,18 +333,20 @@ template <typename Env, match::attribute... Attributes>
 struct unit_storage {
   using env = Env;
 
-  using type = ground::map<ground::pair<
+  using type = ground::map<ground::key_value<
       Attributes,
       typename traits::config<env>::template convert<Attributes>::type>...>;
 };
 
 template <typename Info, typename M>
-using with_info_t = decltype(ground::insert(M{}, ground::pair<info, Info>{}));
+using with_info_t =
+    decltype(ground::insert(M{}, ground::key_value<info, Info>{}));
 
 template <typename Env, match::item... Items>
 struct item_storage {
   struct iinfo {
     using env = Env;
+    using items = gather<Items...>;
     using all_items_t = decltype(ground::std_tuple(ground::fold_left(
         // take last defined items
         ground::reverse(flatten(append(all_items(Items{})...))),
@@ -517,14 +536,14 @@ static auto make = []() constexpr -> decltype(auto) {
             using storage_t = std::decay_t<decltype(s)>;
 
             if constexpr (match::wrap<Item>) {
-              return ground::pair<
+              return ground::key_value<
                   Attr,
                   typename traits::config<Env>::template convert<
                       typename Item::template wrapper<storage_t>>::type>{};
             }
             else  // default storage
             {
-              return ground::pair<
+              return ground::key_value<
                   Attr, typename Env::template default_storage<storage_t>>{};
             }
           }),
@@ -639,6 +658,11 @@ struct access {
 //};
 
 template <string_literal S>
+static auto param = [](auto h) constexpr -> decltype(auto) {
+  return h.template env_param<S>();
+};
+
+template <string_literal S>
 static auto prop = [](auto h) constexpr -> decltype(auto) {
   return h.template property<S>();
 };
@@ -719,6 +743,42 @@ static auto handles = [](auto& data, auto step) constexpr -> decltype(auto) {
          });
 };
 
+// fix H is a handle defined in storage
+template <typename Hc>
+static auto constexpr methods(Hc hc)
+{
+  using handle_t = typename decltype(+hc)::type;
+  auto data = typename handle_t::data_t{};
+  auto h = add<typename handle_t::type>(data);
+
+  if constexpr (match::methods<handle_t>) {
+    return h.methods();
+  }
+  else {
+    //    ground::type_trace<item_t>();
+    return gather<>{};
+  }
+}
+
+template<typename Astor>
+static auto constexpr attached_storage_name(Astor astor)
+{
+  using tag = typename Astor::tag;
+  if constexpr (match::symbol<tag>)
+  {
+    return tag{};
+  }
+  else
+  {
+    []<bool flag = false>()
+      {
+        ground::type_trace<tag>();
+        static_assert(flag, "tag is not a symbol!");
+      }
+    ();
+  }
+}
+
 /*siconos::storage::ground::dump_keys(data, [](auto&& s) { std::cout << s<<
  * std::endl;});*/
 
@@ -727,8 +787,3 @@ using pattern::wrap;
 
 }  // namespace siconos::storage
 
-namespace siconos {
-using siconos::storage::access;
-using siconos::storage::default_interface;
-using siconos::storage::prop;
-}  // namespace siconos

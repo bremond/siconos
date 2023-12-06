@@ -144,8 +144,7 @@ struct time_stepping : item<> {
 
           index_set0.color(inter1_descr0) = env::gray_color;
           if constexpr (!std::derived_from<
-                            attr_t<typename topology_t::interaction,
-                                    "nslaw">,
+                            attr_t<typename topology_t::interaction, "nslaw">,
                             model::equality_condition>) {
             // We assume that the integrator of the ds1 drive the update of
             // the index set SP::OneStepIntegrator Osi =
@@ -275,7 +274,21 @@ struct time_stepping : item<> {
     };
 
     void initialize() { one_step_integrator().initialize(current_step()); }
+
+    auto methods()
+    {
+      using env_t = decltype(self()->env());
+      using indice = typename env_t::indice;
+//      using scalar = typename env_t::scalar;
+
+      return collect(
+          method("current_step", &interface<Handle>::current_step),
+          method("time_step", &interface<Handle>::time_step),
+          method("compute_one_step", &interface<Handle>::compute_one_step),
+          method("has_next_event", &interface<Handle>::has_next_event),
+          method("update_indexsets",
+                 &interface<Handle>::update_indexsets<indice>));
+    }
   };
 };
-
 }  // namespace siconos::simul

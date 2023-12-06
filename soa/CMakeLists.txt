@@ -26,8 +26,15 @@ if(fconcepts_diagnostics)
   set(flags "${flags} -fconcepts-diagnostics-depth=1")
 endif()
 if(ftemplate_backtrace_limit)
-  set(flags "${flags} -ftemplate-backtrace-limit=1")
+  set(flags "${flags} -ftemplate-backtrace-limit=2")
 endif()
+
+# python_add_library(_nothing MODULE ./src/siconos/pybind/nothing.cpp WITH_SOABI)
+# set_target_properties(_nothing PROPERTIES COMPILE_FLAGS "${flags}")
+# target_link_libraries(_nothing PRIVATE Eigen3::Eigen Siconos::numerics benchmark pthread fmt pybind11::headers)
+# target_compile_definitions(_nothing PRIVATE VERSION_INFO=${PROJECT_VERSION})
+
+# install(TARGETS _nothing DESTINATION nothing)
 
 python_add_library(_nonos MODULE ./src/siconos/pybind/main.cpp WITH_SOABI)
 set_target_properties(_nonos PROPERTIES COMPILE_FLAGS "${flags}")

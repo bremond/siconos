@@ -1,28 +1,36 @@
 #pragma once
 
-#include "siconos/config/config.hpp"
-#include "siconos/utils/environment.hpp"
-#include "siconos/storage/storage.hpp"
-#include "siconos/storage/ground/ground.hpp"
-#include "siconos/storage/pattern/pattern.hpp"
+#include <charconv>
+#include <functional>
+#include <tuple>
+#include <typeinfo>
+
 #include "siconos/algebra/numerics.hpp"
+#include "siconos/config/config.hpp"
 #include "siconos/model/lagrangian_ds.hpp"
 #include "siconos/model/lagrangian_r.hpp"
 #include "siconos/model/nslaws.hpp"
-#include "siconos/simul/topology.hpp"
 #include "siconos/simul/interaction.hpp"
-#include "siconos/simul/one_step_nonsmooth_problem.hpp"
 #include "siconos/simul/one_step_integrator.hpp"
+#include "siconos/simul/one_step_nonsmooth_problem.hpp"
 #include "siconos/simul/time_discretization.hpp"
 #include "siconos/simul/time_stepping.hpp"
-#include <charconv>
-#include <tuple>
-#include <functional>
-#include <typeinfo>
+#include "siconos/simul/topology.hpp"
+#include "siconos/storage/ground/ground.hpp"
+#include "siconos/storage/pattern/pattern.hpp"
+#include "siconos/storage/storage.hpp"
+#include "siconos/utils/environment.hpp"
 #if defined(__clang__)
 #include <boost/hana/experimental/type_name.hpp>
 #endif
-namespace siconos
-{
-}
 
+namespace siconos {
+using siconos::storage::access;
+using siconos::storage::default_interface;
+using siconos::storage::prop;
+
+using siconos::storage::pattern::collect;
+using siconos::storage::pattern::method;
+
+using namespace boost::hana::literals;
+}  // namespace siconos

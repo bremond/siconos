@@ -34,7 +34,14 @@ struct bbb : item<> {
   struct attr : some::specific<pointer<aaa>>, siconos::access<attr> {};
   using attributes = gather<attr>;
   template <typename H>
-  struct interface : siconos::default_interface<H> {};
+  struct interface : siconos::default_interface<H> {
+    constexpr int hello() { return 36; };
+
+    auto methods()
+    {
+      return collect(method(symbol<"hello">{}, &interface<H>::hello));
+    };
+  };
 };
 
 static_assert(std::is_same_v<traits::config<standard_environment<int>>::
@@ -60,30 +67,25 @@ struct item0 : item<> {
                                       some::indice_value<1>>>>;
 };
 
-static_assert(
-    match::diagonal_matrix<
-        decltype(storage::attr<"attr0">(storage::add<item0>(
-            storage::make<standard_environment<int>, item0,
-                          storage::with_properties<
-                              storage::diagonal<item0, "attr0">>>())))>);
+static_assert(match::diagonal_matrix<
+              decltype(storage::attr<"attr0">(storage::add<item0>(
+                  storage::make<standard_environment<int>, item0,
+                                storage::with_properties<storage::diagonal<
+                                    attr_t<item0, "attr0">>>>())))>);
 
 static_assert(
     match::matrix<decltype(storage::attr<"attr0">(storage::add<item0>(
         storage::make<standard_environment<int>,
                       wrap<some::unbounded_collection, item0>>())))>);
 
-static_assert(
-    match::diagonal_matrix<
-        decltype(storage::attr<"attr0">(storage::add<item0>(
-            storage::make<standard_environment<int>,
-                          wrap<some::unbounded_collection, item0>,
-                          storage::with_properties<
-                              storage::diagonal<item0, "attr0">>>())))>);
+static_assert(match::diagonal_matrix<
+              decltype(storage::attr<"attr0">(storage::add<item0>(
+                  storage::make<standard_environment<int>,
+                                wrap<some::unbounded_collection, item0>,
+                                storage::with_properties<storage::diagonal<
+                                    attr_t<item0, "attr0">>>>())))>);
 
 }  // namespace siconos
-
-
-
 
 using namespace boost::hana::literals;
 
@@ -105,7 +107,7 @@ static_assert(
                 standard_environment<config::map<config::iparam<"dof", 3>>>,
                 simulation, ball, relation, interaction,
                 storage::with_properties<
-                    storage::diagonal<ball, "mass_matrix">>>())))>);
+            storage::diagonal<attr_t<ball, "mass_matrix">>>>())))>);
 
 template <typename T>
 struct is_polymorhic : std::integral_constant<bool, []() {
@@ -246,17 +248,14 @@ using simulation =
     with_name<"simulation", simul::time_stepping<td, osi, osnspb, topo>>;
 
 using params = map<iparam<"dof", 3>>;
-}  // namespace siconos::config::disks
+}  // namespace siconos::config
 
 namespace pattern = siconos::storage::pattern;
 int main()
 {
-
   auto ddd = storage::make<env, with_name<"bbb", bbb>>();
 
-  auto bob1 = storage::add<bbb>(ddd);
-
-  bbb::attr::at(bob1).reset(new aaa);
+  //  bbb::attr::at(bob1).reset(new aaa);
 
   struct item1 : item<> {
     using attributes = gather<attribute<"one", some::scalar>>;
@@ -274,7 +273,8 @@ int main()
   //     config::diskdisk_r, config::diskplan_r,
   //     pattern::wrap<some::unbounded_collection, config::interaction>,
   //     storage::with_properties<
-  //         storage::attached<config::disk, storage::pattern::symbol<"shape">,
+  //         storage::attached<config::disk,
+  //         storage::pattern::symbol<"shape">,
   //                           storage::some::item_ref<model::disk>>,
   //         storage::time_invariant<
   //             storage::pattern::attr_t<config::disk, "fext">>,
@@ -286,25 +286,27 @@ int main()
       standard_environment<config::params>, config::simulation,
       pattern::wrap<some::unbounded_collection, config::disk>,
       config::diskdisk_r, config::diskplan_r,
-    pattern::wrap<some::unbounded_collection, config::interaction>>();
-      // storage::with_properties<
-      //     storage::attached<config::disk, storage::pattern::symbol<"shape">,
-      //                       storage::some::item_ref<model::disk>>,
-      //     storage::time_invariant<
-      //         storage::pattern::attr_t<config::disk, "fext">>,
-      //     storage::diagonal<config::disk, "mass_matrix">,
-      //     storage::unbounded_diagonal<storage::pattern::attr_t<
-      //         config::osi, "mass_matrix_assembled">>>>();
+      pattern::wrap<some::unbounded_collection, config::interaction>>();
+  // storage::with_properties<
+  //     storage::attached<config::disk, storage::pattern::symbol<"shape">,
+  //                       storage::some::item_ref<model::disk>>,
+  //     storage::time_invariant<
+  //         storage::pattern::attr_t<config::disk, "fext">>,
+  //     storage::diagonal<config::disk, "mass_matrix">,
+  //     storage::unbounded_diagonal<storage::pattern::attr_t<
+  //         config::osi, "mass_matrix_assembled">>>>();
 
   using idata_t = decltype(data);
-  using disks_info_t = std::decay_t<decltype(ground::get<storage::info>(
-                                              idata_t{}))>;
+  using disks_info_t =
+      std::decay_t<decltype(ground::get<storage::info>(idata_t{}))>;
 
   using disks_items_t = typename disks_info_t::all_items_t;
-  auto named_items =
-    ground::filter(disks_items_t{},
-                   ground::derive_from<pattern::any_symbol>);
+  auto named_items = ground::filter(disks_items_t{},
+                                    ground::derive_from<pattern::any_symbol>);
 
-  ground::for_each(named_items, [](auto item) { std::cout << pattern::item_name(item) << std::endl; });
-  //ground::dump_keys(data, [](auto&& key) { std::cout << key << std::endl;});
+  ground::for_each(named_items, [](auto item) {
+    std::cout << pattern::item_name(item) << std::endl;
+  });
+  // ground::dump_keys(data, [](auto&& key) { std::cout << key <<
+  // std::endl;});
 }

@@ -1,9 +1,10 @@
 #pragma once
 
+#include <functional>  // mem_fn
+
 #include "siconos/algebra/algebra.hpp"
 #include "siconos/model/lagrangian_ds.hpp"
 #include "siconos/model/model.hpp"
-
 namespace siconos::storage::pattern::match {
 template <typename T>
 concept linear_relation = match::handle<T, model::linear>;
@@ -24,7 +25,6 @@ struct lagrangian_r : item<>,
                       relation1,
                       relation2,
                       any_lagrangian_relation {
-
   using nslaw_size = some::param_val<NSLSize>;
   using dof = some::indice_parameter<"dof">;
 
@@ -51,9 +51,10 @@ struct lagrangian_r : item<>,
       h_matrix1 << -h_matrix();
     }
   };
+
 };
 
-struct disk : item<> {
+struct disk_shape : item<> {
   using attributes = gather<attribute<"radius", some::scalar>>;
 
   template <typename Handle>
@@ -62,15 +63,10 @@ struct disk : item<> {
 
     decltype(auto) radius() { return attr<"radius">(*self()); };
 
-    decltype(auto) distance(match::vector auto& q)
-    {
-      auto& x = q(0);
-      auto& y = q(1);
-    }
   };
 };
 
-struct plan : item<> {
+struct plan_shape : item<> {
   // a*x + b*y + c = 0
   using attributes = gather<
       attribute<"coeffs", some::vector<some::scalar, some::param_val<4>>>>;
@@ -97,8 +93,8 @@ struct plan : item<> {
 };
 
 struct diskplan_r : item<>, relation1, any_lagrangian_relation {
-  using attributes = gather<attribute<"disk", some::item_ref<disk>>,
-                            attribute<"plan", some::item_ref<plan>>>;
+  using attributes = gather<attribute<"disk", some::item_ref<disk_shape>>,
+                            attribute<"plan", some::item_ref<plan_shape>>>;
 
   template <typename Handle>
   struct interface : default_interface<Handle> {
@@ -141,8 +137,10 @@ struct diskplan_r : item<>, relation1, any_lagrangian_relation {
 };
 
 struct diskdisk_r : item<>, relation2, any_lagrangian_relation {
-  using attributes = gather<attribute<"disk1", some::item_ref<disk>>,
-                            attribute<"disk2", some::item_ref<disk>>>;
+  using dof = some::indice_parameter<"dof">;
+
+  using attributes = gather<attribute<"disk1", some::item_ref<disk_shape>>,
+                            attribute<"disk2", some::item_ref<disk_shape>>>;
 
   template <typename Handle>
   struct interface : default_interface<Handle> {
@@ -157,16 +155,18 @@ struct diskdisk_r : item<>, relation2, any_lagrangian_relation {
       return handle(self()->data(), attr<"disk2">(*self())).radius();
     };
 
-    decltype(auto) compute_h(match::vector auto& q1, match::vector auto& q2)
+    template <match::vector V, match::scalar S>
+    S compute_h(V& q1, V& q2)
     {
-      auto& dx = q2[0] - q1[0];
-      auto& dy = q2[1] - q2[1];
+      auto dx = q2[0] - q1[0];
+      auto dy = q2[1] - q2[1];
 
       return algebra::hypot(dx, dy) - (r1() + r2());
     }
 
-    decltype(auto) compute_jachq(auto step, auto& q1, auto& q2,
-                                 auto& h_matrix1, auto& h_matrix2)
+    template <typename S, typename V, typename M>
+    decltype(auto) compute_jachq(S step, V& q1, V& q2, M& h_matrix1,
+                                 M& h_matrix2)
     {
       auto x1 = q1(0);
       auto y1 = q1(1);
@@ -198,7 +198,32 @@ struct diskdisk_r : item<>, relation2, any_lagrangian_relation {
       g2(0, 2) = 0.;
       g2(1, 2) = -r2();
     }
+
+    auto methods()
+    {
+      using env_t = decltype(self()->env());
+      using scalar = typename env_t::scalar;
+      using params_t = typename env_t::params;
+
+      constexpr auto dof = ground::get<pattern::param<"dof">>(params_t{}).value;
+
+      using vector = typename env_t::template vector<scalar, dof>;
+
+      return collect(
+        method(
+          "compute_h", &interface<Handle>::compute_h<vector, scalar>),
+        method("r1", &interface<Handle>::r1),
+        method("r2", &interface<Handle>::r2)
+//          ground::make_key_value(
+//              "compute_jachq"_s,
+//              &interface<Handle>::compute_jachq<scalar, vector, matrix>
+        );
+    }
   };
+
+  //             method<"compute_jachq", &interface<H>::compute_jachq>>;
+  // cf
+  // https://stackoverflow.com/questions/47906426/type-of-member-functions-arguments
 };
 
 namespace lagrangian {

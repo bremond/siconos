@@ -29,5 +29,6 @@ struct newton_impact : item<> {
     using default_interface<Handle>::self;
     decltype(auto) e() { return attr<"e">(*self()); };
   };
+
 };
 }  // namespace siconos::model

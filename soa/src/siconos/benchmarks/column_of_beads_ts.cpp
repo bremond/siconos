@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
       storage::with_properties<
           storage::time_invariant<attr_t<config::interaction, "h_matrix1">>,
           storage::time_invariant<storage::attr_t<config::ball, "fext">>,
-          storage::diagonal<config::ball, "mass_matrix">,
+          storage::diagonal<storage::attr_t<config::ball, "mass_matrix">>,
           storage::unbounded_diagonal<
               storage::attr_t<config::osi, "mass_matrix_assembled">>>>();
 

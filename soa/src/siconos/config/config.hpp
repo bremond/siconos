@@ -8,7 +8,7 @@ namespace siconos::config
   using map = storage::ground::map<Cfs...>;
 
   template<typename K, typename V>
-  using assoc = storage::ground::pair<K, V>;
+  using assoc = storage::ground::key_value<K, V>;
 
   using storage::pattern::param;
   using storage::pattern::param_val;
