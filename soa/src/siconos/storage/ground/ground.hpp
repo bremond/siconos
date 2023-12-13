@@ -123,11 +123,11 @@ static auto fold_left = []<typename Array, typename State, typename Fun>(
 
 static auto overload = hana::overload_linearly;
 
-static auto apply = hana::apply;
+using hana::apply;
 
-static auto find_if = hana::find_if;
+using hana::find_if;
 
-static auto filter = hana::filter;
+using hana::filter;
 
 static auto for_each = hana::for_each;
 
@@ -145,7 +145,7 @@ static auto reverse = hana::reverse;
 
 static auto scan_left = hana::scan_left;
 
-static auto contains = hana::contains;
+using hana::contains;
 static auto append = hana::append;
 static auto prepend = hana::prepend;
 static auto concat = hana::concat;
@@ -332,8 +332,9 @@ inline constexpr ReturnType call_with_index(auto index, ReturnType &&def_val,
 template <typename... Ts>
 auto std_tuple(const hana::tuple<Ts...> &htpl)
 {
-  return hana::unpack(
-      htpl, [](const auto &...elems) { return std::make_tuple(elems...); });
+  return hana::unpack(htpl, []<typename... Elems>(Elems...) {
+    return std::make_tuple(Elems{}...);
+  });
 }
 
 }  // namespace siconos::storage::ground

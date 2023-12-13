@@ -55,7 +55,7 @@ namespace match = siconos::storage::pattern::match;
 template <size_t M>
 static constexpr decltype(auto) head(match::vector auto v)
 {
-  return v.head<M>(v);
+  return v.template head<M>(v);
 }
 // template specialization ok with clang, fails with gcc:
 //

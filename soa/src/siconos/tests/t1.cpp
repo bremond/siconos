@@ -85,6 +85,31 @@ static_assert(match::diagonal_matrix<
                                 storage::with_properties<storage::diagonal<
                                     attr_t<item0, "attr0">>>>())))>);
 
+static_assert(
+    std::is_same_v<
+        std::decay_t<decltype((storage::add<model::newton_impact>(
+                                   storage::make<standard_environment<int>,
+                                                 model::newton_impact>()))
+                                  .e())>,
+        typename standard_environment<int>::scalar>);
+
+static_assert(
+    std::is_same_v<
+        std::decay_t<
+            decltype(storage::add<model::disk_shape>(
+                         storage::make<
+                             standard_environment<int>, model::disk_shape,
+                             storage::with_properties<storage::bind<
+                                 model::disk_shape, "disk_shape">>>())
+                         .radius())>,
+        typename standard_environment<int>::scalar>);
+
+static_assert(storage::has_property<model::disk_shape,
+                                    storage::property::bind>(
+    storage::make<standard_environment<int>, model::disk_shape,
+                  storage::with_properties<
+                      storage::bind<model::disk_shape, "disk_shape">>>()));
+
 }  // namespace siconos
 
 using namespace boost::hana::literals;
@@ -99,6 +124,7 @@ using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
 using topo = simul::topology<ball, interaction>;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
+using disk_shape = model::disk_shape;
 
 static_assert(
     match::diagonal_matrix<
@@ -107,7 +133,15 @@ static_assert(
                 standard_environment<config::map<config::iparam<"dof", 3>>>,
                 simulation, ball, relation, interaction,
                 storage::with_properties<
-            storage::diagonal<attr_t<ball, "mass_matrix">>>>())))>);
+                    storage::diagonal<attr_t<ball, "mass_matrix">>>>())))>);
+
+static_assert(
+    match::index<std::decay_t<decltype(storage::prop<
+                                       "shape">(storage::add<ball>(
+        storage::make<
+            standard_environment<config::map<config::iparam<"dof", 3>>>, ball,
+            storage::with_properties<storage::attached<
+                ball, symbol<"shape">, some::item_ref<disk_shape>>>>())))>>);
 
 template <typename T>
 struct is_polymorhic : std::integral_constant<bool, []() {
@@ -139,6 +173,7 @@ static_assert(match::item<ball>);
 static_assert(match::attribute<attr_t<nslaw, "e">>);
 
 static_assert(match::attribute_of<attr_t<nslaw, "e">, nslaw>);
+
 static_assert(match::attribute_of<attr_t<ball, "velocity">, ball>);
 static_assert(match::attribute_of<attr_t<td, "step">, td>);
 
@@ -227,86 +262,4 @@ static_assert(
 
 //}
 
-namespace siconos::config {
-using siconos::storage::pattern::with_name;
-using disk = with_name<"disk", model::lagrangian_ds>;
-using lcp =
-    with_name<"lcp", simul::nonsmooth_problem<LinearComplementarityProblem>>;
-using osnspb = with_name<"osnspb", simul::one_step_nonsmooth_problem<lcp>>;
-using nslaw = with_name<"nslaw", model::newton_impact>;
-using diskdisk_r = with_name<"diskdisk_r", model::diskdisk_r>;
-using diskplan_r = with_name<"diskplan_r", model::diskplan_r>;
-using interaction =
-    with_name<"interaction",
-              simul::interaction<nslaw, diskdisk_r, diskplan_r>>;
-using osi =
-    with_name<"osi",
-              simul::one_step_integrator<disk, interaction>::moreau_jean>;
-using td = with_name<"time_discretization", simul::time_discretization<>>;
-using topo = with_name<"topology", simul::topology<disk, interaction>>;
-using simulation =
-    with_name<"simulation", simul::time_stepping<td, osi, osnspb, topo>>;
-
-using params = map<iparam<"dof", 3>>;
-}  // namespace siconos::config
-
-namespace pattern = siconos::storage::pattern;
-int main()
-{
-  auto ddd = storage::make<env, with_name<"bbb", bbb>>();
-
-  //  bbb::attr::at(bob1).reset(new aaa);
-
-  struct item1 : item<> {
-    using attributes = gather<attribute<"one", some::scalar>>;
-  };
-
-  auto eee = storage::make<env, item1>();
-
-  auto h1 = storage::add<item1>(eee);
-
-  storage::attr<"one">(h1) = 1.0;
-
-  // auto data = storage::make<
-  //     standard_environment<config::params>, config::simulation,
-  //     pattern::wrap<some::unbounded_collection, config::disk>,
-  //     config::diskdisk_r, config::diskplan_r,
-  //     pattern::wrap<some::unbounded_collection, config::interaction>,
-  //     storage::with_properties<
-  //         storage::attached<config::disk,
-  //         storage::pattern::symbol<"shape">,
-  //                           storage::some::item_ref<model::disk>>,
-  //         storage::time_invariant<
-  //             storage::pattern::attr_t<config::disk, "fext">>,
-  //         storage::diagonal<config::disk, "mass_matrix">,
-  //         storage::unbounded_diagonal<storage::pattern::attr_t<
-  //             config::osi, "mass_matrix_assembled">>>>();
-
-  auto data = storage::make<
-      standard_environment<config::params>, config::simulation,
-      pattern::wrap<some::unbounded_collection, config::disk>,
-      config::diskdisk_r, config::diskplan_r,
-      pattern::wrap<some::unbounded_collection, config::interaction>>();
-  // storage::with_properties<
-  //     storage::attached<config::disk, storage::pattern::symbol<"shape">,
-  //                       storage::some::item_ref<model::disk>>,
-  //     storage::time_invariant<
-  //         storage::pattern::attr_t<config::disk, "fext">>,
-  //     storage::diagonal<config::disk, "mass_matrix">,
-  //     storage::unbounded_diagonal<storage::pattern::attr_t<
-  //         config::osi, "mass_matrix_assembled">>>>();
-
-  using idata_t = decltype(data);
-  using disks_info_t =
-      std::decay_t<decltype(ground::get<storage::info>(idata_t{}))>;
-
-  using disks_items_t = typename disks_info_t::all_items_t;
-  auto named_items = ground::filter(disks_items_t{},
-                                    ground::derive_from<pattern::any_symbol>);
-
-  ground::for_each(named_items, [](auto item) {
-    std::cout << pattern::item_name(item) << std::endl;
-  });
-  // ground::dump_keys(data, [](auto&& key) { std::cout << key <<
-  // std::endl;});
-}
+int main() {}

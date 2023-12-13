@@ -65,6 +65,12 @@ static auto translate = rec([]<typename E, typename T>(auto&& translate, E,
         decltype(translate(E{}, typename T::type{})),
         decltype(translate(E{}, nth_t<0, typename T::sizes>{}))::value>{};
   }
+  else if constexpr (std::derived_from<T, some::undefined_array>) {
+    return typename E::template array<
+        decltype(translate(E{}, typename T::type{})),
+        decltype(translate(E{}, nth_t<0, typename T::sizes>{}))::value>{};
+  }
+
   else if constexpr (std::derived_from<T, some::undefined_diagonal_matrix> &&
                      std::derived_from<T, some::unbounded_storage>) {
     return typename E::template unbounded_diagonal_matrix<decltype(translate(

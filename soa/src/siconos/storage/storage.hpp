@@ -39,6 +39,8 @@ struct time_invariant : some::property {};
 
 struct refine : some::property {};
 
+struct bind : some::property {};
+
 struct diagonal : refine {
   template <match::attribute A>
   using refine = some::diagonal_matrix<typename A::type, A>;
@@ -75,6 +77,12 @@ struct time_invariant : property::time_invariant {
   using time_invariant_t = void;
 };
 
+template <match::item Item, string_literal S>
+struct bind : property::bind, symbol<S> {
+  using item = Item;
+  using bind_t = void;
+};
+
 //  template <typename T, string_literal = "">
 // struct diagonal {
 //};
@@ -101,7 +109,7 @@ struct unbounded_diagonal : property::unbounded_diagonal {
 template <match::item T, typename R>
 struct index {
   using index_t = void;
-  using handle_t = void; // remove this
+  using handle_t = void;  // remove this
   using type = T;
   using value_t = R;
 
@@ -197,6 +205,7 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
   handle operator=(const handle& h) { return handle(h); };
   handle operator=(handle&& h) { return handle(h); };
   ;
+
   friend auto operator<=>(const handle<T, R, D>&,
                           const handle<T, R, D>&) = default;
 };
@@ -260,6 +269,29 @@ static auto attribute_properties = [](auto& data) constexpr -> auto
   })>>(all_properties_t{});
 };
 
+template <match::item Item, typename properties>
+static constexpr auto item_properties_from()
+{
+  return ground::filter(properties{},
+                        ground::is_a_model<[]<typename T>() consteval {
+                          if constexpr (match::item_property<T>) {
+                            return std::derived_from<Item, typename T::item>;
+                          }
+                          else {
+                            return false;
+                          };
+                        }>);
+};
+
+template <match::item Item>
+static constexpr auto item_properties(auto& data)
+{
+  using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+  using all_properties_t = typename info_t::all_properties_t;
+
+  return item_properties_from<Item, all_properties_t>();
+};
+
 template <match::attribute Attr, match::property K>
 static constexpr bool has_property(auto& data)
 {
@@ -268,14 +300,34 @@ static constexpr bool has_property(auto& data)
   });
 }
 
-template <match::item Item, match::property K>
-static constexpr auto has_property(auto& data)
+template <match::item Item, match::property K, typename properties>
+static constexpr bool has_property_from()
 {
-  return ground::any_of(typename Item::properties{},
-                        []<match::property P>(P) {
-                          return std::derived_from<typename P::type, K>;
-                        });
-}
+  return ground::any_of(
+      item_properties_from<Item, properties>(),
+      []<match::property P>(P) { return std::derived_from<P, K>; });
+};
+
+template <match::item Item, match::property K>
+static constexpr bool has_property(auto&& data)
+{
+  return ground::any_of(
+      item_properties<Item>(data),
+      []<match::property P>(P) { return std::derived_from<P, K>; });
+};
+
+template <match::item Item, typename Properties>
+static constexpr auto bind_name()
+{
+  return ground::find_if(item_properties_from<Item, Properties>(),
+                         ground::is_a_model<[]<match::property P>() {
+                           return std::derived_from<P, property::bind>;
+                         }>)
+      .value_or([]<bool flag = false>() {
+        static_assert(flag, "no binding found!");
+      })
+      .str.value;
+};
 
 template <typename A, typename K, typename D>
 using has_property_t = std::decay_t<decltype(has_property<A, K>(D{}))>;
@@ -350,7 +402,8 @@ struct item_storage {
     using all_items_t = decltype(ground::std_tuple(ground::fold_left(
         // take last defined items
         ground::reverse(flatten(append(all_items(Items{})...))),
-        ground::make_tuple(), [](auto acc, auto elem) {
+        ground::make_tuple(),
+        []<typename Acc, typename Elem>(Acc acc, Elem elem) {
           if constexpr (ground::contains(acc, elem)) {
             return acc;
           }
@@ -484,8 +537,8 @@ static constexpr auto item_storage_transform =
   using info_t = std::decay_t<decltype(ground::get<info>(d))>;
 
   return ground::map_transform(d, [&f]<typename P>(P&& key_value) {
-    static auto&& key = ground::first(key_value);
-    static auto&& value = ground::second(key_value);
+    auto&& key = ground::first(key_value);
+    auto&& value = ground::second(key_value);
     using key_t = std::decay_t<decltype(key)>;
     using value_t = std::decay_t<decltype(value)>;
 
@@ -760,21 +813,19 @@ static auto constexpr methods(Hc hc)
   }
 }
 
-template<typename Astor>
+template <typename Astor>
 static auto constexpr attached_storage_name(Astor astor)
 {
   using tag = typename Astor::tag;
-  if constexpr (match::symbol<tag>)
-  {
+  if constexpr (match::symbol<tag>) {
     return tag{};
   }
-  else
-  {
+  else {
     []<bool flag = false>()
-      {
-        ground::type_trace<tag>();
-        static_assert(flag, "tag is not a symbol!");
-      }
+    {
+      ground::type_trace<tag>();
+      static_assert(flag, "tag is not a symbol!");
+    }
     ();
   }
 }
@@ -786,4 +837,3 @@ using pattern::attr_t;
 using pattern::wrap;
 
 }  // namespace siconos::storage
-

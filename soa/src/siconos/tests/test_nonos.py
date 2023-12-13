@@ -17,7 +17,7 @@ def test_q():
     import numpy
     data = m.disks.make_storage()
     disk = m.disks.add_disk(data)
-    disk.set_q(np.array([1,2,3]))
+    disk.set_q(np.array([1,2,3], dtype=np.float64))
     q = disk.q()
     assert list(q) == [1,2,3]
 
@@ -30,13 +30,16 @@ def test_nslaw():
 def test_diskdisk_r():
     data = m.disks.make_storage()
     relation = m.disks.add_diskdisk_r(data)
+    disk_shape1 = m.disks.add_disk_shape(data)
+    disk_shape2 = m.disks.add_disk_shape(data)
+    relation.set_disk1(disk_shape1);
+    relation.set_disk2(disk_shape2);
     relation.disk1().set_radius(1.0)
     relation.disk2().set_radius(2.0)
-    assert relation.r1() == 1.0
-    assert relation.r2() == 2.0
+    assert relation.disk1().radius() == 1.0
+    assert relation.disk2().radius() == 2.0
 
 def test_time_stepping():
 
-    
     data = m.disks.make_storage()
-    simul = m.disks.add_time_stepping(data)
+    simul = m.disks.add_simulation(data)

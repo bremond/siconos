@@ -36,6 +36,9 @@ struct standard_environment {
   using bounded_collection = std::array<S, N>;
 
   template <typename T, indice M>
+  using array = std::array<T, M>;
+
+  template <typename T, indice M>
   using vector = algebra::vector<T, M>;
 
   template <typename T, indice M, indice N>

@@ -197,6 +197,10 @@ concept attached_storage =
      // wrap case
      || std::derived_from<typename I::type, typename T::item>);
 
+template <typename T>
+concept item_property =
+    requires { typename T::item; } && std::derived_from<T, some::property>;
+
 template <typename T, typename Tag>
 concept tag = std::derived_from<typename T::tag, Tag>;
 
@@ -307,6 +311,12 @@ struct wrap : Wrapper<Item, Args...>, Item, any_wrapper {
   using type = Item;
 };
 
+//namespace match {
+//  template<typename T>
+//  concept wrap = requires { typename T::wrap_t; };
+//}
+
+
 template <typename T>
 struct place_holder {
   using type = std::array<T, 1>;
@@ -329,8 +339,40 @@ struct attribute : A, symbol<Name> {};
 // association for non nested type (should be the default now)
 template <match::item Item, match::attribute A>
 struct paired : A {
+  using paired_t = void;
   using item = Item;
 };
+
+namespace match {
+template <typename PairedA, typename PairedB>
+concept paired_similar =
+    std::derived_from<typename PairedA::type, typename PairedB::type> ||
+    std::derived_from<typename PairedB::type, typename PairedA::type>;
+
+template <typename T>
+concept paired = requires { typename T::paired_t; };
+}  // namespace match
+
+namespace must {
+
+template <typename T, typename Tpl>
+concept contains_similar_attribute =
+    ground::any_of(Tpl{}, []<match::attribute A>(A) -> bool {
+      if constexpr (match::paired<A> && match::paired<T>) {
+        return std::derived_from<typename T::item, typename A::item> ||
+               std::derived_from<typename A::item, typename T::item>;
+      }
+      else {
+        return std::is_same_v<T, A>;
+      }
+    })();
+
+}
+
+namespace match {
+template <typename T>
+concept named_item = item<T> && std::derived_from<T, any_symbol>;
+}
 
 template <match::item Item, match::attribute A>
 static constexpr decltype(auto) named_attribute_maybe(Item, A)
@@ -341,8 +383,10 @@ static constexpr decltype(auto) named_attribute_maybe(Item, A)
     if constexpr (match::wrap<Item>) {
       return paired<typename Item::type, A>{};
     }
+    //    else if constexpr (match::named_item<Item>) {
+    //      return paired<typename Item::item, A>{};
+    //    }
     else {
-      static_assert(!match::wrap<Item>);
       return paired<Item, A>{};
     }
   }
@@ -442,7 +486,6 @@ static auto all_properties = []<match::item Item>(Item) constexpr {
 //  };
 
 namespace match {
-
 template <typename I>
 concept index = requires { typename I::index_t; };
 
@@ -512,8 +555,6 @@ static auto item_attribute = [](concepts::tuple_like auto items) constexpr {
     using tpl_t = std::decay_t<Tpl>;
     using item_t = std::decay_t<decltype(car(tpl))>;
 
-    static_assert(match::item<item_t>);
-
     if constexpr (match::attribute_of<Attr, item_t>) {
       return item_t{};
     }
@@ -541,15 +582,6 @@ static auto constexpr attribute_name(match::attribute auto a)
   return a.str.value;
 };
 
-// same as attribute!
-template <string_literal S, match::item I>
-struct with_name : I, symbol<S> {};
-
-static auto constexpr item_name(match::item auto item)
-{
-  return item.str.value;
-};
-
 template <typename... Ts>
 std::tuple<Ts...> collect(Ts... ts)
 {
@@ -569,7 +601,6 @@ auto method(auto s, F f)
 };
 
 namespace match {
-
 template <typename T>
 concept def_method = requires { typename T::def_method_t; };
 
@@ -583,9 +614,9 @@ static auto constexpr method_def(auto m) { return std::get<1>(m); }
 
 namespace match {
 template <typename T>
-concept npy_format = std::is_scalar_v<T> ||
-                     (requires { typename T::value_type; } &&
-                      std::is_scalar_v<typename T::value_type>);
+concept npy_format = (requires { typename T::value_type; } &&
+                      std::is_scalar_v<typename T::value_type>) ||
+                     requires { typename T; };
 }
 
 }  // namespace siconos::storage::pattern

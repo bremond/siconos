@@ -70,6 +70,7 @@ struct undefined_bounded_collection : bounded_storage {};
 struct undefined_matrix : bounded_storage {};
 struct undefined_diagonal_matrix : undefined_matrix {};
 struct undefined_vector : bounded_storage {};
+struct undefined_array : bounded_storage {};
 
 struct undefined_unbounded_matrix : unbounded_storage {};
 struct undefined_unbounded_vector : unbounded_storage {};
@@ -122,6 +123,10 @@ struct unbounded_diagonal_matrix : unbounded_storage,
 
 template <typename Type, typename N>
 struct vector : undefined_vector, with_sizes<N>, with_type<Type> {
+};
+
+template <typename Type, typename N>
+struct array : undefined_array, with_sizes<N>, with_type<Type> {
 };
 
 struct undefined_graph : attribute<> {};
