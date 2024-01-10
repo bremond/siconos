@@ -36,8 +36,8 @@ https://indico.cern.ch/event/847626/contributions/3585861/attachments/1927626/31
 #+header: :var src_dir=src-dir
 #+header: :dir build-gcc-release
 #+begin_src sh :compile :results output silent
-  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
-       shell --container -N --emulate-fhs --expose=${src_dir} siconos benchmark gcc-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
+  guix time-machine -C ${src_dir}/siconos-2023-13-12.scm -- \
+       shell --container -N --emulate-fhs --expose=${src_dir} --with-input=gcc-toolchain=gcc-toolchain@12 siconos benchmark gcc-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
        dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=1" 
 #+end_src
 
@@ -45,7 +45,7 @@ https://indico.cern.ch/event/847626/contributions/3585861/attachments/1927626/31
 #+header: :var src_dir=src-dir
 #+header: :dir build-gcc-release
 #+begin_src sh :compile :results output silent
-  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+  guix time-machine -C ${src_dir}/siconos-2023-13-12.scm -- \
        shell --container -N --emulate-fhs --expose=${src_dir} siconos benchmark gcc-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
        make VERBOSE=1
 #+end_src

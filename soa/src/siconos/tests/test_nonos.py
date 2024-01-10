@@ -2,13 +2,13 @@ from __future__ import annotations
 import numpy as np
 import nonos as m
 
-    
+
 def test_version():
     assert m.disks.__version__ == "dev"
-    
+
 def test_make():
     data = m.disks.make_storage()
-    
+
 def test_add():
     data = m.disks.make_storage()
     disk = m.disks.add_disk(data)
@@ -20,6 +20,9 @@ def test_q():
     disk.set_q(np.array([1,2,3], dtype=np.float64))
     q = disk.q()
     assert list(q) == [1,2,3]
+
+    q[0] = 4
+    assert list(disk.q()) == [4,2,3]
 
 def test_nslaw():
     data = m.disks.make_storage()
@@ -43,3 +46,10 @@ def test_time_stepping():
 
     data = m.disks.make_storage()
     simul = m.disks.add_simulation(data)
+
+def test_interaction_manager():
+    data = m.disks.make_storage()
+    interman = m.disks.add_interaction_manager(data)
+    nslaw = m.disks.add_nslaw(data)
+    interman.insert_nonsmooth_law(nslaw, 0 , 0).\
+        insert_nonsmooth_law(nslaw, 0, 1)

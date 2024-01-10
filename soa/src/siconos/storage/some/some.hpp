@@ -44,8 +44,7 @@ struct type_parameter : undefined_type_parameter {
 };
 
 template <string_literal S>
-struct item : type_parameter<S> {
-};
+struct item : type_parameter<S> {};
 
 struct undefined_indice_value : attribute<> {};
 template <auto I>
@@ -74,6 +73,7 @@ struct undefined_array : bounded_storage {};
 
 struct undefined_unbounded_matrix : unbounded_storage {};
 struct undefined_unbounded_vector : unbounded_storage {};
+struct undefined_unbounded_array : unbounded_storage {};
 
 template <typename... Sizes>
 struct with_sizes {
@@ -91,65 +91,56 @@ struct with_types {
 };
 
 template <typename Type, typename N, typename M>
-struct matrix : undefined_matrix, with_sizes<N, M>, with_type<Type> {
-};
+struct matrix : undefined_matrix, with_sizes<N, M>, with_type<Type> {};
 
 template <typename Mat>
 struct transposed_matrix : undefined_matrix,
                            with_sizes<nth_t<1, typename Mat::sizes>,
                                       nth_t<0, typename Mat::sizes>>,
-                           with_type<typename Mat::type> {
-};
+                           with_type<typename Mat::type> {};
 
 template <typename Type = some::scalar>
-struct unbounded_matrix : undefined_unbounded_matrix, with_type<Type> {
-};
+struct unbounded_matrix : undefined_unbounded_matrix, with_type<Type> {};
 
 template <typename Type = some::scalar>
-struct unbounded_vector : undefined_unbounded_vector, with_type<Type> {
-};
+struct unbounded_vector : undefined_unbounded_vector, with_type<Type> {};
 
 template <typename Type, typename M>
 struct diagonal_matrix : undefined_diagonal_matrix,
                          with_sizes<nth_t<0, typename M::sizes>>,
-                         with_type<Type> {
-};
+                         with_type<Type> {};
 
 template <typename Type>
 struct unbounded_diagonal_matrix : unbounded_storage,
                                    undefined_diagonal_matrix,
-                                   with_type<Type> {
-};
+                                   with_type<Type> {};
 
 template <typename Type, typename N>
-struct vector : undefined_vector, with_sizes<N>, with_type<Type> {
-};
+struct vector : undefined_vector, with_sizes<N>, with_type<Type> {};
 
 template <typename Type, typename N>
-struct array : undefined_array, with_sizes<N>, with_type<Type> {
-};
+struct array : undefined_array, with_sizes<N>, with_type<Type> {};
+
+template <typename Type>
+struct unbounded_array : undefined_unbounded_array, with_type<Type> {};
 
 struct undefined_graph : attribute<> {};
 
 template <typename Edge, typename Vertice>
-struct graph : undefined_graph, with_types<Edge, Vertice> {
-};
+struct graph : undefined_graph, with_types<Edge, Vertice> {};
 
 template <typename Type>
 struct unbounded_collection : undefined_unbounded_collection,
-                              with_type<Type> {
-};
+                              with_type<Type> {};
 
 template <typename Type, typename N>
 struct bounded_collection : undefined_bounded_collection,
                             with_sizes<N>,
-                            with_type<Type> {
-};
+                            with_type<Type> {};
 
 // xx should be elsewhere
 template <match::item T>
-struct item_ref : attribute<>, with_type<T> {
-};
+struct item_ref : attribute<>, with_type<T> {};
 
 struct undefined_polymorphic_type {};
 template <typename... Ts>
@@ -160,8 +151,7 @@ struct polymorph : undefined_polymorphic_type, with_types<Ts...> {
 template <typename... Ts>
 struct polymorphic_attribute : attribute<>,
                                with_type<gather<Ts...>>,
-                               polymorph<Ts...> {
-};
+                               polymorph<Ts...> {};
 
 struct given_type {};
 
@@ -174,7 +164,6 @@ struct specific : given_type, attribute<> {
 struct given_definition : attribute<> {};
 
 template <string_literal S>
-struct definition : given_definition, symbol<S> {
-};
+struct definition : given_definition, symbol<S> {};
 
 }  // namespace siconos::storage::some

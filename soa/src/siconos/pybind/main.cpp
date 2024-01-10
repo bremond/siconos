@@ -14,18 +14,20 @@ namespace py = pybind11;
 
 namespace siconos::config::disks {
 using disk = model::lagrangian_ds;
-using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
-using osnspb = simul::one_step_nonsmooth_problem<lcp>;
 using nslaw = model::newton_impact;
 using diskdisk_r = model::diskdisk_r;
 using diskplan_r = model::diskplan_r;
+using disk_shape = model::disk_shape;
+
+using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
+using osnspb = simul::one_step_nonsmooth_problem<lcp>;
 using interaction = simul::interaction<nslaw, diskdisk_r, diskplan_r>;
 using osi = simul::one_step_integrator<disk, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
 using topo = simul::topology<disk, interaction>;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
-using disk_shape = model::disk_shape;
-using params = map<iparam<"dof", 3>>;
+using interaction_manager = simul::interaction_manager<nslaw>;
+using params = map<iparam<"dof", 3>, iparam<"ncgroups", 1>>;
 }  // namespace siconos::config::disks
 
 using namespace siconos;
@@ -41,6 +43,7 @@ auto imake_storage()
 {
   return storage::make<
       standard_environment<config::params>, config::simulation,
+      config::interaction_manager,
       pattern::wrap<some::unbounded_collection, config::disk>,
       pattern::wrap<some::unbounded_collection, config::diskdisk_r>,
       pattern::wrap<some::unbounded_collection, config::diskplan_r>,
@@ -60,6 +63,7 @@ auto imake_storage()
           storage::bind<config::diskdisk_r, "diskdisk_r">,
           storage::bind<config::diskplan_r, "diskplan_r">,
           storage::bind<config::disk_shape, "disk_shape">,
+          storage::bind<config::interaction_manager, "interaction_manager">,
           storage::bind<config::interaction, "interaction">,
           storage::bind<config::osi, "osi">,
           storage::bind<config::td, "time_discretization">,
@@ -145,24 +149,24 @@ PYBIND11_MODULE(_nonos, m)
 
   using disks_properties_t = typename disks_info_t::all_properties_t;
 
-  using disks_items_t =
-    decltype(
-      ground::transform(typename disks_info_t::all_items_t{},
-                        []<match::item I>(I) {
-                          if constexpr (match::wrap<I>) {
-                            return typename I::type{};
-                          }
-                          else {
-                            return I{};
-                          }
-                        }));
+  using disks_items_t = decltype(ground::transform(
+      typename disks_info_t::all_items_t{}, []<match::item I>(I) {
+        if constexpr (match::wrap<I>) {
+          return typename I::type{};
+        }
+        else {
+          return I{};
+        }
+      }));
 
-      //  ground::type_trace<disks_items_t>();
-      auto named_disks_items = ground::filter(
-          disks_items_t{}, ground::is_a_model<[]<typename T>() {
-            return storage::has_property_from<T, storage::property::bind,
-                                              disks_properties_t>();
-          }>);
+  // ground::type_trace<disks_items_t>();
+  auto named_disks_items = ground::filter(
+      disks_items_t{}, ground::is_a_model<[]<typename T>() {
+        return storage::has_property_from<T, storage::property::bind,
+                                          disks_properties_t>();
+      }>);
+
+  // ground::type_trace<std::decay_t<decltype(named_disks_items)>>();
 
   auto disks_handles = ground::transform(
       // only named items
@@ -171,24 +175,33 @@ PYBIND11_MODULE(_nonos, m)
         return storage::add<I>(siconos::python::disks::idata_t{});
       });
 
-  auto pyhandles =
-      ground::transform(disks_handles, [&disks]<typename H>(H handle) {
-        using item_t = typename H::type;
-        return ground::make_tuple(
-            py::class_<H>(disks,
-                          storage::bind_name<item_t, disks_properties_t>()),
-            ground::type_c<H>);
-      });
+  // add corresponding py::class_
+  auto pyhandles = ground::transform(disks_handles, [&disks]<typename H>(
+                                                        H handle) {
+    using item_t = typename H::type;
+    using base_index_t = typename H::base_index_t;
+    auto base_index = py::class_<base_index_t>(
+        disks, fmt::format("index_{}",
+                           storage::bind_name<item_t, disks_properties_t>())
+                   .c_str());
+    return ground::make_tuple(
+        base_index,
+        py::class_<H>(disks, storage::bind_name<item_t, disks_properties_t>(),
+                      base_index),
+        ground::type_c<H>);
+  });
 
+  // declare index<...>
+  ground::for_each(pyhandles, [](auto pyhandle) { return pyhandle[0_c]; });
   // attached storage
   ground::for_each(pyhandles, [](auto pyhandle) {
-    using handle_t = typename decltype(+pyhandle[1_c])::type;
+    using handle_t = typename decltype(+pyhandle[2_c])::type;
     using item_t = typename handle_t::type;
 
     ground::fold_left(
         decltype(storage::attached_storages(
             handle_t{}, handle_t{}.data())){},  // all attached storages
-        std::ref(pyhandle[0_c]),                // initial state
+        std::ref(pyhandle[1_c]),                // initial state
         []<match::attached_storage<item_t> S>(py::class_<handle_t> dc, S s) {
           constexpr auto astor_name = storage::attached_storage_name(s);
           using target_type = std::decay_t<decltype(out_formatter(
@@ -211,11 +224,11 @@ PYBIND11_MODULE(_nonos, m)
 
   // attributes
   ground::for_each(pyhandles, [](auto pyhandle) {
-    using handle_t = typename decltype(+pyhandle[1_c])::type;
+    using handle_t = typename decltype(+pyhandle[2_c])::type;
     //    using item_t = typename handle_t::type;
     ground::fold_left(
         pattern::attributes(typename handle_t::type{}),  // all attributes
-        std::ref(pyhandle[0_c]),                         // initial state
+        std::ref(pyhandle[1_c]),                         // initial state
         []<match::attribute A>(py::class_<handle_t> dc, A a) {
           using attr_value_t = std::decay_t<decltype(out_formatter(
               handle_t{},
@@ -237,10 +250,10 @@ PYBIND11_MODULE(_nonos, m)
 
   // methods
   ground::for_each(pyhandles, [](auto pyhandle) {
-    using handle_t = typename decltype(+pyhandle[1_c])::type;
+    using handle_t = typename decltype(+pyhandle[2_c])::type;
     //    using item_t = typename handle_t::type;
-    ground::fold_left(storage::methods(pyhandle[1_c]),  // all methods
-                      std::ref(pyhandle[0_c]),          // initial state
+    ground::fold_left(storage::methods(pyhandle[2_c]),  // all methods
+                      std::ref(pyhandle[1_c]),          // initial state
                       []<typename M>(py::class_<handle_t> dc, M m) {
                         return dc.def(pattern::method_name(m),
                                       pattern::method_def(m),
@@ -268,7 +281,7 @@ PYBIND11_MODULE(_nonos, m)
     )pbdoc");
 
   ground::for_each(pyhandles, [&disks](auto pyhandle) {
-    using handle_t = typename decltype(+pyhandle[1_c])::type;
+    using handle_t = typename decltype(+pyhandle[2_c])::type;
     using item_t = typename handle_t::type;
     auto item_name = storage::bind_name<item_t, disks_properties_t>();
 

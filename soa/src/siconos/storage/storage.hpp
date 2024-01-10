@@ -150,6 +150,7 @@ struct default_interface {
 
 template <match::item T, typename R, typename D>
 struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
+  using base_index_t = index<T, R>;
   using full_handle_t = void;
   using info_t = std::decay_t<decltype(ground::get<info>(D{}))>;
   using data_t = D;
@@ -160,6 +161,12 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
       })>>(typename info_t::all_properties_t{}));
 
   data_t& _data;
+
+
+  constexpr decltype(auto) index_cast()
+  {
+    return static_cast<index<T, R>>(*this);
+  }
 
   constexpr decltype(auto) attributes()
   {
@@ -808,7 +815,6 @@ static auto constexpr methods(Hc hc)
     return h.methods();
   }
   else {
-    //    ground::type_trace<item_t>();
     return gather<>{};
   }
 }

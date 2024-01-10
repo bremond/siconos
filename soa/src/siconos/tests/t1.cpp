@@ -124,7 +124,24 @@ using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
 using topo = simul::topology<ball, interaction>;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
+using inter_manager = simul::interaction_manager<nslaw>;
 using disk_shape = model::disk_shape;
+
+// static_assert(
+//   storage::attr<"nslaws">(
+//     storage::add<inter_manager>(
+//         storage::make <
+//         standard_environment<config::map<config::iparam<"ncgroups", 1>>>,
+//         inter_manager, nslaw>())
+//         .insert_nonsmooth_law(
+//             storage::add<nslaw>(
+//                 storage::make <
+//                 standard_environment<config::map<config::iparam<"ncgroups", 1>>>,
+//                 inter_manager, nslaw>()),
+//             0, 0))(0, 0) == storage::add<nslaw>(
+//                 storage::make <
+//                 standard_environment<config::map<config::iparam<"ncgroups", 1>>>,
+//                 inter_manager, nslaw>()));
 
 static_assert(
     match::diagonal_matrix<
