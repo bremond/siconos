@@ -53,3 +53,11 @@ def test_interaction_manager():
     nslaw = m.disks.add_nslaw(data)
     interman.insert_nonsmooth_law(nslaw, 0 , 0).\
         insert_nonsmooth_law(nslaw, 0, 1)
+
+def test_io():
+    data = m.disks.make_storage()
+    io = m.disks.add_io(data)
+    assert io.positions(0).shape[0] == 0
+    assert io.positions(0).shape[1] == 5
+    disk = m.disks.add_disk(data)
+    assert io.positions(0).shape[0] == 1

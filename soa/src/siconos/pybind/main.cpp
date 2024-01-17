@@ -14,19 +14,21 @@ namespace py = pybind11;
 
 namespace siconos::config::disks {
 using disk = model::lagrangian_ds;
-using nslaw = model::newton_impact;
-using diskdisk_r = model::diskdisk_r;
-using diskplan_r = model::diskplan_r;
-using disk_shape = model::disk_shape;
+using nslaw = model::newton_impact_friction;
+using diskdisk_r = collision::diskdisk_r;
+using diskline_r = collision::diskline_r;
+using line_shape = collision::line_shape;
+using disk_shape = collision::disk_shape;
 
-using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
-using osnspb = simul::one_step_nonsmooth_problem<lcp>;
-using interaction = simul::interaction<nslaw, diskdisk_r, diskplan_r>;
+using fcp = simul::nonsmooth_problem<FrictionContactProblem>;
+using osnspb = simul::one_step_nonsmooth_problem<fcp>;
+using interaction = simul::interaction<nslaw, diskdisk_r, diskline_r>;
 using osi = simul::one_step_integrator<disk, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
 using topo = simul::topology<disk, interaction>;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
 using interaction_manager = simul::interaction_manager<nslaw>;
+using io = io::io<disk>;
 using params = map<iparam<"dof", 3>, iparam<"ncgroups", 1>>;
 }  // namespace siconos::config::disks
 
@@ -43,11 +45,12 @@ auto imake_storage()
 {
   return storage::make<
       standard_environment<config::params>, config::simulation,
-      config::interaction_manager,
+      config::interaction_manager, config::io,
       pattern::wrap<some::unbounded_collection, config::disk>,
       pattern::wrap<some::unbounded_collection, config::diskdisk_r>,
-      pattern::wrap<some::unbounded_collection, config::diskplan_r>,
+      pattern::wrap<some::unbounded_collection, config::diskline_r>,
       pattern::wrap<some::unbounded_collection, config::interaction>,
+      pattern::wrap<some::unbounded_collection, config::line_shape>,
       pattern::wrap<some::unbounded_collection, config::disk_shape>,
       storage::with_properties<
           storage::attached<config::disk, storage::pattern::symbol<"shape">,
@@ -61,16 +64,19 @@ auto imake_storage()
           storage::bind<config::disk, "disk">,
           storage::bind<config::nslaw, "nslaw">,
           storage::bind<config::diskdisk_r, "diskdisk_r">,
-          storage::bind<config::diskplan_r, "diskplan_r">,
+          storage::bind<config::diskline_r, "diskline_r">,
+          storage::bind<config::line_shape, "line_shape">,
           storage::bind<config::disk_shape, "disk_shape">,
           storage::bind<config::interaction_manager, "interaction_manager">,
           storage::bind<config::interaction, "interaction">,
+          storage::bind<config::osnspb, "osnspb">,
           storage::bind<config::osi, "osi">,
           storage::bind<config::td, "time_discretization">,
           storage::bind<config::topo, "topology">,
           storage::bind<config::simulation, "simulation">,
           storage::bind<config::osnspb, "osnspb">,
-          storage::bind<config::lcp, "lcp">>>();
+          storage::bind<config::fcp, "fcp">,
+          storage::bind<config::io, "io">>>();
 }
 
 using idata_t = std::decay_t<decltype(imake_storage())>;
@@ -191,8 +197,6 @@ PYBIND11_MODULE(_nonos, m)
         ground::type_c<H>);
   });
 
-  // declare index<...>
-  ground::for_each(pyhandles, [](auto pyhandle) { return pyhandle[0_c]; });
   // attached storage
   ground::for_each(pyhandles, [](auto pyhandle) {
     using handle_t = typename decltype(+pyhandle[2_c])::type;

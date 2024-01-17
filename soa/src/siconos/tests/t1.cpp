@@ -96,19 +96,19 @@ static_assert(
 static_assert(
     std::is_same_v<
         std::decay_t<
-            decltype(storage::add<model::disk_shape>(
+            decltype(storage::add<collision::disk_shape>(
                          storage::make<
-                             standard_environment<int>, model::disk_shape,
+                             standard_environment<int>, collision::disk_shape,
                              storage::with_properties<storage::bind<
-                                 model::disk_shape, "disk_shape">>>())
+                                 collision::disk_shape, "disk_shape">>>())
                          .radius())>,
         typename standard_environment<int>::scalar>);
 
-static_assert(storage::has_property<model::disk_shape,
+static_assert(storage::has_property<collision::disk_shape,
                                     storage::property::bind>(
-    storage::make<standard_environment<int>, model::disk_shape,
+    storage::make<standard_environment<int>, collision::disk_shape,
                   storage::with_properties<
-                      storage::bind<model::disk_shape, "disk_shape">>>()));
+                      storage::bind<collision::disk_shape, "disk_shape">>>()));
 
 }  // namespace siconos
 
@@ -125,7 +125,7 @@ using td = simul::time_discretization<>;
 using topo = simul::topology<ball, interaction>;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
 using inter_manager = simul::interaction_manager<nslaw>;
-using disk_shape = model::disk_shape;
+using disk_shape = collision::disk_shape;
 
 // static_assert(
 //   storage::attr<"nslaws">(

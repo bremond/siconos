@@ -28,6 +28,7 @@ struct topology : item<> {
   using properties = gather<
       storage::attached<dynamical_system, symbol<"involved">, some::boolean>,
       storage::attached<dynamical_system, symbol<"index">, some::indice>,
+      storage::attached<dynamical_system, symbol<"id">, some::indice>,
       storage::attached<dynamical_system, symbol<"p0">,
                         some::array<some::vector<some::scalar, dof>,
                                     std::integral_constant<int, 2>>>,

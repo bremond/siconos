@@ -8,9 +8,9 @@ using disk = model::lagrangian_ds;
 using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
 using osnspb = simul::one_step_nonsmooth_problem<lcp>;
 using nslaw = model::newton_impact;
-using diskdisk_r = model::diskdisk_r;
-using diskplan_r = model::diskplan_r;
-using interaction = simul::interaction<nslaw, diskdisk_r, diskplan_r>;
+using diskdisk_r = collision::diskdisk_r;
+using diskline_r = collision::diskline_r;
+using interaction = simul::interaction<nslaw, diskdisk_r, diskline_r>;
 using osi = simul::one_step_integrator<disk, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
 using topo = simul::topology<disk, interaction>;
@@ -24,10 +24,10 @@ int main(int argc, char* argv[])
   using namespace siconos;
   auto data = storage::make<
       standard_environment<config::params>, config::simulation, config::disk,
-      config::diskdisk_r, config::diskplan_r, config::interaction,
+      config::diskdisk_r, config::diskline_r, config::interaction,
       storage::with_properties<
           storage::attached<config::disk, storage::pattern::symbol<"shape">,
-                            storage::some::item_ref<model::disk_shape>>,
+                            storage::some::item_ref<collision::disk_shape>>,
           storage::time_invariant<storage::attr_t<config::disk, "fext">>,
           storage::diagonal<storage::attr_t<config::disk, "mass_matrix">>,
           storage::unbounded_diagonal<
@@ -73,8 +73,8 @@ int main(int argc, char* argv[])
 
   // -- Lagrangian relation --
   auto dd_r = storage::add<config::diskdisk_r>(data);
-  auto d1p_r = storage::add<config::diskplan_r>(data);
-  auto d2p_r = storage::add<config::diskplan_r>(data);
+  auto d1p_r = storage::add<config::diskline_r>(data);
+  auto d2p_r = storage::add<config::diskline_r>(data);
 
   // -- nslaw --
   double e = 0.9;
