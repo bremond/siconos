@@ -1088,11 +1088,15 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
             shape = self._shape.get(ctor.shape_name)
             attrs = self._shape.attributes(ctor.shape_name)
 
-            if self._shape.attributes(ctor.shape_name)['primitive'] == 'Disk':
-                body_class = Disk
-            elif self._shape.attributes(ctor.shape_name)['primitive'] == 'Circle':
-                body_class = Circle
             radius = self._shape._io.shapes()[ctor.shape_name][:][0][0]
+            if backend == 'vnative':
+                body_class = default_body_class
+            else:
+                if self._shape.attributes(ctor.shape_name)['primitive'] == 'Disk':
+                    body_class = Disk
+                elif self._shape.attributes(ctor.shape_name)['primitive'] == 'Circle':
+                    body_class = Circle
+
 
             body = body_class(radius, mass,
                               list(translation)+list(orientation), velocity)

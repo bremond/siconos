@@ -113,7 +113,8 @@ struct time_stepping : item<> {
 
     bool has_next_event()
     {
-      return current_step() * time_discretization().h() <=
+      return time_discretization().t0() +
+                 current_step() * time_discretization().h() <
              time_discretization().tmax();
     }
     void update_indexsets(auto i)
@@ -279,9 +280,16 @@ struct time_stepping : item<> {
     {
       using env_t = decltype(self()->env());
       using indice = typename env_t::indice;
-//      using scalar = typename env_t::scalar;
+      //      using scalar = typename env_t::scalar;
 
       return collect(
+          method("time_discretization",
+                 &interface<Handle>::time_discretization),
+          method("one_step_integrator",
+                 &interface<Handle>::one_step_integrator),
+          method("one_step_nonsmooth_problem",
+                 &interface<Handle>::one_step_nonsmooth_problem),
+          method("topology", &interface<Handle>::topology),
           method("current_step", &interface<Handle>::current_step),
           method("time_step", &interface<Handle>::time_step),
           method("compute_one_step", &interface<Handle>::compute_one_step),

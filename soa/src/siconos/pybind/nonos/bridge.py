@@ -1,4 +1,9 @@
 import nonos as vkernel
+import numpy as np
+
+
+def array(l):
+    return np.array(l, dtype=np.float64)
 
 class Stored():
 
@@ -12,7 +17,6 @@ class Stored():
 
     def handle(self):
         return self._handle
-
 
 class SpaceFilter(Stored):
 
@@ -84,12 +88,15 @@ class TimeDiscretisation(Stored):
         self._h = h
         self._handle = \
             vkernel.disks.add_time_discretization(self.data())
+        self.handle().set_t0(t0)
+        self.handle().set_h(h)
     
 class Simulation(Stored):
 
     def __init__(self, nsds, timedisc):
         self._nsds = nsds
         self._timedisc = timedisc
+        self._timedisc.handle().set_tmax(self._nsds._T) # vkernel does not have nsds
         self._handle = vkernel.disks.add_simulation(self.data())
 
     def insertIntegrator(self, osi):
@@ -123,10 +130,11 @@ class Simulation(Stored):
         pass # unimplemented
 
     def startingTime(self):
-        return 0. # unimplemented
+        return self.handle().time_discretization().t0()
 
     def nextTime(self):
-        return 0.
+        return self.startingTime() + self.handle().current_step() *\
+            self.handle().time_discretization().h()
     
     def hasNextEvent(self):
         return self.handle().has_next_event()
@@ -144,18 +152,28 @@ class Body(Stored):
 
     _ident = 0
     
-    def __init__(self, position, velocity, mass, inertia):
+    def __init__(self, radius, mass, position, velocity):
 
         self._ident = self._ident + 1
-        
-        body = vkernel.disks.add_disk(self.data())
-        self._body = body
-        body.set_id(self._ident)
-        body.set_q(position)
-        body.set_velocity(velocity)
-        body.set_mass(mass)
-        body.set_inertia(inertia)
 
+        body = vkernel.disks.add_disk(self.data())
+        self._handle = body
+        body.set_id(self._ident)
+        body.set_q(array(position))
+        body.set_velocity(array(velocity))
+        body.set_mass_matrix(array([mass, mass, mass]))
+        disk_shape = vkernel.disks.add_disk_shape(self.data())
+        body.set_shape(disk_shape)
+        body.shape().set_radius(radius)
+
+    def scalarMass(self):
+        return self.handle().mass_matrix()[0]
+
+    def setFExtPtr(self, fext):
+        self.handle().set_fext(array(fext))
+
+    def setNumber(self, num):
+        self.handle().set_id(num)
 
 class OSNSPB(Stored):
     def __init__(self, dim, solvopts):
