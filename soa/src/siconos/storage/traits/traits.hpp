@@ -24,12 +24,10 @@ static auto translate = rec([]<typename E, typename T>(auto&& translate, E,
     return T{};
   }
   else if constexpr (std::derived_from<T, some::undefined_polymorphic_type>) {
-    return std::apply(
-        []<typename... Ts>(Ts...) {
-          return typename E::template variant<decltype(translate(E{},
-                                                                 Ts{}))...>{};
-        },
-        (typename T::types{}));
+    return ground::unpack((typename T::types{}), []<typename... Ts>(Ts...) {
+      return
+          typename E::template variant<decltype(translate(E{}, Ts{}))...>{};
+    });
   }
   else if constexpr (std::derived_from<T, some::boolean>) {
     return typename E::boolean{};
@@ -99,13 +97,13 @@ static auto translate = rec([]<typename E, typename T>(auto&& translate, E,
   }
   else if constexpr (std::derived_from<T, some::undefined_map>) {
     return typename E::template map<
-        decltype(translate(E{}, std::get<0>(typename T::types{}))),
-        decltype(translate(E{}, std::get<1>(typename T::types{})))>{};
+        decltype(translate(E{}, (typename T::types{})[0_c])),
+        decltype(translate(E{}, (typename T::types{})[1_c]))>{};
   }
   else if constexpr (std::derived_from<T, some::undefined_graph>) {
     return typename E::template graph<
-        decltype(translate(E{}, std::get<0>(typename T::types{}))),
-        decltype(translate(E{}, std::get<1>(typename T::types{})))>{};
+        decltype(translate(E{}, (typename T::types{}[0_c]))),
+        decltype(translate(E{}, (typename T::types{}[1_c])))>{};
   }
   else if constexpr (std::derived_from<T, some::undefined_vdescriptor>) {
     return typename E::template vdescriptor<decltype(translate(

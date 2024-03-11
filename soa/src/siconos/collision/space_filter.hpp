@@ -26,7 +26,7 @@ struct neighborhood
   using attributes = storage::pattern::cons_x<
       attribute<"point_set_id",
                 some::array<some::indice,
-                            some::indice_value<std::tuple_size<points_t>{}>>>,
+                            some::indice_value<ground::size(points_t{})>>>,
       typename storage::data_holder<
           CompactNSearch::NeighborhoodSearch>::attributes>;
 
@@ -180,15 +180,15 @@ struct space_filter : item<> {
       auto& dsg0 = topo.dynamical_system_graphs()[0];
       auto& index_set0 = topo.interaction_graphs()[0];
 
-      constexpr auto npointsets = std::tuple_size_v<points_t>;
+      constexpr auto npointsets = ground::size(points_t{});
       ground::for_each(ground::range<npointsets>, [&](auto ip1) {
-        auto p1 = std::get<ip1>(points_t{});
+        auto p1 = points_t{}[ground::size_c<ip1>];
         using p1_t = decltype(p1);
         auto psid1 = ngbh.point_set_id()[ip1];
 
         ground::for_each(
             ground::range_c<std::size_t, ip1, npointsets>, [&](auto ip2) {
-              auto p2 = std::get<ip2>(points_t{});
+              auto p2 = points_t{}[ground::size_c<ip2>];
               using p2_t = decltype(p2);
               auto psid2 = ngbh.point_set_id()[ip2];
 

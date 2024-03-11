@@ -4,6 +4,7 @@
 #include <memory>
 #include <tuple>
 #include <type_traits>
+#include "siconos/storage/ground/ground.hpp"
 
 namespace siconos::storage::pattern {
 using size_t = std::size_t;
@@ -12,13 +13,13 @@ template <typename... Ts>
 using pointer = std::shared_ptr<Ts...>;
 
 template <size_t N, typename tpl>
-using nth_t = std::decay_t<decltype(std::get<N>(tpl{}))>;
+using nth_t = std::decay_t<decltype(tpl{}[ground::size_c<N>])>;
 
 template <typename... Args>
-using gather = std::tuple<Args...>;
+using gather = ground::tuple<Args...>;
 
-template <typename T, typename Tpl>
-using cons_t = std::decay_t<decltype(std::tuple_cat<std::tuple<T>, Tpl>)>;
+//template <typename T, typename Tpl>
+//using cons_t = std::decay_t<decltype(std::tuple_cat<std::tuple<T>, Tpl>)>;
 
 // https://ctrpeach.io/posts/cpp20-string-literal-template-parameters/
 // https://stackoverflow.com/questions/62266052/c20-string-literal-template-argument-working-example
@@ -54,6 +55,9 @@ struct any_symbol {};
 template <string_literal Symbol>
 struct symbol : text<Symbol>, any_symbol {
 };
+
+template <string_literal Symbol>
+constexpr auto symb = symbol<Symbol>{};
 
 template <string_literal Symbol>
 struct name : text<Symbol> {
