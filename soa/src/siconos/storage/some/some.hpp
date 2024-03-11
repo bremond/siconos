@@ -77,7 +77,7 @@ struct undefined_unbounded_array : unbounded_storage {};
 
 template <typename... Sizes>
 struct with_sizes {
-  using sizes = std::tuple<Sizes...>;
+  using sizes = pattern::gather<Sizes...>;
 };
 
 template <typename Type>
@@ -87,7 +87,7 @@ struct with_type {
 
 template <typename... Types>
 struct with_types {
-  using types = std::tuple<Types...>;
+  using types = pattern::gather<Types...>;
 };
 
 template <typename Type, typename N, typename M>

@@ -2,13 +2,14 @@
 
 #include <concepts>
 #include <tuple>
+
 #include "siconos/storage/pattern/pattern.hpp"
 #include "siconos/storage/some/some.hpp"
 
 namespace siconos::storage::traits {
 
-using siconos::storage::pattern::param;
 using siconos::storage::pattern::nth_t;
+using siconos::storage::pattern::param;
 using siconos::storage::pattern::rec;
 namespace match = siconos::storage::pattern::match;
 
@@ -22,13 +23,11 @@ static auto translate = rec([]<typename E, typename T>(auto&& translate, E,
     // return the type itself
     return T{};
   }
-  else if constexpr (std::derived_from<T, some::undefined_polymorphic_type>)
-  {
-    return std::apply([]<typename ...Ts>(Ts...)
-                      {
-                        return typename E::template variant<decltype(translate(E{}, Ts{}))...>{};
-                      },
-                      (typename T::types{}));
+  else if constexpr (std::derived_from<T, some::undefined_polymorphic_type>) {
+    return ground::unpack((typename T::types{}), []<typename... Ts>(Ts...) {
+      return
+          typename E::template variant<decltype(translate(E{}, Ts{}))...>{};
+    });
   }
   else if constexpr (std::derived_from<T, some::boolean>) {
     return typename E::boolean{};
@@ -98,8 +97,8 @@ static auto translate = rec([]<typename E, typename T>(auto&& translate, E,
   }
   else if constexpr (std::derived_from<T, some::undefined_graph>) {
     return typename E::template graph<
-        decltype(translate(E{}, std::get<0>(typename T::types{}))),
-        decltype(translate(E{}, std::get<1>(typename T::types{})))>{};
+        decltype(translate(E{}, (typename T::types{}[0_c]))),
+        decltype(translate(E{}, (typename T::types{}[1_c])))>{};
   }
   else if constexpr (std::derived_from<T, some::undefined_vdescriptor>) {
     return typename E::template vdescriptor<decltype(translate(
@@ -127,7 +126,6 @@ struct config {
     using type = decltype(translate(E{}, A{}));
   };
 };
-
 
 template <typename T>
 using value_type = typename T::value_type;  // eigen ok.

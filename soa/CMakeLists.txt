@@ -26,7 +26,7 @@ if(fconcepts_diagnostics)
   set(flags "${flags} -fconcepts-diagnostics-depth=1")
 endif()
 if(ftemplate_backtrace_limit)
-  set(flags "${flags} -ftemplate-backtrace-limit=2")
+  set(flags "${flags} -ftemplate-backtrace-limit=0")
 endif()
 
 # python_add_library(_nothing MODULE ./src/siconos/pybind/nothing.cpp WITH_SOABI)

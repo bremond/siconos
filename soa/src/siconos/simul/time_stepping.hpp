@@ -8,10 +8,10 @@ namespace siconos::simul {
 template <match::item... Items>
 struct time_stepping : item<> {
   using items = gather<Items...>;
-  using time_discretization_t = types::nth_t<0, items>;
-  using one_step_integrator_t = types::nth_t<1, items>;
-  using one_step_nonsmooth_problem_t = types::nth_t<2, items>;
-  using topology_t = types::nth_t<3, items>;
+  using time_discretization_t = nth_t<0, items>;
+  using one_step_integrator_t = nth_t<1, items>;
+  using one_step_nonsmooth_problem_t = nth_t<2, items>;
+  using topology_t = nth_t<3, items>;
 
   using formulation_t =
       typename one_step_nonsmooth_problem_t::problem_t::formulation_t;

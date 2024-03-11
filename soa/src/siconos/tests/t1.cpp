@@ -67,6 +67,61 @@ struct item0 : item<> {
                                       some::indice_value<1>>>>;
 };
 
+static_assert(
+    boost::hana::is_convertible<
+        siconos::storage::pattern::paired<
+            siconos::item0,
+            siconos::storage::pattern::attribute<
+                "attr0", siconos::storage::some::matrix<
+                             siconos::storage::some::scalar,
+                             siconos::storage::some::indice_value<1>,
+                             siconos::storage::some::indice_value<1>>>>,
+        siconos::storage::pattern::paired<
+            siconos::item0,
+            siconos::storage::pattern::attribute<
+                "attr0", siconos::storage::some::matrix<
+                             siconos::storage::some::scalar,
+                             siconos::storage::some::indice_value<1>,
+                             siconos::storage::some::indice_value<1>>>>>::
+        value);
+
+static_assert(
+    std::is_same_v<
+        decltype(storage::pattern::attributes(item0{})),
+        gather<storage::pattern::paired<
+            item0, attribute<"attr0",
+                             some::matrix<some::scalar, some::indice_value<1>,
+                                          some::indice_value<1>>>>>>);
+
+static_assert(
+    std::is_same_v<
+        typename std::decay_t<decltype(ground::get<storage::info>(
+            storage::make<standard_environment<int>, item0,
+                          storage::with_properties<storage::diagonal<attr_t<
+                              item0, "attr0">>>>()))>::all_properties_t,
+        gather<siconos::storage::diagonal<siconos::storage::pattern::paired<
+            siconos::item0,
+            siconos::storage::pattern::attribute<
+                "attr0", siconos::storage::some::matrix<
+                             siconos::storage::some::scalar,
+                             siconos::storage::some::indice_value<1>,
+                             siconos::storage::some::indice_value<1>>>>>>>);
+
+// static_assert(ground::filter(
+//     ground::transform(
+//         typename std::decay_t<decltype(ground::get<storage::info>(
+//             storage::make<standard_environment<int>, item0,
+//                           storage::with_properties<storage::diagonal<attr_t<
+//                               item0, "attr0">>>>()))>::all_properties_t{},
+//         []<typename P>(P) { return typename P::type{}; }),
+//     ground::is_parent<siconos::storage::pattern::paired<
+//         siconos::item0,
+//         siconos::storage::pattern::attribute<
+//             "attr0", siconos::storage::some::matrix<
+//                          siconos::storage::some::scalar,
+//                          siconos::storage::some::indice_value<1>,
+//                          siconos::storage::some::indice_value<1>>>>>));
+
 static_assert(match::diagonal_matrix<
               decltype(storage::attr<"attr0">(storage::add<item0>(
                   storage::make<standard_environment<int>, item0,
@@ -104,11 +159,11 @@ static_assert(
                          .radius())>,
         typename standard_environment<int>::scalar>);
 
-static_assert(storage::has_property<collision::disk_shape,
-                                    storage::property::bind>(
-    storage::make<standard_environment<int>, collision::disk_shape,
-                  storage::with_properties<
-                      storage::bind<collision::disk_shape, "disk_shape">>>()));
+static_assert(
+    storage::has_property<collision::disk_shape, storage::property::bind>(
+        storage::make<standard_environment<int>, collision::disk_shape,
+                      storage::with_properties<storage::bind<
+                          collision::disk_shape, "disk_shape">>>()));
 
 }  // namespace siconos
 
@@ -136,12 +191,12 @@ using disk_shape = collision::disk_shape;
 //         .insert_nonsmooth_law(
 //             storage::add<nslaw>(
 //                 storage::make <
-//                 standard_environment<config::map<config::iparam<"ncgroups", 1>>>,
-//                 inter_manager, nslaw>()),
+//                 standard_environment<config::map<config::iparam<"ncgroups",
+//                 1>>>, inter_manager, nslaw>()),
 //             0, 0))(0, 0) == storage::add<nslaw>(
 //                 storage::make <
-//                 standard_environment<config::map<config::iparam<"ncgroups", 1>>>,
-//                 inter_manager, nslaw>()));
+//                 standard_environment<config::map<config::iparam<"ncgroups",
+//                 1>>>, inter_manager, nslaw>()));
 
 static_assert(
     match::diagonal_matrix<
@@ -173,15 +228,15 @@ static_assert(std::is_same_v<decltype(all_items(nslaw{})),
                              gather<siconos::model::newton_impact>>);
 
 static_assert(
-    std::derived_from<std::decay_t<decltype(std::get<0>(ground::filter(
+    std::derived_from<std::decay_t<decltype(ground::filter(
                           typename interaction::attributes{},
                           ground::compose(ground::trait<is_polymorhic>,
-                                          ground::typeid_))))>,
+                                          ground::typeid_))[0_c])>,
                       some::polymorphic_attribute<some::item_ref<relation>>>);
 
 // ground::type_trace<decltype(all_items(interaction{}))>();
 static_assert(std::is_same_v<decltype(all_items(interaction{})),
-                             std::tuple<interaction, nslaw, relation>>);
+                             gather<interaction, nslaw, relation>>);
 
 // static_assert(must::contains<osnspb,
 // decltype(all_items(simulation{}))>);
@@ -243,14 +298,11 @@ static_assert(std::is_same_v<traits::config<env>::convert<int>::type, int>);
 
 static_assert(
     traits::translatable<siconos::some::unbounded_collection<char[3]>, env>);
-static_assert(filter<hold<decltype([]<typename T>(T) {
-                return std::floating_point<T>;
-              })>>(std::tuple<char, int, double>{}) == std::tuple<double>{});
 
 static_assert(
-    ground::filter(std::tuple<char, int, double>{},
+    ground::filter(gather<char, int, double>{},
                    ground::compose(ground::trait<std::is_floating_point>,
-                                   ground::typeid_)) == std::tuple<double>{});
+                                   ground::typeid_)) == gather<double>{});
 
 static_assert(std::is_same_v<
               decltype(ground::filter(
@@ -267,9 +319,11 @@ static_assert(
                attr_t<interaction, "lambda">, attr_t<interaction, "y">,
                attr_t<interaction, "ydot">>>);
 
+
+
 static_assert(
     std::is_same_v<
-        decltype(all_attributes(interaction{})),
+    decltype(flatten(all_attributes(interaction{}))),
         gather<attr_t<interaction, "relation">, attr_t<interaction, "nslaw">,
                attr_t<interaction, "h_matrix1">,
                attr_t<interaction, "h_matrix2">,

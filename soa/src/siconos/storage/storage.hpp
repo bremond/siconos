@@ -156,12 +156,12 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
   using data_t = D;
   using indice = typename info_t::env::indice;
   using attached_storages_t =
-      decltype(filter<hold<decltype([]<typename X>(X) {
-        return match::attached_storage<X, T>;
-      })>>(typename info_t::all_properties_t{}));
+      decltype(ground::filter(typename info_t::all_properties_t{},
+                              ground::is_a_model<[]<typename X>() {
+                                return match::attached_storage<X, T>;
+                              }>));
 
   data_t& _data;
-
 
   constexpr decltype(auto) index_cast()
   {
@@ -177,14 +177,16 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
   constexpr decltype(auto) property(A, indice step = 0)
   {
     using item_t = T;
-    constexpr auto tpl = filter<hold<decltype([]<typename X>(X) {
-      return (match::attached_storage<X, item_t> && (match::tag<X, A>));
-    })>>(typename info_t::all_properties_t{});
+    constexpr auto tpl = ground::filter(
+        typename info_t::all_properties_t{},
+        ground::is_a_model<[]<typename X>() {
+          return (match::attached_storage<X, item_t> && (match::tag<X, A>));
+        }>);
 
-    static_assert(std::tuple_size_v<decltype(tpl)> >= 1,
+    static_assert(ground::size(tpl) >= ground::size_c<1>,
                   "attached storage not found");
 
-    using attached_storage_t = std::decay_t<decltype(std::get<0>(tpl))>;
+    using attached_storage_t = std::decay_t<decltype(tpl[0_c])>;
     return memory(step, ground::get<attached_storage_t>(data()))[this->get()];
   }
 
@@ -227,7 +229,7 @@ static decltype(auto) make_half_handle(auto indx)
 template <typename T, std::size_t N>
 using memory_t = std::array<T, N>;
 
-template <match::attribute Attr, concepts::tuple_like keeps_t>
+template <match::attribute Attr, typename keeps_t>
 static constexpr std::size_t memory_size = []() {
   // rewrite this with a filter...
   // let rec loop(...) = ...
@@ -238,7 +240,7 @@ static constexpr std::size_t memory_size = []() {
     if constexpr (std::is_same_v<Attr, typename keep_t::type>) {
       return keep_t::size;
     }
-    else if constexpr (std::tuple_size_v<Tpl> > 1) {
+    else if constexpr (ground::size(Tpl{}) > ground::size_c<1>) {
       return loop(loop, cdr(Tpl{}));
     }
     else {
@@ -247,7 +249,7 @@ static constexpr std::size_t memory_size = []() {
     }
   };
 
-  if constexpr (std::tuple_size_v < keeps_t >> 0) {
+  if constexpr (ground::size(keeps_t{}) > ground::size_c<0>) {
     return rec_loop(rec_loop, keeps_t{});
   }
   else {
@@ -290,10 +292,11 @@ static constexpr auto item_properties_from()
                         }>);
 };
 
-template <match::item Item>
-static constexpr auto item_properties(auto& data)
+template <match::item Item, typename Data>
+static constexpr auto item_properties(Data&& data)
 {
-  using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+  using info_t =
+      std::decay_t<decltype(ground::get<info>(static_cast<Data&&>(data)))>;
   using all_properties_t = typename info_t::all_properties_t;
 
   return item_properties_from<Item, all_properties_t>();
@@ -342,10 +345,11 @@ using has_property_t = std::decay_t<decltype(has_property<A, K>(D{}))>;
 static auto refine_attribute = []<match::attribute Attr, typename D>(
                                    const D& data,
                                    Attr) constexpr -> decltype(auto) {
-  using refines = decltype(filter<hold<decltype([]<match::property P>(P) {
-    return std::derived_from<Attr, typename P::type>;
-  })>>(all_properties_as<property::refine>(data)));
-  if constexpr (std::tuple_size_v < refines >> 0) {
+  using refines =
+      decltype(ground::filter(all_properties_as<property::refine>(data),
+                              ground::is_inside_type_parent<Attr>));
+
+  if constexpr (ground::size(refines{}) > ground::size_c<0_c>) {
     return typename nth_t<0, refines>::template refine<Attr>{};
   }
   else {
@@ -406,9 +410,9 @@ struct item_storage {
   struct iinfo {
     using env = Env;
     using items = gather<Items...>;
-    using all_items_t = decltype(ground::std_tuple(ground::fold_left(
+    using all_items_t = decltype(ground::fold_left(
         // take last defined items
-        ground::reverse(flatten(append(all_items(Items{})...))),
+        ground::reverse(ground::concat_all(all_items(Items{})...)),
         ground::make_tuple(),
         []<typename Acc, typename Elem>(Acc acc, Elem elem) {
           if constexpr (ground::contains(acc, elem)) {
@@ -417,27 +421,28 @@ struct item_storage {
           else {
             return ground::append(acc, elem);
           };
-        })));
-    using all_attributes_t =
-        decltype(flatten(append(all_attributes(Items{})...)));
-    using all_properties_t =
-        decltype(flatten(append(all_properties(Items{})...)));
+        }));
+    using all_attributes_t = decltype(ground::flatten(
+        ground::concat_all(all_attributes(Items{})...)));
+    using all_properties_t = decltype(ground::flatten(
+        ground::concat_all(all_properties(Items{})...)));
 
     // subset of all_properties_t
-    using all_attached_storages_t =
-        decltype(filter<hold<decltype([]<typename T>(T) {
-          return std::derived_from<T, some::attached_storage>;
-        })>>(all_properties_t{}));
+    using all_attached_storages_t = decltype(ground::filter(
+        all_properties_t{}, ground::derive_from<some::attached_storage>));
   };
 
+  constexpr static auto a =
+      ground::concat(typename iinfo::all_attributes_t{},
+                     typename iinfo::all_attached_storages_t{});
   // base map with declared attributes
-  using map_t = decltype(std::apply(
+  using map_t = decltype(ground::unpack(
+      ground::concat(typename iinfo::all_attributes_t{},
+                     typename iinfo::all_attached_storages_t{}),
       []<typename... Attributes>(Attributes...) {
         return
             typename unit_storage<typename iinfo::env, Attributes...>::type{};
-      },
-      flatten(append(typename iinfo::all_attributes_t{},
-                     typename iinfo::all_attached_storages_t{}))));
+      }));
 
   // final map with info added
   using type = with_info_t<iinfo, map_t>;
@@ -447,11 +452,11 @@ static auto attached_storages =
     []<typename Handle>(Handle h, auto& data) constexpr -> decltype(auto) {
   using info_t = std::decay_t<decltype(ground::get<info>(data))>;
   using item_t = typename Handle::type;
-  using attached_storages_t =
-      decltype(filter<hold<decltype([]<typename T>(T) {
-        return match::attached_storage<T, item_t>;
-      })>>(typename info_t::all_properties_t{}));
-  return attached_storages_t{};
+
+  return ground::filter(typename info_t::all_properties_t{},
+                        ground::is_a_model<[]<typename T>() {
+                          return match::attached_storage<T, item_t>;
+                        }>);
 };
 
 template <typename Handle, typename Data>
@@ -495,22 +500,23 @@ static auto get = ground::overload(
     }  // ,
        // // get<Attached_storage>(data, step, h)
        // []<match::handle_attached_storage<A> Handle, typename Data>(
-    //     Data& data, auto step, Handle& handle) constexpr -> decltype(auto)
-    //     {
-    //   using item_t = typename Handle::type;
-    //   using info_t = std::decay_t<decltype(ground::get<info>(data))>;
-    //   constexpr auto tpl = ground::filter(
-    //       typename info_t::all_properties_t{},
-    //       ground::is_a_model<[]<typename T>() consteval {
-    //         return (match::attached_storage<T, item_t> && match::tag<T,
-    //         A>);
-    //       }>);
+       //     Data& data, auto step, Handle& handle) constexpr ->
+       //     decltype(auto)
+       //     {
+       //   using item_t = typename Handle::type;
+       //   using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+       //   constexpr auto tpl = ground::filter(
+       //       typename info_t::all_properties_t{},
+       //       ground::is_a_model<[]<typename T>() consteval {
+       //         return (match::attached_storage<T, item_t> &&
+       //         match::tag<T, A>);
+       //       }>);
 
     //   //      static_assert (std::tuple_size_v<decltype(tpl)> >= 1,
     //   "attached
     //   //      storage not found");
-    //   using attached_storage_t = std::decay_t<decltype(std::get<0>(tpl))>;
-    //   return memory(step,
+    //   using attached_storage_t =
+    //   std::decay_t<decltype(std::get<0>(tpl))>; return memory(step,
     //                 ground::get<attached_storage_t>(data))[handle.get()];
     // },
     // // get<Attached_storage>(data,h)
@@ -522,19 +528,21 @@ static auto get = ground::overload(
     //   constexpr auto tpl = ground::filter(
     //       typename info_t::all_properties_t{},
     //       ground::is_a_model<[]<typename T>() consteval {
-    //         return (match::attached_storage<T, item_t> && match::tag<T,
-    //         A>);
+    //         return (match::attached_storage<T, item_t> &&
+    //         match::tag<T, A>);
     //       }>);
-    //   //      constexpr auto tpl = filter<hold<decltype([]<typename T>(T) {
-    //   //        return (match::attached_storage<T, item_t> && match::tag<T,
+    //   //      constexpr auto tpl = filter<hold<decltype([]<typename
+    //   T>(T) {
+    //   //        return (match::attached_storage<T, item_t> &&
+    //   match::tag<T,
     //   //        A>);
     //   //      })>>(typename info_t::all_properties_t{});
 
     //   //      static_assert (std::tuple_size_v<decltype(tpl)> >= 1,
     //   "attached
     //   //      storage not found");
-    //   using attached_storage_t = std::decay_t<decltype(std::get<0>(tpl))>;
-    //   return memory(0,
+    //   using attached_storage_t =
+    //   std::decay_t<decltype(std::get<0>(tpl))>; return memory(0,
     //   ground::get<attached_storage_t>(data))[handle.get()];
     // }
 );
@@ -652,15 +660,14 @@ static auto add = [](auto&& data) constexpr -> decltype(auto) {
                        return match::attached_storage<T, Item>;
                      }>);
 
-  constexpr auto attrs =
-      flatten(append(attributes(Item{}), attached_storage));
+  constexpr auto attrs = concat(attributes(Item{}), attached_storage);
 
   using attrs_t = std::decay_t<decltype(attrs)>;
 
   // and what about using items = ... ?
 
   // attributes
-  if constexpr (std::tuple_size_v < attrs_t >> 0) {
+  if constexpr (ground::size(attrs_t{}) > ground::size_c<0>) {
     indice&& index = ground::fold_left(
         attrs, indice{0}, [&data]<match::attribute A>(indice k, A) {
           return ground::fold_left(
@@ -714,7 +721,8 @@ struct access {
 // ?
 // static auto for_each = [](auto m, auto&& fun) constexpr -> void {
 //  ground::for_each(
-//      m, ground::dup(ground::lockstep(fun)(ground::first, ground::second)));
+//      m, ground::dup(ground::lockstep(fun)(ground::first,
+//      ground::second)));
 //};
 
 template <string_literal S>
@@ -762,10 +770,10 @@ static auto prop_memory = [](auto& data) constexpr -> decltype(auto) {
   //      symbol<S>>));
   //    })>>(typename info_t::all_properties_t{});
 
-  static_assert(std::tuple_size_v<decltype(tpl)> >= 1,
+  static_assert(ground::size(tpl) >= ground::size_c<1_c>,
                 "attached storage not found");
 
-  using attached_storage_t = std::decay_t<decltype(std::get<0>(tpl))>;
+  using attached_storage_t = std::decay_t<decltype(tpl[0_c])>;
   return ground::get<attached_storage_t>(data);
 };
 
@@ -836,8 +844,8 @@ static auto constexpr attached_storage_name(Astor astor)
   }
 }
 
-/*siconos::storage::ground::dump_keys(data, [](auto&& s) { std::cout << s<<
- * std::endl;});*/
+/*siconos::storage::ground::dump_keys(data, [](auto&& s) { std::cout <<
+ * s<< std::endl;});*/
 
 using pattern::attr_t;
 using pattern::wrap;

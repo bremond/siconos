@@ -31,6 +31,8 @@
 
 #include <string_view>
 
+using namespace boost::hana::literals;
+
 namespace siconos::storage::ground {
 
 template <typename Y>
@@ -72,22 +74,30 @@ using hana::take_while;
 template <typename T>
 using inner_type = typename std::remove_reference<T>::type;
 
+using hana::append;
 using hana::eval;
+using hana::flatten;
+using hana::integral_constant;
 using hana::is_valid;
 using hana::make_lazy;
+using hana::size;
+using hana::size_c;
 using hana::tuple;
 using hana::unpack;
 static constexpr auto typeid_ = hana::typeid_;
 
 template <template <typename... Ts> typename F>
 static constexpr auto trait = hana::trait<F>;
-static constexpr auto compose = hana::compose;
+
+using hana::compose;
 
 static constexpr auto lockstep = hana::lockstep;
 
 static constexpr auto any_of = hana::any_of;
 
 static constexpr auto make_tuple = hana::make_tuple;
+
+using hana::range_c;
 
 template <std::size_t N>
 static constexpr auto range = hana::range_c<std::size_t, 0, N>;
@@ -127,9 +137,7 @@ using hana::apply;
 
 using hana::find_if;
 
-using hana::filter;
-
-static auto for_each = hana::for_each;
+using hana::for_each;
 
 static auto insert = hana::insert;
 
@@ -146,9 +154,23 @@ static auto reverse = hana::reverse;
 static auto scan_left = hana::scan_left;
 
 using hana::contains;
-static auto append = hana::append;
+using hana::drop_front;
 static auto prepend = hana::prepend;
 static auto concat = hana::concat;
+
+template <typename... Args>
+auto constexpr concat_all(Args... args)
+{
+  return hana::fold_left(hana::make_tuple(args...), hana::make_tuple(),
+                         hana::concat);
+}
+
+static_assert(concat(make_tuple(1, 2, 3), make_tuple(4, 5, 6)) ==
+              make_tuple(1, 2, 3, 4, 5, 6));
+static_assert(concat_all(make_tuple(1), make_tuple(2), make_tuple(3, 4, 5)) ==
+              make_tuple(1, 2, 3, 4, 5));
+
+using hana::zip;
 
 // f(T{}, ...) -> f<T>(...)
 template <typename T>
@@ -160,8 +182,7 @@ using key_value =
 
 // using hana::pair;
 
-template <typename T>
-static auto type_c = hana::type_c<T>;
+using hana::type_c;
 
 static auto make_key_value =
     []<typename First, typename Second>(
@@ -186,9 +207,29 @@ static auto get = []<has_key<T> D>(D &&data) constexpr -> decltype(auto) {
 
 static auto transform = hana::transform;
 
+static auto make_type_c = []<typename T>(T) constexpr { return type_c<T>; };
+
+static constexpr auto all_type_c(auto tpl)
+{
+  return transform(tpl, make_type_c);
+};
+
+static constexpr auto all_inside_types(auto tpl)
+{
+  return transform(tpl, []<typename T>(T) { return typename T::type{}; });
+}
+
+using hana::filter;
+
+static auto filter_t = []<typename Xs, typename Pred>(Xs &&xs, Pred &&pred) {
+  return transform(hana::filter(all_type_c(static_cast<Xs &&>(xs)),
+                                static_cast<Pred &&>(pred)),
+                   []<typename Tc>(Tc) { return typename Tc::type{}; });
+};
+
 // map -> tuple -> tranform -> map
 static auto map_transform = hana::demux(hana::to<hana::map_tag>)(
-    hana::compose(transform, hana::to<hana::tuple_tag>));
+    compose(transform, hana::to<hana::tuple_tag>));
 
 // dup(f)(x) = f(x, x)
 static auto dup = []<typename F>(F &&f) constexpr -> decltype(auto) {
@@ -290,6 +331,20 @@ static constexpr auto derive_from = is_a_model < []<typename T>() consteval
 }
 > ;
 
+template <typename B>
+static constexpr auto is_parent = is_a_model < []<typename T>() consteval
+{
+  return std::derived_from<B, T>;
+}
+> ;
+
+template <typename B>
+static constexpr auto is_inside_type_parent = is_a_model < []<typename T>() consteval
+{
+  return std::derived_from<B, typename T::type>;
+}
+> ;
+
 template <typename D>
 static constexpr auto dump_keys(D, auto &&fun)
 {
@@ -336,5 +391,4 @@ auto std_tuple(const hana::tuple<Ts...> &htpl)
     return std::make_tuple(Elems{}...);
   });
 }
-
 }  // namespace siconos::storage::ground
