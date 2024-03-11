@@ -2,7 +2,6 @@
 requires = ["scikit-build-core>=0.3.3", "pybind11"]
 build-backend = "scikit_build_core.build"
 
-
 [project]
 packages = ["nonos"]
 name = "nonos"
@@ -29,12 +28,19 @@ test = ["pytest"]
 
 
 [tool.scikit-build]
+install.strip = false
 cmake.verbose = true
 logging.level = "INFO"
 
 cmake.targets=["_nonos"]
+cmake.build-type = "Debug"
 wheel.expand-macos-universal-tags = true
-wheel.packages = ["src/siconos/pybind/nonos"]
+wheel.packages = ["src/siconos/py/nonos"]
+
+[tool.scikit-build.cmake.define]
+CMAKE_JOB_POOL_COMPILE="compile"
+CMAKE_JOB_POOL_LINK="link"
+CMAKE_JOB_POOLS="compile=2;link=2"
 
 [tool.pytest.ini_options]
 minversion = "6.0"
@@ -90,7 +96,7 @@ isort.required-imports = ["from __future__ import annotations"]
 "tests/**" = ["T20"]
 
 [tool.setuptools.packages.find]
-where = ["src/siconos/pybind"]  # list of folders that contain the packages (["."] by default)
+where = ["src/siconos/py"]  # list of folders that contain the packages (["."] by default)
 include = ["nonos"]  # package names should match these glob patterns (["*"] by default)
 #exclude = ["my_package.tests*"]  # exclude packages matching these glob patterns (empty by default)
 namespaces = false  # to disable scanning PEP 420 namespaces (true by default)

@@ -16,6 +16,7 @@ find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 find_package(pybind11 CONFIG REQUIRED)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
+include_directories(${CMAKE_SOURCE_DIR}/src/CompactNSearch)
 link_directories(${CMAKE_BUILD_DIR})
 
 set(flags "-Wall --std=c++20")
@@ -26,7 +27,7 @@ if(fconcepts_diagnostics)
   set(flags "${flags} -fconcepts-diagnostics-depth=1")
 endif()
 if(ftemplate_backtrace_limit)
-  set(flags "${flags} -ftemplate-backtrace-limit=2")
+  set(flags "${flags} -ftemplate-backtrace-limit=0")
 endif()
 
 # python_add_library(_nothing MODULE ./src/siconos/pybind/nothing.cpp WITH_SOABI)
@@ -36,12 +37,37 @@ endif()
 
 # install(TARGETS _nothing DESTINATION nothing)
 
-python_add_library(_nonos MODULE ./src/siconos/pybind/main.cpp WITH_SOABI)
+python_add_library(_nonos MODULE
+#  ./src/siconos/py/py_null.cpp
+  ./src/siconos/py/main_disks.cpp
+  ./src/siconos/py/py_attached_storages.cpp
+  ./src/siconos/py/py_attributes.cpp
+  ./src/siconos/py/py_add.cpp
+  ./src/siconos/py/py_methods.cpp
+  WITH_SOABI)
+
 set_target_properties(_nonos PROPERTIES COMPILE_FLAGS "${flags}")
-target_link_libraries(_nonos PRIVATE Eigen3::Eigen Siconos::numerics benchmark pthread fmt pybind11::headers)
+target_link_libraries(_nonos PRIVATE Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch pybind11::headers)
 target_compile_definitions(_nonos PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
 install(TARGETS _nonos DESTINATION nonos)
 
 add_subdirectory(src)
+
+# use, i.e. don't skip the full RPATH for the build tree
+set(CMAKE_SKIP_BUILD_RPATH FALSE)
+
+# when building, don't use the install RPATH already
+# (but later on when installing)
+set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+
+# add the automatically determined parts of the RPATH
+# which point to directories outside the build tree to the install RPATH
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+
+OPTION(BUILD_AS_SHARED_LIBS "Build all the libraries as shared" ON)
+add_subdirectory(extern/CompactNSearch)
 

@@ -7,30 +7,18 @@
 #include <lcp_cst.h>
 
 #include "SolverOptions.h"
-#include "siconos/simul/simul.hpp"
+#include "siconos/simul/simul_head.hpp"
 
 namespace siconos {
 
 namespace simul {
 
-template <typename Struct>
-struct data_holder : item<> {
-  using attributes =
-      gather<attribute<"instance", some::specific<pointer<Struct>>>>;
+struct solver_options : storage::data_holder<SolverOptions> {
+  using attributes = typename storage::data_holder<SolverOptions>::attributes;
 
   template <typename Handle>
-  struct interface : default_interface<Handle> {
-    using default_interface<Handle>::self;
-
-    decltype(auto) instance() { return attr<"instance">(*self()); };
-  };
-};
-
-struct solver_options : data_holder<SolverOptions> {
-  using attributes = typename data_holder<SolverOptions>::attributes;
-
-  template <typename Handle>
-  struct interface : data_holder<SolverOptions>::template interface<Handle> {
+  struct interface : storage::data_holder<SolverOptions>::template interface<
+                         Handle> {
     using default_interface<Handle>::self;
     void create(int solver_id = SICONOS_LCP_LEMKE)
     {
@@ -44,12 +32,13 @@ struct solver_options : data_holder<SolverOptions> {
 };
 
 template <typename Formulation>
-struct nonsmooth_problem : data_holder<Formulation> {
-  using attributes = typename data_holder<Formulation>::attributes;
+struct nonsmooth_problem : storage::data_holder<Formulation> {
+  using attributes = typename storage::data_holder<Formulation>::attributes;
 
   using formulation_t = Formulation;
   template <typename Handle>
-  struct interface : data_holder<Formulation>::template interface<Handle> {
+  struct interface : storage::data_holder<Formulation>::template interface<
+                         Handle> {
     using default_interface<Handle>::self;
 
     void create(int solver_id = SICONOS_LCP_LEMKE)
@@ -75,13 +64,11 @@ struct one_step_nonsmooth_problem : item<> {
 
     decltype(auto) options()
     {
-      return storage::handle(self()->data(),
-                             attr<"options">(*self()));
+      return storage::handle(self()->data(), attr<"options">(*self()));
     };
     decltype(auto) problem()
     {
-      return storage::handle(self()->data(),
-                             attr<"problem">(*self()));
+      return storage::handle(self()->data(), attr<"problem">(*self()));
     };
     decltype(auto) level() { return attr<"level">(*self()); };
 

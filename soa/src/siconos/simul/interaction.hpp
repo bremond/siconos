@@ -1,6 +1,6 @@
 #pragma once
 
-#include "siconos/simul/simul.hpp"
+#include "siconos/simul/simul_head.hpp"
 
 namespace siconos::simul {
 

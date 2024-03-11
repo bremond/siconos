@@ -153,8 +153,18 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
        shell --container -N --emulate-fhs --expose=${src_dir} siconos benchmark clang-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
-       make VERBOSE=1
+       make VERBOSE=1 -j2
 #+end_src
+
+#+name: mybenchmarks-make-disks-release-clang
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-release
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --container -N --emulate-fhs --expose=${src_dir} siconos benchmark clang-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
+       make VERBOSE=1 disks && { cd src/siconos/tests ; ./disks ; }
+#+end_src
+
 
 #+name: mybenchmarks-make-release-clang-explore
 #+begin_src elisp
@@ -240,7 +250,7 @@ resultfile every ::2 u 1:3 t "Ball velocity" w l,\
 #+header: :dir build-clang-debug
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
-       environment siconos --pure --ad-hoc siconos benchmark clang-toolchain eigen boost fmt range-v3 cmake make dash -- \
+       shell --container -N --emulate-fhs --expose=${src_dir} siconos benchmark clang-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
        dash -c "cmake ${src_dir} -DGUIX_ENVIRONMENT=\${GUIX_ENVIRONMENT} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=1" 
 #+end_src
 
@@ -249,9 +259,20 @@ resultfile every ::2 u 1:3 t "Ball velocity" w l,\
 #+header: :dir build-clang-debug
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
-       environment siconos --pure --ad-hoc siconos benchmark clang-toolchain eigen boost fmt range-v3 cmake make dash -- \
+       environment siconos --pure --ad-hoc siconos benchmark clang-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
        make VERBOSE=1
 #+end_src
+
+#+name: mybenchmarks-make-disks-debug-clang
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --container -N --emulate-fhs --expose=${src_dir} siconos benchmark clang-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
+       make VERBOSE=1 disks && { cd src/siconos/tests ; ./disks ; }
+#+end_src
+
+
 
 #+name: mybenchmarks-make-clang-debug-run-bouncing-ball
 #+header: :var src_dir=src-dir

@@ -116,7 +116,7 @@ int main(int argc, char* argv[])
 
   auto balls = storage::handles<config::ball>(data, 0);
 
-  auto first_ball = (balls | views::take(1)).front();
+  auto first_ball = (balls | view::take(1)).front();
   //    views::transform([&simulation, &radius, &relation_f, &nslaw](auto
   //    first_ball)
   //    {
@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
   interaction.nslaw() = nslaw;
   //    });
 
-  for (auto [ball1, ball2] : views::zip(balls, balls | views::drop(1))) {
+  for (auto [ball1, ball2] : view::zip(balls, balls | view::drop(1))) {
     print("new interaction ball<->ball : {} {}\n", ball1.get(), ball2.get());
     auto interaction = simulation.topology().link(ball1, ball2);
     //    interaction.h_matrix1() << -1., 0., 0., 0., 1., -radius;
@@ -143,8 +143,8 @@ int main(int argc, char* argv[])
 
   //  auto fd = io::open<ascii>("result.dat");
   balls = storage::handles<config::ball>(data, 0);
-  auto ball1 = (balls | views::take(1)).front();
-  auto ball2 = (balls | views::take(2)).back();
+  auto ball1 = (balls | view::take(1)).front();
+  auto ball2 = (balls | view::take(2)).back();
 
   print("ball1:{}, ball2:{} ball1.q()={}, ball2.q()={}\n", ball1.get(),
         ball2.get(), ball1.q(), ball2.q());

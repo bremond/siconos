@@ -78,6 +78,9 @@ static auto cons = []<typename A, typename... As>(
   return std::tuple<A, As...>{};
 };
 
+template <typename T, typename Tpl>
+using cons_x = decltype(cons(T{}, Tpl{}));
+
 static_assert(std::is_same_v<decltype(cons(int{}, gather<float, char>{})),
                              gather<int, float, char>>);
 

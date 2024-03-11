@@ -1,6 +1,6 @@
 #pragma once
 
-#include "siconos/simul/simul.hpp"
+#include "siconos/simul/simul_head.hpp"
 #include "siconos/utils/print.hpp"
 #include "siconos/utils/range.hpp"
 
@@ -32,6 +32,12 @@ struct topology : item<> {
       storage::attached<dynamical_system, symbol<"p0">,
                         some::array<some::vector<some::scalar, dof>,
                                     std::integral_constant<int, 2>>>,
+      storage::attached<interaction, symbol<"ds1d">,
+                        some::vdescriptor<typename get_attr_t<
+                            attributes, "dynamical_system_graphs">::type>>,
+      storage::attached<interaction, symbol<"ds2d">,
+                        some::vdescriptor<typename get_attr_t<
+                            attributes, "dynamical_system_graphs">::type>>,
       storage::attached<interaction, symbol<"nds">, some::indice>,
       storage::attached<interaction, symbol<"ds1">,
                         some::item_ref<dynamical_system>>,
@@ -100,12 +106,13 @@ struct topology : item<> {
 
       auto &dsg0 = self()->dynamical_system_graphs()[0];
       auto &ig0 = self()->interaction_graphs()[0];
-      ;
 
       auto inter = storage::add<interaction>(data);
       auto dsgv1 = dsg0.add_vertex(ds1);
       auto dsgv2 = dsg0.add_vertex(ds2);
       auto [dsg0_ed, ig0_vd] = dsg0.add_edge(dsgv1, dsgv2, inter, ig0);
+      // dsg0_ed may be invalidated on edge removal so it is useless to store
+      // it
 
       ds1.property(symbol<"vd">{}) = dsgv1;
       ds2.property(symbol<"vd">{}) = dsgv2;
@@ -115,21 +122,8 @@ struct topology : item<> {
       inter.property(symbol<"ds1">{}) = ds1;
       inter.property(symbol<"ds2">{}) = ds2;
 
-      //      dsg0.update_vertices_indices();
-      //      dsg0.update_edges_indices();
-
-      //      ig0.update_vertices_indices();
-      //      ig0.update_edges_indices();
-
-      /*      print("dsg0:\n:");
-            print("=========\n");
-            dsg0.display();
-            print("=========\n");
-
-            print("ig0:\n");
-            print("=========\n");
-            ig0.display();
-            print("=========\n");*/
+      inter.property(symbol<"ds1d">{}) = dsgv1;
+      inter.property(symbol<"ds2d">{}) = dsgv2;
 
       return inter;
     };

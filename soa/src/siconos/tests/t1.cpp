@@ -13,8 +13,10 @@ using namespace siconos;
 
 using env = standard_environment<config::params>;
 
+#include "siconos/collision/point.hpp"
+#include "siconos/collision/shape/disk.hpp"
+#include "siconos/collision/space_filter.hpp"
 #include "siconos/model/lagrangian_r.hpp"
-#include "siconos/model/model.hpp"
 #include "siconos/storage/ground/ground.hpp"
 #include "siconos/storage/some/some.hpp"
 #include "siconos/storage/traits/traits.hpp"
@@ -96,19 +98,20 @@ static_assert(
 static_assert(
     std::is_same_v<
         std::decay_t<
-            decltype(storage::add<collision::disk_shape>(
+            decltype(storage::add<collision::shape::disk>(
                          storage::make<
-                             standard_environment<int>, collision::disk_shape,
+                             standard_environment<int>,
+                             collision::shape::disk,
                              storage::with_properties<storage::bind<
-                                 collision::disk_shape, "disk_shape">>>())
+                                 collision::shape::disk, "disk_shape">>>())
                          .radius())>,
         typename standard_environment<int>::scalar>);
 
-static_assert(storage::has_property<collision::disk_shape,
-                                    storage::property::bind>(
-    storage::make<standard_environment<int>, collision::disk_shape,
-                  storage::with_properties<
-                      storage::bind<collision::disk_shape, "disk_shape">>>()));
+static_assert(
+    storage::has_property<collision::shape::disk, storage::property::bind>(
+        storage::make<standard_environment<int>, collision::shape::disk,
+                      storage::with_properties<storage::bind<
+                          collision::shape::disk, "disk_shape">>>()));
 
 }  // namespace siconos
 
@@ -123,9 +126,10 @@ using interaction = simul::interaction<nslaw, relation>;
 using osi = simul::one_step_integrator<ball, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
 using topo = simul::topology<ball, interaction>;
+using disk = collision::shape::disk;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
-using inter_manager = simul::interaction_manager<nslaw>;
-using disk_shape = collision::disk_shape;
+
+using disk_shape = collision::shape::disk;
 
 // static_assert(
 //   storage::attr<"nslaws">(
@@ -136,18 +140,19 @@ using disk_shape = collision::disk_shape;
 //         .insert_nonsmooth_law(
 //             storage::add<nslaw>(
 //                 storage::make <
-//                 standard_environment<config::map<config::iparam<"ncgroups", 1>>>,
-//                 inter_manager, nslaw>()),
+//                 standard_environment<config::map<config::iparam<"ncgroups",
+//                 1>>>, inter_manager, nslaw>()),
 //             0, 0))(0, 0) == storage::add<nslaw>(
 //                 storage::make <
-//                 standard_environment<config::map<config::iparam<"ncgroups", 1>>>,
-//                 inter_manager, nslaw>()));
+//                 standard_environment<config::map<config::iparam<"ncgroups",
+//                 1>>>, inter_manager, nslaw>()));
 
 static_assert(
     match::diagonal_matrix<
         decltype(storage::attr<"mass_matrix">(storage::add<ball>(
             storage::make<
-                standard_environment<config::map<config::iparam<"dof", 3>>>,
+                standard_environment<config::map<
+                    config::iparam<"dof", 3>, config::iparam<"ncgroups", 1>>>,
                 simulation, ball, relation, interaction,
                 storage::with_properties<
                     storage::diagonal<attr_t<ball, "mass_matrix">>>>())))>);

@@ -1,17 +1,18 @@
 #pragma once
 
+#include <array>
+#include <cstddef>  // std::size_t
+#include <tuple>
+#include <variant>
+#include <vector>
+#include <map>
+
 #include "siconos/algebra/eigen.hpp"
 #include "siconos/algebra/linear_algebra.hpp"
 #include "siconos/algebra/numerics.hpp"
 #include "siconos/storage/pattern/pattern.hpp"
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/SiconosGraph.hpp"  // modified for std::array
-
-#include <cstddef> // std::size_t
-#include <vector>
-#include <array>
-#include <tuple>
-#include <variant>
 
 namespace siconos {
 template <typename Params>
@@ -21,6 +22,9 @@ struct standard_environment {
   using boolean = bool;
   using scalar = double;
   using indice = std::size_t;
+
+  template <typename K, typename V>
+  using map = std::map<K, V>;
 
   template <typename V, typename E>
   using graph = SiconosGraph<V, E, boost::no_property, boost::no_property,
@@ -59,7 +63,7 @@ struct standard_environment {
   template <typename T>
   using item_ref = storage::index<T, indice>;
 
-  template <typename ...Ts>
+  template <typename... Ts>
   using variant = std::variant<Ts...>;
 
   template <typename T>

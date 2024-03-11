@@ -22,7 +22,14 @@ class SpaceFilter(Stored):
 
     def __init__(self, options):
         self._options = options
-        self._handle = vkernel.disks.add_interaction_manager(self.data())
+        self._initialized = False
+        self._ngbh = vkernel.disks.add_neighborhood(self.data())
+        self._ngbh.create(options.neighborhood_radius)
+        self._interman = vkernel.disks.add_interaction_manager(self.data())
+        self._handle = vkernel.disks.add_space_filter(self.data())
+        self._handle.set_neighborhood(self._ngbh)
+        self._handle.set_diskdisk_r(vkernel.disks.add_diskdisk_r(self.data()))
+        self._handle.set_nslaw(self._interman.get_nonsmooth_law(0,0)) # one nslaw!!
         
 
     def insertLine(self, a, b , c):
@@ -30,14 +37,25 @@ class SpaceFilter(Stored):
         line.set_a(a)
         line.set_b(b)
         line.set_c(c)
+        line.set_maxpoints(1000)
+        line.initialize()
 
     def insertDisk(self, radius):
-        disk = vkernel.disks.add_disk_shape(self.data())
-        disk.set_radius(radius)
+        disk_shape = vkernel.disks.add_disk_shape(self.data())
+        disk_shape.set_radius(radius)
         
     def insertNonSmoothLaw(self, nslaw, gid1, gid2):
-        self._handle.insert_nonsmooth_law(nslaw.handle(), gid1, gid2)
+        self._interman.insert_nonsmooth_law(nslaw.handle(), gid1, gid2)
 
+    def updateInteractions(self):
+        if not self._initialized:
+            self._handle.make_points()
+            self._ngbh.add_point_sets(0)
+            self._initialized = True
+            
+        self._ngbh.update(0)
+        self._ngbh.search()
+        self._handle.update_index_set0();
 
 class NewtonImpactFrictionNSL(Stored):
 
@@ -94,6 +112,7 @@ class TimeDiscretisation(Stored):
 class Simulation(Stored):
 
     def __init__(self, nsds, timedisc):
+        self._need_init = True
         self._nsds = nsds
         self._timedisc = timedisc
         self._timedisc.handle().set_tmax(self._nsds._T) # vkernel does not have nsds
@@ -106,7 +125,7 @@ class Simulation(Stored):
         pass # unimplemented
 
     def insertInteractionManager(self, interman):
-        pass # unimplemented
+        self._interman = interman
 
     def setNewtonOptions(self, nopts):
         pass # unimplemented
@@ -140,6 +159,7 @@ class Simulation(Stored):
         return self.handle().has_next_event()
 
     def computeOneStep(self):
+        self._interman.updateInteractions()
         return self.handle().compute_one_step()
 
     def clearNSDSChangeLog(self):
@@ -221,3 +241,7 @@ class MechanicsIO(Stored):
 
     def velocities(self, nsds):
         return self.handle().velocities(0)
+
+class SpaceFilterOptions():
+
+    neighborhood_radius = 1

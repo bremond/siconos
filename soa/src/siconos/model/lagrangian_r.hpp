@@ -4,7 +4,7 @@
 
 #include "siconos/algebra/algebra.hpp"
 #include "siconos/model/lagrangian_ds.hpp"
-#include "siconos/model/model.hpp"
+#include "siconos/model/model_head.hpp"
 namespace siconos::storage::pattern::match {
 template <typename T>
 concept linear_relation = match::handle<T, model::linear>;
@@ -40,39 +40,18 @@ struct lagrangian_r : item<>,
 
     decltype(auto) b() { return attr<"b">(*self()); }
 
-    decltype(auto) compute_jachq(auto step, auto& q1, auto& q2,
+    decltype(auto) compute_jachq(auto step, auto& ds1, auto& ds2,
                                  auto& h_matrix1, auto& h_matrix2)
     {
       h_matrix1 = h_matrix();
       h_matrix2 = -h_matrix();
     }
-    decltype(auto) compute_jachq(auto step, auto& q, auto& h_matrix1)
+    decltype(auto) compute_jachq(auto step, auto& ds, auto& h_matrix1)
     {
       h_matrix1 << -h_matrix();
     }
   };
 
 };
-
-
-
-
-namespace lagrangian {
-// free functions for all lagrangian relations
-
-template <typename Data, match::linear_relation HandleRel,
-          match::handle<lagrangian_ds> HandleDS>
-decltype(auto) compute_h(Data& data, HandleRel& relation, HandleDS& ds)
-{
-  return relation.h_matrix() * ds.q();
-}
-template <typename Data, match::item Relation>
-decltype(auto) compute_jachq(Data& data, Relation& relation)
-{
-  if constexpr (has_property_t<Relation, property::time_invariant, Data>{}) {
-    return relation.h_matrix();
-  }
-}
-}  // namespace lagrangian
 
 }  // namespace siconos::model

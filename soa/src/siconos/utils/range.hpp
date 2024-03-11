@@ -13,5 +13,5 @@
 #include <range/v3/view/transform.hpp>
 
 namespace siconos {
-namespace views = ranges::views;
+namespace view = ranges::views;
 }

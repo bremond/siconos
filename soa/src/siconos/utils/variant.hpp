@@ -1,3 +1,5 @@
+#pragma once
+
 #include <siconos/storage/storage.hpp>
 #include <tuple>
 #include <variant>

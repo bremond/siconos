@@ -1,9 +1,9 @@
 #pragma once
 
-#include "siconos/collision/collision.hpp"
+#include "siconos/collision/collision_head.hpp"
 
-namespace siconos::collision {
-struct disk_shape : item<> {
+namespace siconos::collision::shape {
+struct disk : item<> {
   using attributes = gather<attribute<"radius", some::scalar>>;
 
   template <typename Handle>

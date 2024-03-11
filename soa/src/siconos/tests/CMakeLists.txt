@@ -17,7 +17,7 @@ set_target_properties(disks PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-dia
 target_link_libraries(t1 Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
 target_link_libraries(bouncing_ball  Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
 target_link_libraries(bouncing_balls Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
-target_link_libraries(disks Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
+target_link_libraries(disks Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch)
 
 
 

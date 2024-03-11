@@ -53,9 +53,18 @@ struct indice_value : undefined_indice_value {
 };
 
 struct undefined_vdescriptor : attribute<> {};
+struct undefined_edescriptor : attribute<> {};
+
 template <typename T>
 struct vdescriptor : undefined_vdescriptor {
   using vdescriptor_t = void;
+  static constexpr bool descriptor = true;
+  using type = T;
+};
+
+template <typename T>
+struct edescriptor : undefined_edescriptor {
+  using edescriptor_t = void;
   static constexpr bool descriptor = true;
   using type = T;
 };
@@ -123,6 +132,10 @@ struct array : undefined_array, with_sizes<N>, with_type<Type> {};
 
 template <typename Type>
 struct unbounded_array : undefined_unbounded_array, with_type<Type> {};
+
+struct undefined_map : attribute<> {};
+template <typename Key, typename Value>
+struct map : undefined_map, with_types<Key, Value> {};
 
 struct undefined_graph : attribute<> {};
 

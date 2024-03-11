@@ -788,7 +788,7 @@ static auto prop_values =
 };
 
 template <match::item I>
-static auto handles = [](auto& data, auto step) constexpr -> decltype(auto) {
+static auto handles = [](auto& data, std::size_t step=0) constexpr -> decltype(auto) {
   using info_t = std::decay_t<decltype(ground::get<storage::info>(data))>;
   using env = typename info_t::env;
   using indice = typename env::indice;
@@ -797,7 +797,7 @@ static auto handles = [](auto& data, auto step) constexpr -> decltype(auto) {
   // need at least one attributes
   // empty items are not supposed to exist
   indice num = std::size(attr_values<nth_t<0, attributes_t>>(data, step));
-  return views::iota((indice)0, num) | views::transform([&data](indice i) {
+  return view::iota((indice)0, num) | view::transform([&data](indice i) {
            return handle<I, indice, std::decay_t<decltype(data)>>(
                data, index<I, indice>(i));
          });
@@ -838,6 +838,21 @@ static auto constexpr attached_storage_name(Astor astor)
 
 /*siconos::storage::ground::dump_keys(data, [](auto&& s) { std::cout << s<<
  * std::endl;});*/
+
+
+template <typename Struct>
+struct data_holder : item<> {
+  using attributes =
+      gather<attribute<"instance", some::specific<pointer<Struct>>>>;
+
+  template <typename Handle>
+  struct interface : default_interface<Handle> {
+    using default_interface<Handle>::self;
+
+    decltype(auto) instance() { return attr<"instance">(*self()); };
+  };
+};
+
 
 using pattern::attr_t;
 using pattern::wrap;

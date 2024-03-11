@@ -2479,6 +2479,7 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
             time_stepping=None,
             interaction_manager=None,
             bullet_options=None,
+            vnative_options=None,
             body_class=None,
             shape_class=None,
             face_class=None,
@@ -2539,6 +2540,9 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
         bullet_options: ?, optional
             set of options for the interaction manager
             (e.g. SiconosBulletOptions), default = None
+        vnative_options: ?, optional
+            set of options for the interaction manager (vectorized native),
+            default = None
         body_class: siconos.mechanics.RigidBodyDS and heirs, optional
             class used for body definition, default = RigidBodyDS
         shape_class: ?, optional
@@ -2675,6 +2679,7 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
             run_options['time_stepping']=time_stepping
             run_options['interaction_manager']=interaction_manager
             run_options['bullet_options']=bullet_options
+            run_options['vnative_options']=vnative_options
             run_options['body_class']=body_class
             run_options['shape_class']=shape_class
             run_options['face_class']=face_class
@@ -2795,6 +2800,7 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
         # SiconosBulletOptions if one is provided.
         multipoints_iterations =run_options.get('multipoints_iterations')
         bullet_options = run_options.get('bullet_options')
+        vnative_options = run_options.get('vnative_options')
         if (multipoints_iterations is not None ) and (bullet_options is not None):
             msg = '[io.mechanics] run(): one cannot give multipoints_iterations and bullet_options simultaneously. \n'
             msg += '                             multipoints_iterations will be marked as obsolete. use preferably bullet_options\n'
@@ -2817,7 +2823,12 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
                 # this is a second place to set the default
                 self._dimension = 3
 
-        self._interman = interaction_manager(bullet_options)
+        if backend == 'vnative':
+            if vnative_options == None:
+                vnative_options = vbridge.SpaceFilterOptions()
+            self._interman = interaction_manager(vnative_options)
+        else:
+            self._interman = interaction_manager(bullet_options)
 
 
         joints = list(self.joints())

@@ -33,6 +33,7 @@ options = sk.solver_options_create(sn.SICONOS_FRICTION_2D_NSGS)
 options.iparam[sn.SICONOS_IPARAM_MAX_ITER] = 100000
 options.dparam[sn.SICONOS_DPARAM_TOL] = 1e-12
 
+
 with MechanicsHdf5Runner(mode='r+') as io:
 
         io.run(with_timer=False,

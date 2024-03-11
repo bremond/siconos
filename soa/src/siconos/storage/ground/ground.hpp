@@ -31,6 +31,9 @@
 
 #include <string_view>
 
+using namespace boost::hana::literals;
+
+
 namespace siconos::storage::ground {
 
 template <typename Y>
@@ -75,6 +78,10 @@ using inner_type = typename std::remove_reference<T>::type;
 using hana::eval;
 using hana::is_valid;
 using hana::make_lazy;
+using hana::size;
+using hana::size_c;
+using hana::flatten;
+using hana::append;
 using hana::tuple;
 using hana::unpack;
 static constexpr auto typeid_ = hana::typeid_;
@@ -88,6 +95,8 @@ static constexpr auto lockstep = hana::lockstep;
 static constexpr auto any_of = hana::any_of;
 
 static constexpr auto make_tuple = hana::make_tuple;
+
+using hana::range_c;
 
 template <std::size_t N>
 static constexpr auto range = hana::range_c<std::size_t, 0, N>;
@@ -129,7 +138,7 @@ using hana::find_if;
 
 using hana::filter;
 
-static auto for_each = hana::for_each;
+using hana::for_each;
 
 static auto insert = hana::insert;
 
@@ -146,9 +155,11 @@ static auto reverse = hana::reverse;
 static auto scan_left = hana::scan_left;
 
 using hana::contains;
-static auto append = hana::append;
-static auto prepend = hana::prepend;
+using hana::drop_front;
+  static auto prepend = hana::prepend;
 static auto concat = hana::concat;
+
+using hana::zip;
 
 // f(T{}, ...) -> f<T>(...)
 template <typename T>

@@ -36,7 +36,7 @@ struct io : item<> {
 
       attr<"pos">(*self()).clear();
 
-      for (auto [id, q] : views::zip(ids, qs)) {
+      for (auto [id, q] : view::zip(ids, qs)) {
         attr<"pos">(*self()).push_back({id, q[0], q[1], q[2]});
       }
 
@@ -59,7 +59,7 @@ struct io : item<> {
 
       attr<"vel">(*self()).clear();
 
-      for (auto [id, velo] : views::zip(ids, velos)) {
+      for (auto [id, velo] : view::zip(ids, velos)) {
         attr<"vel">(*self()).push_back({id, velo[0], velo[1], velo[2]});
       }
 

@@ -1,4 +1,5 @@
 
+#include "siconos/collision/space_filter.hpp"
 #include "siconos/siconos.hpp"
 #include "siconos/utils/print.hpp"
 
@@ -8,6 +9,7 @@ using disk = model::lagrangian_ds;
 using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
 using osnspb = simul::one_step_nonsmooth_problem<lcp>;
 using nslaw = model::newton_impact;
+using disk_shape = collision::shape::disk;
 using diskdisk_r = collision::diskdisk_r;
 using diskline_r = collision::diskline_r;
 using interaction = simul::interaction<nslaw, diskdisk_r, diskline_r>;
@@ -15,6 +17,10 @@ using osi = simul::one_step_integrator<disk, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
 using topo = simul::topology<disk, interaction>;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
+using pointd = collision::point<disk>;
+using pointl = collision::point<collision::shape::line>;
+using neighborhood = collision::neighborhood<pointd, pointl>;
+using space_filter = collision::space_filter<topo, neighborhood>;
 
 using params = map<iparam<"dof", 3>>;
 }  // namespace siconos::config
@@ -22,12 +28,21 @@ using params = map<iparam<"dof", 3>>;
 int main(int argc, char* argv[])
 {
   using namespace siconos;
+  using storage::pattern::wrap;
+  using namespace storage;
+
   auto data = storage::make<
-      standard_environment<config::params>, config::simulation, config::disk,
-      config::diskdisk_r, config::diskline_r, config::interaction,
+      standard_environment<config::params>, config::simulation,
+      wrap<some::unbounded_collection, config::disk>, config::disk_shape,
+      config::diskdisk_r,
+      wrap<some::unbounded_collection, config::diskline_r>,
+      wrap<some::unbounded_collection, config::pointl>,
+      wrap<some::unbounded_collection, config::pointd>,
+      wrap<some::unbounded_collection, config::interaction>,
+      config::space_filter,
       storage::with_properties<
           storage::attached<config::disk, storage::pattern::symbol<"shape">,
-                            storage::some::item_ref<collision::disk_shape>>,
+                            storage::some::item_ref<config::disk_shape>>,
           storage::time_invariant<storage::attr_t<config::disk, "fext">>,
           storage::diagonal<storage::attr_t<config::disk, "mass_matrix">>,
           storage::unbounded_diagonal<
@@ -71,11 +86,6 @@ int main(int argc, char* argv[])
   // -- The relation --
   // ------------------
 
-  // -- Lagrangian relation --
-  auto dd_r = storage::add<config::diskdisk_r>(data);
-  auto d1p_r = storage::add<config::diskline_r>(data);
-  auto d2p_r = storage::add<config::diskline_r>(data);
-
   // -- nslaw --
   double e = 0.9;
   auto nslaw = storage::add<config::nslaw>(data);
@@ -104,22 +114,28 @@ int main(int argc, char* argv[])
   so.create();
   osnspb.options() = so;
 
-  // Interaction disk-disk
-  auto inter_dd = simulation.topology().link(d1, d2);
+  auto ngbh = storage::add<config::neighborhood>(data);
 
-  // Interaction disk-plan
-  auto inter_d1p = simulation.topology().link(d1);
-  auto inter_d2p = simulation.topology().link(d2);
+  ngbh.create(2.);  // radius
 
-  inter_dd.relation() = dd_r;
-  inter_dd.nslaw() = nslaw;
+  auto diskdisk_r = storage::add<config::diskdisk_r>(data);
+  auto ground_r = storage::add<config::diskline_r>(data);
+  auto line = storage::handle(data, ground_r.line());
+  line.a() = 0.;
+  line.b() = 1.;
+  line.c() = 0.;
+  line.p0() = { 0., 0., 0.};
+  line.direction() = { 1., 0., 0.};
+  line.maxpoints() = 1000;
+  line.invsqrta2pb2() = 1.;
 
-  inter_d1p.relation() = d1p_r;
-  inter_d1p.nslaw() = nslaw;
-
-  inter_d2p.relation() = d2p_r;
-  inter_d2p.nslaw() = nslaw;
-
+  auto spacef = storage::add<config::space_filter>(data);
+  spacef.neighborhood() = ngbh;
+  spacef.diskdisk_r() = diskdisk_r;
+  spacef.nslaw() = nslaw;
+  spacef.disklines()[{0., 1., 0.}] = ground_r;
+  spacef.make_points();
+  ngbh.add_point_sets(0);
   // =========================== End of model definition
   // ===========================
   // ================================= Computation
@@ -139,6 +155,10 @@ int main(int argc, char* argv[])
             0.);
 
   while (simulation.has_next_event()) {
+    ngbh.update(0);
+    ngbh.search();
+    spacef.update_index_set0();
+
     auto ninvds = simulation.compute_one_step();
 
     double p0, lambda;

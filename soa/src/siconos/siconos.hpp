@@ -6,22 +6,22 @@
 #include <typeinfo>
 
 #include "siconos/algebra/numerics.hpp"
+#include "siconos/collision/diskdisk_r.hpp"
+#include "siconos/collision/diskline_r.hpp"
+#include "siconos/collision/shape/disk.hpp"
+#include "siconos/collision/shape/line.hpp"
 #include "siconos/config/config.hpp"
+#include "siconos/io/io.hpp"
 #include "siconos/model/lagrangian_ds.hpp"
 #include "siconos/model/lagrangian_r.hpp"
 #include "siconos/model/nslaws.hpp"
-#include "siconos/collision/disk_shape.hpp"
-#include "siconos/collision/line_shape.hpp"
-#include "siconos/collision/diskdisk_r.hpp"
-#include "siconos/collision/diskline_r.hpp"
 #include "siconos/simul/interaction.hpp"
+#include "siconos/simul/interaction_manager.hpp"
 #include "siconos/simul/one_step_integrator.hpp"
 #include "siconos/simul/one_step_nonsmooth_problem.hpp"
 #include "siconos/simul/time_discretization.hpp"
 #include "siconos/simul/time_stepping.hpp"
 #include "siconos/simul/topology.hpp"
-#include "siconos/simul/interaction_manager.hpp"
-#include "siconos/io/io.hpp"
 #include "siconos/storage/ground/ground.hpp"
 #include "siconos/storage/pattern/pattern.hpp"
 #include "siconos/storage/storage.hpp"
@@ -39,4 +39,5 @@ using siconos::storage::pattern::collect;
 using siconos::storage::pattern::method;
 
 using namespace boost::hana::literals;
+
 }  // namespace siconos

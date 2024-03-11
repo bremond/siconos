@@ -2,8 +2,6 @@
 
 #include "siconos/algebra/numerics.hpp"
 #include "siconos/model/lagrangian_r.hpp"
-#include "siconos/model/model.hpp"
-#include "siconos/simul/simul.hpp"
 #include "siconos/storage/ground/ground.hpp"
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/print.hpp"
@@ -150,7 +148,7 @@ struct one_step_integrator {
         auto &ndss = storage::prop_values<interaction, "nds">(data, step);
 
         // global h_matrix is not assembled at this stage
-        for (auto [y, ydot, hm1, hm2, ds1, ds2, nds] : views::zip(
+        for (auto [y, ydot, hm1, hm2, ds1, ds2, nds] : view::zip(
                  ys, ydots, h_matrices1, h_matrices2, ds1s, ds2s, ndss)) {
           y = hm1 * qs[ds1.get()];
           ydot = hm1 * velocities[ds1.get()];
@@ -220,7 +218,7 @@ struct one_step_integrator {
 
         // all ds -> not involved
         // without zip : involved is a copy not a ref!!
-        for (auto [involved] : views::zip(involveds)) {
+        for (auto [involved] : view::zip(involveds)) {
           involved = false;
         };
 
@@ -229,7 +227,7 @@ struct one_step_integrator {
         indice ds_counter = 0;
         indice inter_counter = 0;
         for (auto [y, ydot, activation, ids1, ids2, inter] :
-             views::zip(ys, ydots, activations, ids1s, ids2s, interactions)) {
+             view::zip(ys, ydots, activations, ids1s, ids2s, interactions)) {
           auto b = siconos::variant::visit(
               data, inter.relation(),
               ground::overload(
@@ -276,8 +274,8 @@ struct one_step_integrator {
 
         for (auto [i, hi] :
              (storage::handles<interaction>(data, step) |
-              views::filter([](auto h) { return prop<"activation">(h); })) |
-                 views::enumerate) {
+              view::filter([](auto h) { return prop<"activation">(h); })) |
+                 view::enumerate) {
           auto mat1 = hi.h_matrix1();
           auto mat2 = hi.h_matrix2();
           auto ids1 = prop<"ds1">(hi);
@@ -322,7 +320,7 @@ struct one_step_integrator {
 
         for (auto hds :
              storage::handles<system>(data, step) |
-                 views::filter([](auto h) { return prop<"involved">(h); })) {
+                 view::filter([](auto h) { return prop<"involved">(h); })) {
           auto i = prop<"index">(hds);
           set_value(mass_matrix_assembled(), i, i, hds.mass_matrix());
         }
@@ -345,7 +343,7 @@ struct one_step_integrator {
 
         auto k = 0;
         for (auto [i, inter] : storage::handles<interaction>(data, step + 1) |
-                                   views::enumerate) {
+                                   view::enumerate) {
           if (prop<"activation">(inter)) {
             set_value(q_nsp_vector_assembled(), k++, ydots[inter.get()]);
           };
@@ -396,7 +394,7 @@ struct one_step_integrator {
             storage::attr_values<attr_t<interaction, "nslaw">>(data, step);
 
         for (auto [ydot, ydot_next, inslaw] :
-             views::zip(ydots, ydots_next, inslaws)) {
+             view::zip(ydots, ydots_next, inslaws)) {
           ydot_next += storage::handle(data, inslaw).e() * ydot;
         }
       }
@@ -412,8 +410,8 @@ struct one_step_integrator {
         auto &indices = storage::prop_values<system, "index">(data, step);
 
         // involved ds velocities -> ds velocities
-        for (auto [i, iv] : views::zip(indices, all_vs) | views::enumerate |
-                                views::filter([&involved_ds](auto k__) {
+        for (auto [i, iv] : view::zip(indices, all_vs) | view::enumerate |
+                                view::filter([&involved_ds](auto k__) {
                                   auto [k, _] = k__;
                                   return involved_ds[k];
                                 })) {
@@ -433,7 +431,7 @@ struct one_step_integrator {
         auto &vs_next = storage::attr_values<velocity>(data, step + 1);
 
         for (auto [x, x_next, v, v_next] :
-             views::zip(xs, xs_next, vs, vs_next)) {
+             view::zip(xs, xs_next, vs, vs_next)) {
           x_next = x + h * (theta() * v + (1.0 - theta()) * v_next);
         }
       }
@@ -448,7 +446,7 @@ struct one_step_integrator {
         auto &mats = storage::memory(step, mass_matrices);
         auto &fs = storage::memory(step, external_forces);
 
-        for (auto [mat, f] : views::zip(mats, fs)) {
+        for (auto [mat, f] : view::zip(mats, fs)) {
           f = mat.inverse() * f;
         }
       }
@@ -467,7 +465,7 @@ struct one_step_integrator {
 
         // for all ds
         for (auto [v, v_next, minv_f, minv_f_next] :
-             views::zip(vs, vs_next, minv_fs, minv_fs_next)) {
+             view::zip(vs, vs_next, minv_fs, minv_fs_next)) {
           // note: theta useless if fext is constant
           v_next = v + h * theta_ * minv_f + h * (1 - theta_) * minv_f_next;
         }
@@ -491,36 +489,26 @@ struct one_step_integrator {
         auto &ds2s = storage::prop_values<interaction, "ds2">(data, step);
         auto &relations = storage::attr_values<relation>(data, step);
 
-        for (auto [rel, hm1, hm2, nds, ds1, ds2] : views::zip(
+        for (auto [rel, hm1, hm2, nds, ds1, ds2] : view::zip(
                  relations, h_matrices1, h_matrices2, ndss, ds1s, ds2s)) {
           // local binding not enough to be passed to lambda...
           auto &hhm1 = hm1;
           auto &hhm2 = hm2;
-          auto &q1 = storage::handle(data, ds1).q();
+          auto hds1 = storage::handle(data, ds1);
+          auto hds2 = storage::handle(data, ds2);
 
-          if (nds == 2) {
-            auto &q2 = storage::handle(data, ds2).q();
-
-            siconos::variant::visit(data, rel,
-                                    ground::overload(
-                                        [&step, &hhm1, &hhm2, &q1,
-                                         &q2](match::relation2 auto &rrel) {
-                                          rrel.compute_jachq(step, q1, q2,
-                                                             hhm1, hhm2);
-                                        },
-                                        [](auto) { assert(false); }));
-          }
-          else {
-            // nds == 1
-            siconos::variant::visit(
-                data, rel,
-                ground::overload(
-                    [&step, &hhm1, &q1](match::relation1 auto rrel) {
-                      rrel.compute_jachq(step, q1, hhm1);
-                    },
-                    [](auto rrel) { assert(false); }));
-          }
-        };
+          siconos::variant::visit(
+              data, rel,
+              ground::overload(
+                  [&step, &hhm1, &hhm2, &hds1,
+                   &hds2](match::relation2 auto &rrel) {
+                    rrel.compute_jachq(step, hds1, hds2, hhm1, hhm2);
+                  },
+                  [&step, &hhm1, &hds1](match::relation1 auto &rrel) {
+                    rrel.compute_jachq(step, hds1, hhm1);
+                  },
+                  [](auto rrel) { assert(false); }));
+        }
       }
 
       void update_h_matrices(auto step)

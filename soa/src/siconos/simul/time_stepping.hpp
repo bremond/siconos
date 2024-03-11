@@ -2,7 +2,7 @@
 
 #include "siconos/algebra/eigen.hpp"
 #include "siconos/model/nslaws.hpp"
-#include "siconos/simul/simul.hpp"
+#include "siconos/simul/simul_head.hpp"
 
 namespace siconos::simul {
 template <match::item... Items>
@@ -12,6 +12,7 @@ struct time_stepping : item<> {
   using one_step_integrator_t = types::nth_t<1, items>;
   using one_step_nonsmooth_problem_t = types::nth_t<2, items>;
   using topology_t = types::nth_t<3, items>;
+
 
   using formulation_t =
       typename one_step_nonsmooth_problem_t::problem_t::formulation_t;
@@ -34,6 +35,7 @@ struct time_stepping : item<> {
       return make_handle<one_step_nonsmooth_problem_t>(*self());
     }
     decltype(auto) topology() { return make_handle<topology_t>(*self()); }
+
     decltype(auto) current_step()
     {
       return (*self()).time_discretization().step();
@@ -98,7 +100,9 @@ struct time_stepping : item<> {
 
     template <typename Formulation>
     void solve_nonsmooth_problem(auto step, auto ninter)
-    {  // Mz=w+q
+    {  // for a LCP:
+       // M z = w + q
+       //  z _|_ w
       auto osi = self()->one_step_integrator();
 
       //      resize(osi.lambda_vector_assembled(), ninter);
