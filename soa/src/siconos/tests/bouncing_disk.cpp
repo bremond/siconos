@@ -1,14 +1,17 @@
+#include <siconos/numerics/Friction_cst.h>
 
 #include "siconos/collision/space_filter.hpp"
 #include "siconos/siconos.hpp"
 #include "siconos/utils/print.hpp"
 
+#include <bits/stdc++.h>
+
 namespace siconos::config {
 
 using disk = model::lagrangian_ds;
-using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
-using osnspb = simul::one_step_nonsmooth_problem<lcp>;
-using nslaw = model::newton_impact;
+using fc2d = simul::nonsmooth_problem<FrictionContactProblem>;
+using osnspb = simul::one_step_nonsmooth_problem<fc2d>;
+using nslaw = model::newton_impact_friction;
 using disk_shape = collision::shape::disk;
 using diskdisk_r = collision::diskdisk_r;
 using diskline_r = collision::diskline_r;
@@ -65,22 +68,22 @@ int main(int argc, char* argv[])
   // -- The dynamical_system --
   // --------------------------
   auto d1 = storage::add<config::disk>(data);
-  auto d2 = storage::add<config::disk>(data);
+//  auto d2 = storage::add<config::disk>(data);
 
-  d1.q() = {position_init, 0, 0};
-  d1.velocity() = {velocity_init, 0, 0};
+  d1.q() = {0, position_init, 0};
+  d1.velocity() = {0, velocity_init, 0};
   d1.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
 
-  d2.q() = {2 * position_init, 0.1, 0};
-  d2.velocity() = {velocity_init, 0, 0};
-  d2.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
+  // d2.q() = {2 * position_init, 0.1, 0};
+  // d2.velocity() = {velocity_init, 0, 0};
+  // d2.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
 
-  storage::handle(data, prop<"shape">(d1)).radius() = 1;
-  storage::handle(data, prop<"shape">(d2)).radius() = 2;
+  storage::handle(data, prop<"shape">(d1)).radius() = radius;
+//  storage::handle(data, prop<"shape">(d2)).radius() = 2;
 
   // -- Set external forces (weight) --
-  d1.fext() = {-m * g, 0., 0.};
-  d2.fext() = {-m * g, 0., 0.};
+  d1.fext() = {0., -m * g, 0.};
+//  d2.fext() = {-m * g, 0., 0.};
 
   // ------------------
   // -- The relation --
@@ -91,8 +94,10 @@ int main(int argc, char* argv[])
   auto nslaw = storage::add<config::nslaw>(data);
   nslaw.e() = e;
 
-  auto lcp = storage::add<config::lcp>(data);
-  lcp.create();
+  auto fc2d = storage::add<config::fc2d>(data);
+  fc2d.create();
+  fc2d.instance()->dimension = 2;
+//  fc2d.instance()->mu = 0.1;
 
   // ------------------
   // --- Simulation ---
@@ -107,11 +112,11 @@ int main(int argc, char* argv[])
   simulation.time_discretization().tmax() = tmax;
   // -- set the formulation for the one step nonsmooth problem --
   auto osnspb = simulation.one_step_nonsmooth_problem();
-  osnspb.problem() = lcp;
+  osnspb.problem() = fc2d;
 
   // -- set the options --
   auto so = storage::add<simul::solver_options>(data);
-  so.create();
+  so.create(SICONOS_FRICTION_2D_NSGS);
   osnspb.options() = so;
 
   auto ngbh = storage::add<config::neighborhood>(data);
@@ -124,10 +129,8 @@ int main(int argc, char* argv[])
   line.a() = 0.;
   line.b() = 1.;
   line.c() = 0.;
-  line.p0() = { 0., 0., 0.};
-  line.direction() = { 1., 0., 0.};
-  line.maxpoints() = 1000;
-  line.invsqrta2pb2() = 1.;
+  line.initialize();
+  line.maxpoints() = 10;
 
   auto spacef = storage::add<config::space_filter>(data);
   spacef.neighborhood() = ngbh;
@@ -146,13 +149,15 @@ int main(int argc, char* argv[])
   // fix this for constant fext
   simulation.initialize();
 
-  auto out = fmt::output_file("result.dat");
+//  auto out = fmt::output_file("result.dat");
+  std::ofstream cout("result.dat");
 
-  out.print("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
+  // https://stackoverflow.com/questions/72767354/how-to-flush-fmt-output-in-debug-mode
+  cout << fmt::format("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
             simulation.current_step() * simulation.time_step(),
-            storage::attr<"q">(d1, simulation.current_step())(0),
-            storage::attr<"velocity">(d1, simulation.current_step())(0), 0.,
-            0.);
+            storage::attr<"q">(d1, simulation.current_step())(1),
+            storage::attr<"velocity">(d1, simulation.current_step())(1), 0.,
+                          0.) << std::flush;
 
   while (simulation.has_next_event()) {
     ngbh.update(0);
@@ -173,11 +178,11 @@ int main(int argc, char* argv[])
       lambda = 0;
     }
 
-    out.print("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
+    cout << fmt::format("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
               simulation.current_step() * simulation.time_step(),
-              storage::attr<"q">(d1, simulation.current_step())(0),
-              storage::attr<"velocity">(d1, simulation.current_step())(0), p0,
-              lambda);
+              storage::attr<"q">(d1, simulation.current_step())(1),
+              storage::attr<"velocity">(d1, simulation.current_step())(1), p0,
+                            lambda) << std::flush;
   }
   //  io::close(fd);
 }

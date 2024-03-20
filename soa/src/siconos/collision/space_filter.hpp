@@ -54,18 +54,21 @@ struct neighborhood
       using indice = typename decltype(self()->env())::indice;
 
       indice i = 0;
-      ground::for_each(points_t{}, [&]<typename Point>(Point) {
+
+      auto& psid = storage::attr<"point_set_id">(*self());
+      auto& instance = self()->instance();
+      ground::for_each(points_t{}, [&data, &step, &i, &psid,
+                                    &instance]<typename Point>(Point) {
         auto coords = storage::attr_values<Point, "coord">(data, step);
-        storage::attr<"point_set_id">(*self())[i++] =
-            self()->instance()->add_point_set(coords.front().data(),
-                                              coords.size());
+        psid[i++] =
+            instance->add_point_set(coords.front().data(), coords.size());
       });
     }
 
     void update(auto step)
     {
       auto& data = self()->data();
-      ground::for_each(points_t{}, [&]<typename Point>(Point) {
+      ground::for_each(points_t{}, [&data, &step]<typename Point>(Point) {
         for (auto point : storage::handles<Point>(data, step)) {
           point.update();
         }
@@ -195,7 +198,7 @@ struct space_filter : item<> {
               auto& ps1 = ngbh.instance()->point_set(psid1);
               auto& ps2 = ngbh.instance()->point_set(psid2);
 
-              for (int i = 0; i < ps1.n_points(); ++i) {
+              for (size_t i = 0; i < ps1.n_points(); ++i) {
                 auto pid1 = i;
                 auto index_point1 = storage::index<p1_t, size_t>(pid1);
                 auto handle_point1 = storage::handle(data, index_point1);
@@ -273,6 +276,11 @@ struct space_filter : item<> {
                             // is it this line ?
                             auto inter =
                                 storage::handle(data, dsg0.bundle(*oei));
+
+                            auto vds =
+                                storage::prop_values<interaction, "vd">(data,
+                                                                        0);
+
                             if (siconos::variant::visit(
                                     data, inter.relation(),
                                     ground::overload(
@@ -303,6 +311,9 @@ struct space_filter : item<> {
                           else {  // not a self edge, nothing to do
                           }
                         }
+
+                        auto vds =
+                            storage::prop_values<interaction, "vd">(data, 0);
 
                         if (!found) {
                           // create the edge
@@ -338,7 +349,11 @@ struct space_filter : item<> {
       auto hh = storage::handles<interaction>(data);
       for (auto inter : hh) {
         auto& inter_vd = storage::prop<"vd">(inter);
-        if (index_set0.color(inter_vd) != env::white_color) {
+        if (!inter_vd) {
+          // fix: this case should not exist
+          storage::remove(data, inter);
+        }
+        else if (index_set0.color(inter_vd) != env::white_color) {
           // remove interaction
           auto& ds1d = storage::prop<"ds1d">(inter);
           //          auto& ds2d = storage::prop<"ds2d">(inter);
@@ -350,7 +365,7 @@ struct space_filter : item<> {
           bool done = false;
           for (auto [oei, oeiend] = dsg0.out_edges(ds1d);
                !done && (oei != oeiend); ++oei) {
-            if (dsg0.bundle(*oei) == inter) {
+            if (dsg0.bundle(*oei).get() == inter.get()) {
               // only one edge for an interaction
               dsg0.remove_edge(*oei);
               // iterator invalidated, we must escape

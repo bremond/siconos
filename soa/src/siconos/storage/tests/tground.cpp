@@ -50,4 +50,11 @@ static_assert(transform(make_tuple(1, 2, 3), [](auto x) { return x + 1; }) ==
 static_assert(filter(all_type_c(make_tuple(A{}, B{}, C{}, D{})),
                      ground::derive_from<A>) ==
               all_type_c(make_tuple(A{}, B{}, C{})));
+
+static_assert((make_tuple(make_tuple(type_c<A>, type_c<A>, type_c<B>,
+                                     type_c<C>)) |
+               unique) == make_tuple(type_c<A>, type_c<B>, type_c<C>));
+static_assert(to_set(all_type_c(tuple_unique(make_tuple(A{}, B{}, A{},
+                                                        C{})))) ==
+              to_set(all_type_c(make_tuple(A{}, B{}, C{}))));
 int main() {}

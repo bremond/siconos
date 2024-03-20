@@ -124,6 +124,26 @@ static_assert(
 //                          siconos::storage::some::indice_value<1>,
 //                          siconos::storage::some::indice_value<1>>>>>));
 
+// ground::filter(typename info_t::all_properties_t{},
+//                      ground::is_a_model<[]<typename T>() constexpr {
+//                        return match::attached_storage<T, Item>;
+//                      }>);
+
+static_assert(
+    std::is_same_v<
+        decltype(ground::filter(
+            typename std::decay_t<decltype(ground::get<storage::info>(
+                storage::make<standard_environment<int>, item0,
+                              storage::with_properties<storage::attached<
+                                  item0, symbol<"zz">, some::scalar>>>()))>::
+                all_properties_t{},
+            ground::is_a_model<[]<typename T>() constexpr {
+              return match::attached_storage<T, item0>;
+            }>)),
+        ground::tuple<siconos::storage::attached<
+            siconos::item0, siconos::storage::pattern::symbol<"zz">,
+            siconos::storage::some::scalar>>>);
+
 static_assert(match::diagonal_matrix<
               decltype(storage::attr<"attr0">(storage::add<item0>(
                   storage::make<standard_environment<int>, item0,
@@ -190,16 +210,17 @@ using disk_shape = collision::shape::disk;
 //   storage::attr<"nslaws">(
 //     storage::add<inter_manager>(
 //         storage::make <
-//         standard_environment<config::map<config::iparam<"ncgroups", 1>>>,
+//         standard_environment<config::map<config::iparam<"ncgroups",
+// 1>>>,
 //         inter_manager, nslaw>())
 //         .insert_nonsmooth_law(
 //             storage::add<nslaw>(
 //                 storage::make <
-//                 standard_environment<config::map<config::iparam<"ncgroups",
+// standard_environment<config::map<config::iparam<"ncgroups",
 //                 1>>>, inter_manager, nslaw>()),
 //             0, 0))(0, 0) == storage::add<nslaw>(
 //                 storage::make <
-//                 standard_environment<config::map<config::iparam<"ncgroups",
+// standard_environment<config::map<config::iparam<"ncgroups",
 //                 1>>>, inter_manager, nslaw>()));
 
 static_assert(
@@ -324,11 +345,9 @@ static_assert(
                attr_t<interaction, "lambda">, attr_t<interaction, "y">,
                attr_t<interaction, "ydot">>>);
 
-
-
 static_assert(
     std::is_same_v<
-    decltype(flatten(all_attributes(interaction{}))),
+        decltype(flatten(all_attributes(interaction{}))),
         gather<attr_t<interaction, "relation">, attr_t<interaction, "nslaw">,
                attr_t<interaction, "h_matrix1">,
                attr_t<interaction, "h_matrix2">,
@@ -336,6 +355,52 @@ static_assert(
                attr_t<interaction, "ydot">, attr_t<nslaw, "e">,
                attr_t<relation, "b">, attr_t<relation, "h_matrix">>>);
 
-//}
+//}  // namespace siconos
+
+namespace siconos::config {
+
+using disk = model::lagrangian_ds;
+using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
+using osnspb = simul::one_step_nonsmooth_problem<lcp>;
+using nslaw = model::newton_impact;
+using disk_shape = collision::shape::disk;
+using diskdisk_r = collision::diskdisk_r;
+using diskline_r = collision::diskline_r;
+using interaction = simul::interaction<nslaw, diskdisk_r, diskline_r>;
+using osi = simul::one_step_integrator<disk, interaction>::moreau_jean;
+using td = simul::time_discretization<>;
+using topo = simul::topology<disk, interaction>;
+using simulation = simul::time_stepping<td, osi, osnspb, topo>;
+using pointd = collision::point<disk>;
+using pointl = collision::point<collision::shape::line>;
+using neighborhood = collision::neighborhood<pointd, pointl>;
+using space_filter = collision::space_filter<topo, neighborhood>;
+
+using params = map<iparam<"dof", 3>>;
+}  // namespace siconos::config
+
+
+// static_assert(
+//     typename std::decay_t<decltype(ground::get<storage::info>(
+//         storage::make<
+//             standard_environment<config::params>, config::simulation,
+//             wrap<some::unbounded_collection, config::disk>,
+//             config::disk_shape, config::diskdisk_r,
+//             wrap<some::unbounded_collection, config::diskline_r>,
+//             wrap<some::unbounded_collection, config::pointl>,
+//             wrap<some::unbounded_collection, config::pointd>,
+//             wrap<some::unbounded_collection, config::interaction>,
+//             config::space_filter,
+//             storage::with_properties<
+//                 storage::attached<
+//                     config::disk, storage::pattern::symbol<"shape">,
+//                     storage::some::item_ref<config::disk_shape>>,
+//                 storage::time_invariant<storage::attr_t<config::disk, "fex"
+//                                                                       "t">>,
+//                 storage::diagonal<
+//                     storage::attr_t<config::disk, "mass_matrix">>,
+//                 storage::unbounded_diagonal<storage::attr_t<
+//                     config::osi, "mass_matrix_assembled">>>>()))>::
+//         all_properties_t{});
 
 int main() {}

@@ -5,6 +5,7 @@
 #include <range/v3/detail/variant.hpp>
 #include <tuple>
 #include <type_traits>
+#include <typeinfo>
 #include <variant>
 
 #include "siconos/storage/ground/ground.hpp"
@@ -230,33 +231,20 @@ template <typename T, std::size_t N>
 using memory_t = std::array<T, N>;
 
 template <match::attribute Attr, typename keeps_t>
-static constexpr std::size_t memory_size = []() {
-  // rewrite this with a filter...
-  // let rec loop(...) = ...
-  constexpr auto rec_loop = []<typename Tpl>(auto&& loop, Tpl) constexpr {
-    constexpr auto keep = car(Tpl{});
-    using keep_t = std::decay_t<decltype(keep)>;
-
-    if constexpr (std::is_same_v<Attr, typename keep_t::type>) {
-      return keep_t::size;
-    }
-    else if constexpr (ground::size(Tpl{}) > ground::size_c<1>) {
-      return loop(loop, cdr(Tpl{}));
-    }
-    else {
-      // memory size not specified
-      return 1;
-    }
-  };
-
-  if constexpr (ground::size(keeps_t{}) > ground::size_c<0>) {
-    return rec_loop(rec_loop, keeps_t{});
+static constexpr std::size_t memory_size()
+{
+  auto tpl = ground::filter(keeps_t{},
+                            ground::is_a_model<[]<typename T>() consteval {
+                              return std::is_same_v<Attr, typename T::type>;
+                            }>);
+  if constexpr (ground::size(tpl) > ground::size_c<0>) {
+    return tpl[0_c].size;
   }
   else {
-    // no keep in memory has been specified
+    // memory size not specified
     return 1;
   }
-}();
+};
 
 template <match::property K>
 static auto all_properties_as = [](auto& data) constexpr -> auto
@@ -620,7 +608,7 @@ static auto make = []() constexpr -> decltype(auto) {
         using storage_t = std::decay_t<decltype(s)>;
         using all_keeps_t =
             decltype(all_properties_as<property::keep>(base_storage));
-        return memory_t<storage_t, memory_size<Attribute, all_keeps_t>>{};
+        return memory_t<storage_t, memory_size<Attribute, all_keeps_t>()>{};
       });
 };
 
@@ -631,12 +619,11 @@ static auto remove = [](auto& data, auto& h) {
 
   using indice = typename info_t::env::indice;
 
-  auto attrs =
-    concat(attributes(item_t{}), attached_storages(h, data));
+  auto attrs = concat(attributes(item_t{}), attached_storages(h, data));
 
   if constexpr (ground::size(attrs) > ground::size_c<0>) {
     ground::for_each(attrs, [&data, &h]<match::attribute A>(A) {
-      return ground::for_each(ground::range<memory_size<A, all_keeps_t>>,
+      return ground::for_each(ground::range<memory_size<A, all_keeps_t>()>,
                               [&data, &h](indice step) {
                                 move_back(h.get(),
                                           memory(step, ground::get<A>(data)));
@@ -652,38 +639,48 @@ static auto add = [](auto&& data) constexpr -> decltype(auto) {
   using all_keeps_t = decltype(all_properties_as<property::keep>(data));
 
   using indice = typename info_t::env::indice;
-  auto attached_storage =
-      ground::filter(typename info_t::all_properties_t{},
-                     ground::is_a_model<[]<typename T>() consteval {
-                       return match::attached_storage<T, Item>;
-                     }>);
+  constexpr auto attached_storage =
+    ground::filter(typename info_t::all_properties_t{},
+                   ground::is_a_model<[]<typename T>() constexpr {
+                     return match::attached_storage<T, Item>;
+                   }>);
 
-  constexpr auto attrs = concat(attributes(Item{}), attached_storage);
+  constexpr auto attrs =
+    ground::tuple_unique(concat(attributes(Item{}), attached_storage));
 
   using attrs_t = std::decay_t<decltype(attrs)>;
 
-  // and what about using items = ... ?
-
+  //std::cout << "ALL_PROPERTIES:" << ground::type_name<typename info_t::all_properties_t>().c_str() << std::endl;
   // attributes
+
   if constexpr (ground::size(attrs_t{}) > ground::size_c<0>) {
-    indice&& index = ground::fold_left(
-        attrs, indice{0}, [&data]<match::attribute A>(indice k, A) {
-          return ground::fold_left(
-              ground::range<memory_size<A, all_keeps_t>>, k,
-              [&data](indice n, auto step) {
-                auto&& storage =
-                    memory(step, ground::get<A>(std::forward<data_t>(data)));
-                using storage_t = std::decay_t<decltype(storage)>;
-                if constexpr (match::push_back<storage_t>) {
-                  storage.push_back(typename storage_t::value_type{});
-                  return std::size(storage) - 1;
-                }
-                else {
-                  storage[0] = typename storage_t::value_type{};
-                  return 0;
-                }
-              });
-        });
+    indice index = 0;
+    ground::for_each(attrs, [&data, &index]<match::attribute A>(A) {
+      ground::for_each(
+          ground::range<memory_size<A, all_keeps_t>()>,
+          [&data, &index](auto step) {
+            auto&& storage =
+                memory(step, ground::get<A>(static_cast<data_t&&>(data)));
+
+            using storage_t = std::decay_t<decltype(storage)>;
+
+            if constexpr (match::push_back<storage_t>) {
+              // std::cout << "attribute: " << ground::type_name<A>().c_str()
+              //           << " step:" << step
+              //           << " type: " << ground::type_name<storage_t>().c_str()
+              //           << " size: " << std::size(storage) << " "
+              //           << std::endl;
+              storage.push_back(typename storage_t::value_type{});
+              assert(index > 0 ? index == std::size(storage) - 1
+                               : index == 0);
+              index = std::size(storage) - 1;
+            }
+            else {
+              storage[0] = typename storage_t::value_type{};
+              index = 0;
+            }
+          });
+    });
     return make_full_handle<Item>(data, index);
   }
   else {
@@ -794,7 +791,8 @@ static auto prop_values =
 };
 
 template <match::item I>
-static auto handles = [](auto& data, std::size_t step=0) constexpr -> decltype(auto) {
+static auto handles =
+    [](auto& data, std::size_t step = 0) constexpr -> decltype(auto) {
   using info_t = std::decay_t<decltype(ground::get<storage::info>(data))>;
   using env = typename info_t::env;
   using indice = typename env::indice;
@@ -845,7 +843,6 @@ static auto constexpr attached_storage_name(Astor astor)
 /*siconos::storage::ground::dump_keys(data, [](auto&& s) { std::cout <<
  * s<< std::endl;});*/
 
-
 template <typename Struct>
 struct data_holder : item<> {
   using attributes =
@@ -858,7 +855,6 @@ struct data_holder : item<> {
     decltype(auto) instance() { return attr<"instance">(*self()); };
   };
 };
-
 
 using pattern::attr_t;
 using pattern::wrap;

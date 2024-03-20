@@ -87,10 +87,10 @@ struct time_stepping : item<> {
       }
 
       // do nothing if lagrangian_r is time_invariant
-      // osi.update_h_matrices(step);
+      osi.update_h_matrices(step);
 
       // do nothing if fext is time_invariant
-      // osi.update_iteration_matrix(step);
+      osi.update_iteration_matrix(step);
 
       current_step() += 1;
 

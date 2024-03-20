@@ -621,7 +621,7 @@ class SiconosGraph {
     if (vd1 == vd2) {
       // self edge
 #ifndef NDEBUG
-      typename AdjointG::EDescriptor aed =
+//      typename AdjointG::EDescriptor aed =
 #endif
         ag.add_edge(new_ve, new_ve, bundle(vd1));
     }

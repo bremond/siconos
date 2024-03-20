@@ -478,11 +478,13 @@ static auto all_items = rec([](auto&& all_items, match::item auto root_item) {
 });
 
 static auto all_attributes = []<match::item Item>(Item) constexpr {
-  return ground::concat_all(transform(all_items(Item{}), attributes));
+  return ground::tuple_unique(
+      ground::concat_all(transform(all_items(Item{}), attributes)));
 };
 
 static auto all_properties = []<match::item Item>(Item) constexpr {
-  return ground::concat_all(transform(all_items(Item{}), properties));
+  return ground::tuple_unique(
+      ground::concat_all(transform(all_items(Item{}), properties)));
 };
 
 //  template<typename K>

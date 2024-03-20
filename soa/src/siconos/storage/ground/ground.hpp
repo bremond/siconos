@@ -25,9 +25,9 @@
 #include <type_traits>
 #include <typeinfo>
 
-#include "boost/hana/ext/boost/ublas.hpp"
-// cf
-// https://www.boost.org/doc/libs/1_80_0/libs/hana/doc/html/structboost_1_1hana_1_1string.html#ad77f7afff008c2ce15739ad16a8bf0a8
+// #include "boost/hana/ext/boost/ublas.hpp"
+//  cf
+//  https://www.boost.org/doc/libs/1_80_0/libs/hana/doc/html/structboost_1_1hana_1_1string.html#ad77f7afff008c2ce15739ad16a8bf0a8
 
 #include <string_view>
 
@@ -83,7 +83,12 @@ using hana::make_lazy;
 using hana::size;
 using hana::size_c;
 using hana::tuple;
+using hana::unique;
 using hana::unpack;
+
+using hana::set;
+using hana::to_set;
+
 static constexpr auto typeid_ = hana::typeid_;
 
 template <template <typename... Ts> typename F>
@@ -153,7 +158,6 @@ static auto reverse = hana::reverse;
 
 static auto scan_left = hana::scan_left;
 
-using hana::contains;
 using hana::drop_front;
 static auto prepend = hana::prepend;
 static auto concat = hana::concat;
@@ -217,6 +221,18 @@ static constexpr auto all_type_c(auto tpl)
 static constexpr auto all_inside_types(auto tpl)
 {
   return transform(tpl, []<typename T>(T) { return typename T::type{}; });
+}
+
+static constexpr auto tuple_unique(auto xs)
+{
+  return all_inside_types(hana::to_tuple(hana::to_set(all_type_c(xs))));
+};
+
+template <typename Xs, typename X>
+static constexpr bool contains(Xs xs, X)
+{
+  return hana::contains(
+      transform(xs, []<typename IX>(IX) { return type_c<IX>; }), type_c<X>);
 }
 
 using hana::filter;
@@ -339,7 +355,8 @@ static constexpr auto is_parent = is_a_model < []<typename T>() consteval
 > ;
 
 template <typename B>
-static constexpr auto is_inside_type_parent = is_a_model < []<typename T>() consteval
+static constexpr auto is_inside_type_parent =
+    is_a_model < []<typename T>() consteval
 {
   return std::derived_from<B, typename T::type>;
 }
