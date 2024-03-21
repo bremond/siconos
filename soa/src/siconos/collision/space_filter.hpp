@@ -12,6 +12,8 @@
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/variant.hpp"
 
+#include "siconos/utils/print.hpp"
+
 #define USE_DOUBLE
 #include "CompactNSearch/CompactNSearch.h"
 
@@ -59,7 +61,7 @@ struct neighborhood
       auto& instance = self()->instance();
       ground::for_each(points_t{}, [&data, &step, &i, &psid,
                                     &instance]<typename Point>(Point) {
-        auto coords = storage::attr_values<Point, "coord">(data, step);
+        auto& coords = storage::attr_values<Point, "coord">(data, step);
         psid[i++] =
             instance->add_point_set(coords.front().data(), coords.size());
       });
@@ -158,6 +160,7 @@ struct space_filter : item<> {
           auto all_lines = storage::handles<item_t>(data);
           for (auto line : all_lines) {
             for (auto point_coord : line.points_coords()) {
+              print("line point: {},{}\n", point_coord(0), point_coord(1));
               auto new_point = storage::add<Point>(data);
               new_point.item() = line;
               new_point.coord() = point_coord;
@@ -184,7 +187,7 @@ struct space_filter : item<> {
       auto& index_set0 = topo.interaction_graphs()[0];
 
       constexpr auto npointsets = ground::size(points_t{});
-      ground::for_each(ground::range<npointsets>, [&](auto ip1) {
+      ground::for_each(ground::range<npointsets-ground::size_c<1_c>>, [&](auto ip1) {
         auto p1 = points_t{}[ground::size_c<ip1>];
         using p1_t = decltype(p1);
         auto psid1 = ngbh.point_set_id()[ip1];
@@ -196,7 +199,7 @@ struct space_filter : item<> {
               auto psid2 = ngbh.point_set_id()[ip2];
 
               auto& ps1 = ngbh.instance()->point_set(psid1);
-              auto& ps2 = ngbh.instance()->point_set(psid2);
+//              auto& ps2 = ngbh.instance()->point_set(psid2);
 
               for (size_t i = 0; i < ps1.n_points(); ++i) {
                 auto pid1 = i;
@@ -204,14 +207,16 @@ struct space_filter : item<> {
                 auto handle_point1 = storage::handle(data, index_point1);
                 auto body1 = storage::handle(data, handle_point1.item());
 
-                for (size_t j = 0; j < ps2.n_neighbors(psid2, i); ++j) {
-                  const unsigned int pid2 = ps2.neighbor(psid2, i, j);
+                for (size_t j = 0; j < ps1.n_neighbors(psid2, i); ++j) {
+                  const unsigned int pid2 = ps1.neighbor(psid2, i, j);
                   auto index_point2 = storage::index<p2_t, size_t>(pid2);
                   auto handle_point2 = storage::handle(data, index_point2);
                   auto body2 = storage::handle(data, handle_point2.item());
-
                   using system1_t = typename p1_t::item_t;
                   using system2_t = typename p2_t::item_t;
+
+                  print("point1 {},{},{}\n", ground::type_name<system1_t>().c_str(), handle_point1.coord()(0), handle_point1.coord()(1));
+                  print("point2 {},{},{}\n", ground::type_name<system2_t>().c_str(), handle_point2.coord()(0), handle_point2.coord()(1));
 
                   if constexpr (std::derived_from<system1_t,
                                                   model::lagrangian_ds>) {

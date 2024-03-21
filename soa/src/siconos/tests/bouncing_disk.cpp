@@ -4,8 +4,6 @@
 #include "siconos/siconos.hpp"
 #include "siconos/utils/print.hpp"
 
-#include <bits/stdc++.h>
-
 namespace siconos::config {
 
 using disk = model::lagrangian_ds;
@@ -68,7 +66,7 @@ int main(int argc, char* argv[])
   // -- The dynamical_system --
   // --------------------------
   auto d1 = storage::add<config::disk>(data);
-//  auto d2 = storage::add<config::disk>(data);
+  //  auto d2 = storage::add<config::disk>(data);
 
   d1.q() = {0, position_init, 0};
   d1.velocity() = {0, velocity_init, 0};
@@ -79,11 +77,11 @@ int main(int argc, char* argv[])
   // d2.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
 
   storage::handle(data, prop<"shape">(d1)).radius() = radius;
-//  storage::handle(data, prop<"shape">(d2)).radius() = 2;
+  //  storage::handle(data, prop<"shape">(d2)).radius() = 2;
 
   // -- Set external forces (weight) --
   d1.fext() = {0., -m * g, 0.};
-//  d2.fext() = {-m * g, 0., 0.};
+  //  d2.fext() = {-m * g, 0., 0.};
 
   // ------------------
   // -- The relation --
@@ -97,7 +95,7 @@ int main(int argc, char* argv[])
   auto fc2d = storage::add<config::fc2d>(data);
   fc2d.create();
   fc2d.instance()->dimension = 2;
-//  fc2d.instance()->mu = 0.1;
+  //  fc2d.instance()->mu = 0.1;
 
   // ------------------
   // --- Simulation ---
@@ -121,7 +119,7 @@ int main(int argc, char* argv[])
 
   auto ngbh = storage::add<config::neighborhood>(data);
 
-  ngbh.create(2.);  // radius
+  ngbh.create(0.6);  // radius
 
   auto diskdisk_r = storage::add<config::diskdisk_r>(data);
   auto ground_r = storage::add<config::diskline_r>(data);
@@ -149,15 +147,17 @@ int main(int argc, char* argv[])
   // fix this for constant fext
   simulation.initialize();
 
-//  auto out = fmt::output_file("result.dat");
+  //  auto out = fmt::output_file("result.dat");
   std::ofstream cout("result.dat");
 
   // https://stackoverflow.com/questions/72767354/how-to-flush-fmt-output-in-debug-mode
-  cout << fmt::format("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
-            simulation.current_step() * simulation.time_step(),
-            storage::attr<"q">(d1, simulation.current_step())(1),
-            storage::attr<"velocity">(d1, simulation.current_step())(1), 0.,
-                          0.) << std::flush;
+  cout << fmt::format(
+              "{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
+              simulation.current_step() * simulation.time_step(),
+              storage::attr<"q">(d1, simulation.current_step())(1),
+              storage::attr<"velocity">(d1, simulation.current_step())(1), 0.,
+              0.)
+       << std::flush;
 
   while (simulation.has_next_event()) {
     ngbh.update(0);
@@ -178,11 +178,13 @@ int main(int argc, char* argv[])
       lambda = 0;
     }
 
-    cout << fmt::format("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
-              simulation.current_step() * simulation.time_step(),
-              storage::attr<"q">(d1, simulation.current_step())(1),
-              storage::attr<"velocity">(d1, simulation.current_step())(1), p0,
-                            lambda) << std::flush;
+    cout << fmt::format(
+                "{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
+                simulation.current_step() * simulation.time_step(),
+                storage::attr<"q">(d1, simulation.current_step())(1),
+                storage::attr<"velocity">(d1, simulation.current_step())(1),
+                p0, lambda)
+         << std::flush;
   }
   //  io::close(fd);
 }

@@ -49,7 +49,7 @@ struct line : item<> {
 
       invsqrta2pb2() = 1. / (sqrt(a() * a() + b() * b()));
 
-      direction() = vect_t {{a(), b(), 0.}};
+      direction() = vect_t {{b(), a(), 0.}};
     }
     decltype(auto) points_coords()
     {
