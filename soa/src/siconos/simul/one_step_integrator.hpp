@@ -496,16 +496,27 @@ struct one_step_integrator {
           auto &hhm2 = hm2;
           auto hds1 = storage::handle(data, ds1);
           auto hds2 = storage::handle(data, ds2);
+          auto rnds = nds;
 
           siconos::variant::visit(
               data, rel,
               ground::overload(
                   [&step, &hhm1, &hhm2, &hds1,
-                   &hds2](match::relation2 auto &rrel) {
-                    rrel.compute_jachq(step, hds1, hds2, hhm1, hhm2);
+                   &hds2,&rnds](match::linear_relation auto &&rrel) {
+                    if (rnds == 1) {
+                      rrel.compute_jachq(step, hds1, hhm1);
+                    }
+                    else {
+                      assert(rnds == 2);
+                      rrel.compute_jachq(step, hds1, hds2, hhm1, hhm2);
+                    }
                   },
                   [&step, &hhm1, &hds1](match::relation1 auto &rrel) {
                     rrel.compute_jachq(step, hds1, hhm1);
+                  },
+                  [&step, &hhm1, &hhm2, &hds1,
+                   &hds2](match::relation2 auto &rrel) {
+                    rrel.compute_jachq(step, hds1, hds2, hhm1, hhm2);
                   },
                   [](auto rrel) { assert(false); }));
         }

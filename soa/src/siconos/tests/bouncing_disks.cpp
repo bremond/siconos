@@ -1,3 +1,4 @@
+#include <bits/stdc++.h>
 #include <siconos/numerics/Friction_cst.h>
 
 #include "siconos/collision/space_filter.hpp"
@@ -34,14 +35,14 @@ int main(int argc, char* argv[])
 
   auto data = storage::make<
       standard_environment<config::params>, config::simulation,
-      wrap<some::unbounded_collection, config::disk>, config::disk_shape,
-      config::diskdisk_r,
+      config::space_filter, config::disk_shape, config::diskdisk_r,
+      wrap<some::unbounded_collection, config::disk>,
       wrap<some::unbounded_collection, config::diskline_r>,
       wrap<some::unbounded_collection, config::pointl>,
       wrap<some::unbounded_collection, config::pointd>,
       wrap<some::unbounded_collection, config::interaction>,
-      config::space_filter,
       storage::with_properties<
+          storage::wrapped<config::disk, some::unbounded_collection>,
           storage::attached<config::disk, storage::pattern::symbol<"shape">,
                             storage::some::item_ref<config::disk_shape>>,
           storage::time_invariant<storage::attr_t<config::disk, "fext">>,
@@ -51,7 +52,7 @@ int main(int argc, char* argv[])
 
   // unsigned int nDof = 3;         // degrees of freedom for the disk
   double t0 = 0;               // initial computation time
-  double tmax = 10;            // final computation time
+  double tmax = 1;            // final computation time
   double h = 0.005;            // time step
   double position_init = 1.0;  // initial position for lowest bead.
   double velocity_init = 0.0;  // initial velocity for lowest bead.
@@ -60,28 +61,37 @@ int main(int argc, char* argv[])
   double m = 1.;               // Disk mass
   double g = 9.81;             // Gravity
 
+  unsigned int ndisks = 700000;
+
   print("====> Model loading ...\n");
 
   // --------------------------
   // -- The dynamical_system --
   // --------------------------
-  auto d1 = storage::add<config::disk>(data);
-  //  auto d2 = storage::add<config::disk>(data);
 
-  d1.q() = {0, position_init, 0};
-  d1.velocity() = {0, velocity_init, 0};
-  d1.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
+  for (unsigned int i = 0; i < ndisks; ++i) {
+    auto d1 = storage::add<config::disk>(data);
+    //  auto d2 = storage::add<config::disk>(data);
 
-  // d2.q() = {2 * position_init, 0.1, 0};
-  // d2.velocity() = {velocity_init, 0, 0};
-  // d2.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
+    d1.q() = {0, position_init * (i + 1), 0};
+    d1.velocity() = {0, velocity_init, 0};
+    d1.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
 
-  storage::handle(data, prop<"shape">(d1)).radius() = radius;
-  //  storage::handle(data, prop<"shape">(d2)).radius() = 2;
+    // d2.q() = {2 * position_init, 0.1, 0};
+    // d2.velocity() = {velocity_init, 0, 0};
+    // d2.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
 
-  // -- Set external forces (weight) --
-  d1.fext() = {0., -m * g, 0.};
-  //  d2.fext() = {-m * g, 0., 0.};
+    storage::handle(data, prop<"shape">(d1)).radius() = radius;
+    //  storage::handle(data, prop<"shape">(d2)).radius() = 2;
+
+    // -- Set external forces (weight) --
+    d1.fext() = {0., -m * g, 0.};
+    //  d2.fext() = {-m * g, 0., 0.};
+  }
+
+  for (auto disk : storage::handles<config::disk>(data, 0)) {
+    print("disk:{} , disk.q()={}\n", disk.get(), disk.q()[0]);
+  }
 
   // ------------------
   // -- The relation --
@@ -95,7 +105,7 @@ int main(int argc, char* argv[])
   auto fc2d = storage::add<config::fc2d>(data);
   fc2d.create();
   fc2d.instance()->dimension = 2;
-  //  fc2d.instance()->mu = 0.1;
+  fc2d.instance()->mu = 0;
 
   // ------------------
   // --- Simulation ---
@@ -144,20 +154,30 @@ int main(int argc, char* argv[])
 
   //  auto fd = io::open<ascii>("result.dat");
 
+  auto disks = storage::handles<config::disk>(data, 0);
+  auto disk1 = (disks | view::take(1)).front();
+  auto disk2 = (disks | view::take(2)).back();
+
+  print("disk1:{}, disk2:{} disk1.q()={}, disk2.q()={}\n", disk1.get(),
+        disk2.get(), disk1.q(), disk2.q());
+
   // fix this for constant fext
   simulation.initialize();
 
-  //  auto out = fmt::output_file("result.dat");
-  std::ofstream cout("result.dat");
+  auto out = fmt::output_file("result-many.dat");
 
   // https://stackoverflow.com/questions/72767354/how-to-flush-fmt-output-in-debug-mode
-  cout << fmt::format(
-              "{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
-              simulation.current_step() * simulation.time_step(),
-              storage::attr<"q">(d1, simulation.current_step())(1),
-              storage::attr<"velocity">(d1, simulation.current_step())(1), 0.,
-              0.)
-       << std::flush;
+  // std::ofstream cout("result.dat");
+  out.print("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
+            simulation.current_step() * simulation.time_step(),
+            storage::attr<"q">(disk1, simulation.current_step())(1),
+            storage::attr<"q">(disk2, simulation.current_step())(1),
+            storage::attr<"velocity">(disk1, simulation.current_step())(1),
+            storage::attr<"velocity">(disk2, simulation.current_step())(1),
+            0., 0.);
+
+  auto& vds = storage::prop_values<config::interaction, "vd">(
+      data, simulation.current_step());
 
   while (simulation.has_next_event()) {
     ngbh.update(0);
@@ -178,13 +198,13 @@ int main(int argc, char* argv[])
       lambda = 0;
     }
 
-    cout << fmt::format(
-                "{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
-                simulation.current_step() * simulation.time_step(),
-                storage::attr<"q">(d1, simulation.current_step())(1),
-                storage::attr<"velocity">(d1, simulation.current_step())(1),
-                p0, lambda)
-         << std::flush;
+    out.print("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
+              simulation.current_step() * simulation.time_step(),
+              storage::attr<"q">(disk1, simulation.current_step())(1),
+              storage::attr<"q">(disk2, simulation.current_step())(1),
+              storage::attr<"velocity">(disk1, simulation.current_step())(1),
+              storage::attr<"velocity">(disk2, simulation.current_step())(1),
+              p0, lambda);
   }
   //  io::close(fd);
 }
