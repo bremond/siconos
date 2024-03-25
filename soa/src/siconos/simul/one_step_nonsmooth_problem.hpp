@@ -1,10 +1,12 @@
 #pragma once
+
 #include <FrictionContactProblem.h>
 #include <LinearComplementarityProblem.h>
 #include <NonSmoothDrivers.h>
 #include <fmt/core.h>
 #include <fmt/ranges.h>
 #include <lcp_cst.h>
+#include <siconos/numerics/Friction_cst.h>
 
 #include "SolverOptions.h"
 #include "siconos/simul/simul_head.hpp"
@@ -20,13 +22,18 @@ struct solver_options : storage::data_holder<SolverOptions> {
   struct interface : storage::data_holder<SolverOptions>::template interface<
                          Handle> {
     using default_interface<Handle>::self;
-    void create(int solver_id = SICONOS_LCP_LEMKE)
+    void create(int solver_id = SICONOS_FRICTION_2D_LEMKE)
     {
       self()->instance().reset(solver_options_create(solver_id),
                                [](SolverOptions* so) {
                                  solver_options_delete(so);
                                  delete so;
                                });
+    }
+
+    auto methods()
+    {
+      return collect(method("create", &interface<Handle>::create));
     }
   };
 };
@@ -41,12 +48,16 @@ struct nonsmooth_problem : storage::data_holder<Formulation> {
                          Handle> {
     using default_interface<Handle>::self;
 
-    void create(int solver_id = SICONOS_LCP_LEMKE)
+    void create(int solver_id = SICONOS_FRICTION_2D_LEMKE)
     {
       self()->instance().reset(new Formulation);
     };
 
     //    ~interface() { solver_options_delete(&*_options); };
+    auto methods()
+    {
+      return collect(method("create", &interface<Handle>::create));
+    }
   };
 };
 
@@ -91,6 +102,11 @@ struct one_step_nonsmooth_problem : item<> {
 
         print("LCP [\n");
 
+        print("W:\n");
+        algebra::display(w_mat);
+        print("----\n");
+        print("----\n");
+
         print("q:\n");
         algebra::display(q_vec);
         print("----\n");
@@ -124,6 +140,7 @@ struct one_step_nonsmooth_problem : item<> {
       }
       else if constexpr (std::derived_from<Formulation,
                                            FrictionContactProblem>) {
+        self()->problem().instance()->dimension = 2;
         self()->problem().instance()->numberOfContacts = size0(w_mat);
         self()->problem().instance()->M = w_mat._m;
         self()->problem().instance()->q = q_vec._v->matrix0;
@@ -137,6 +154,13 @@ struct one_step_nonsmooth_problem : item<> {
 
         free(self()->problem().instance()->mu);
       }
+    }
+
+    auto methods()
+    {
+      return collect(method("options", &interface<Handle>::options),
+                     method("problem", &interface<Handle>::problem),
+                     method("level", &interface<Handle>::level));
     }
   };
 };

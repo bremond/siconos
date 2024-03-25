@@ -74,6 +74,10 @@ struct topology : item<> {
       auto inter = storage::add<interaction>(data);
       auto dsgv = dsg0.add_vertex(ds);
       auto [dsg0_ed, ig0_vd] = dsg0.add_edge(dsgv, dsgv, inter, ig0);
+
+      attr<"y">(inter).setZero();
+      attr<"ydot">(inter).setZero();
+
       prop<"vd">(ds) = dsgv;
       prop<"vd">(inter) = ig0_vd;
       prop<"nds">(inter) = 1;
@@ -113,6 +117,9 @@ struct topology : item<> {
       auto [dsg0_ed, ig0_vd] = dsg0.add_edge(dsgv1, dsgv2, inter, ig0);
       // dsg0_ed may be invalidated on edge removal so it is useless to store
       // it
+
+      attr<"y">(inter).setZero();
+      attr<"ydot">(inter).setZero();
 
       ds1.property(symbol<"vd">{}) = dsgv1;
       ds2.property(symbol<"vd">{}) = dsgv2;

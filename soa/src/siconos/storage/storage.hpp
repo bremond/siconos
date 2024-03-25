@@ -36,6 +36,8 @@ static constexpr auto memory = []<typename T>(
 namespace property {
 struct keep : some::property {};
 
+struct wrapped : some::property {};
+
 struct time_invariant : some::property {};
 
 struct refine : some::property {};
@@ -70,6 +72,14 @@ struct keep : property::keep {
   using keep_t = void;
   //    using attribute = Attr;
   static constexpr std::size_t size = N;
+};
+
+template <match::item Item, template <typename... Ts> typename Wrapper>
+struct wrapped : property::wrapped {
+  using wrapped_t = void;
+  template <typename... Ts>
+  using wrapper = Wrapper<Ts...>;
+  using type = Item;
 };
 
 template <match::attribute Attr>
@@ -243,6 +253,22 @@ static constexpr std::size_t memory_size()
   else {
     // memory size not specified
     return 1;
+  }
+};
+
+template <match::item Item, typename Wrappers, typename Storage>
+static constexpr auto apply_wrapper(Storage storage)
+{
+  auto tpl = ground::filter(Wrappers{},
+                            ground::is_a_model<[]<typename T>() consteval {
+                              return std::is_same_v<Item, typename T::type>;
+                            }>);
+  if constexpr (ground::size(tpl) > ground::size_c<0>) {
+    return typename std::decay_t<decltype(tpl[0_c])>::template wrapper<Storage>{};
+  }
+  else {
+    // without wrapper
+    return Storage{};
   }
 };
 
@@ -597,15 +623,33 @@ static auto make = []() constexpr -> decltype(auto) {
                   typename traits::config<Env>::template convert<
                       typename Item::template wrapper<storage_t>>::type>{};
             }
-            else  // default storage
-            {
-              return ground::key_value<
-                  Attr, typename Env::template default_storage<storage_t>>{};
+            else {
+              // look for wrap specified in properties
+              using all_wrappers_t =
+                  decltype(all_properties_as<property::wrapped>(
+                      base_storage));
+
+              using storage_wrapped =
+                  decltype(apply_wrapper<Item, all_wrappers_t>(s));
+
+              if constexpr (!std::is_same_v<storage_wrapped, storage_t>) {
+                using storage_wrapped_and_converted =
+                    typename traits::config<typename info_t::env>::
+                        template convert<storage_wrapped>::type;
+
+                return ground::key_value<Attr, storage_wrapped_and_converted>{};
+              }
+              else {
+                return ground::key_value<
+                    Attr,
+                    typename Env::template default_storage<storage_t>>{};
+              }
             }
           }),
       // attribute level: memory depends on keeps
       []<match::attribute Attribute>(Attribute attr, auto s) {
         using storage_t = std::decay_t<decltype(s)>;
+
         using all_keeps_t =
             decltype(all_properties_as<property::keep>(base_storage));
         return memory_t<storage_t, memory_size<Attribute, all_keeps_t>()>{};
@@ -640,18 +684,19 @@ static auto add = [](auto&& data) constexpr -> decltype(auto) {
 
   using indice = typename info_t::env::indice;
   constexpr auto attached_storage =
-    ground::filter(typename info_t::all_properties_t{},
-                   ground::is_a_model<[]<typename T>() constexpr {
-                     return match::attached_storage<T, Item>;
-                   }>);
+      ground::filter(typename info_t::all_properties_t{},
+                     ground::is_a_model<[]<typename T>() constexpr {
+                       return match::attached_storage<T, Item>;
+                     }>);
 
   constexpr auto attrs =
-    ground::tuple_unique(concat(attributes(Item{}), attached_storage));
+      ground::tuple_unique(concat(attributes(Item{}), attached_storage));
 
   using attrs_t = std::decay_t<decltype(attrs)>;
 
-  //std::cout << "ALL_PROPERTIES:" << ground::type_name<typename info_t::all_properties_t>().c_str() << std::endl;
-  // attributes
+  // std::cout << "ALL_PROPERTIES:" << ground::type_name<typename
+  // info_t::all_properties_t>().c_str() << std::endl;
+  //  attributes
 
   if constexpr (ground::size(attrs_t{}) > ground::size_c<0>) {
     indice index = 0;
@@ -667,7 +712,8 @@ static auto add = [](auto&& data) constexpr -> decltype(auto) {
             if constexpr (match::push_back<storage_t>) {
               // std::cout << "attribute: " << ground::type_name<A>().c_str()
               //           << " step:" << step
-              //           << " type: " << ground::type_name<storage_t>().c_str()
+              //           << " type: " <<
+              //           ground::type_name<storage_t>().c_str()
               //           << " size: " << std::size(storage) << " "
               //           << std::endl;
               storage.push_back(typename storage_t::value_type{});
@@ -778,8 +824,8 @@ static constexpr decltype(auto) attr_values(auto& data, auto step)
   return memory(step, (attr_memory<T>(data)));
 };
 
-template <match::item I, string_literal S>
-static constexpr decltype(auto) attr_values(auto& data, auto step)
+template <match::item I, string_literal S, typename D>
+static constexpr decltype(auto) attr_values(D&& data, auto step)
 {
   return memory(step, (attr_memory<I, S>(data)));
 };

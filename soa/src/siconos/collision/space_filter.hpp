@@ -147,6 +147,7 @@ struct space_filter : item<> {
         if constexpr (std::derived_from<item_t, model::lagrangian_ds>) {
           auto all_ds = storage::handles<item_t>(data);
           for (auto ds : all_ds) {
+//            print("add disk point : {}\n", ds.get());
             auto new_point = storage::add<Point>(data);
             new_point.item() = ds;
             new_point.update();
@@ -160,7 +161,7 @@ struct space_filter : item<> {
           auto all_lines = storage::handles<item_t>(data);
           for (auto line : all_lines) {
             for (auto point_coord : line.points_coords()) {
-              print("line point: {},{}\n", point_coord(0), point_coord(1));
+//              print("line point: {},{}\n", point_coord(0), point_coord(1));
               auto new_point = storage::add<Point>(data);
               new_point.item() = line;
               new_point.coord() = point_coord;
@@ -215,8 +216,8 @@ struct space_filter : item<> {
                   using system1_t = typename p1_t::item_t;
                   using system2_t = typename p2_t::item_t;
 
-                  print("point1 {},{},{}\n", ground::type_name<system1_t>().c_str(), handle_point1.coord()(0), handle_point1.coord()(1));
-                  print("point2 {},{},{}\n", ground::type_name<system2_t>().c_str(), handle_point2.coord()(0), handle_point2.coord()(1));
+//                  print("point1 {},{},{}\n", ground::type_name<system1_t>().c_str(), handle_point1.coord()(0), handle_point1.coord()(1));
+//                  print("point2 {},{},{}\n", ground::type_name<system2_t>().c_str(), handle_point2.coord()(0), handle_point2.coord()(1));
 
                   if constexpr (std::derived_from<system1_t,
                                                   model::lagrangian_ds>) {

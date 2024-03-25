@@ -40,9 +40,9 @@ struct io : item<> {
         attr<"pos">(*self()).push_back({id, q[0], q[1], q[2]});
       }
 
-      return algebra::matrix_view<algebra::unbounded_matrix<scalar>>(
+      return algebra::matrix_view<algebra::unbounded_col_matrix<scalar, 4>>(
           attr<"pos">(*self()).data()->data(), attr<"pos">(*self()).size(),
-          attr<"pos">(*self()).data()->size() + 1);
+          attr<"pos">(*self()).data()->size());
     }
 
     decltype(auto) velocities(auto step)
@@ -63,9 +63,9 @@ struct io : item<> {
         attr<"vel">(*self()).push_back({id, velo[0], velo[1], velo[2]});
       }
 
-      return algebra::matrix_view<algebra::unbounded_matrix<scalar>>(
+      return algebra::matrix_view<algebra::unbounded_col_matrix<scalar, 4>>(
           attr<"vel">(*self()).data()->data(), attr<"vel">(*self()).size(),
-          attr<"vel">(*self()).data()->size() + 1);
+          attr<"vel">(*self()).data()->size());
     }
 
     auto methods()
@@ -74,8 +74,8 @@ struct io : item<> {
       using indice = typename env_t::indice;
 
       return collect(
-        method("positions", &interface<Handle>::positions<indice>),
-        method("velocities", &interface<Handle>::positions<indice>));
+          method("positions", &interface<Handle>::positions<indice>),
+          method("velocities", &interface<Handle>::positions<indice>));
     }
   };
 };

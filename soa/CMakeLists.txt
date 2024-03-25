@@ -38,12 +38,13 @@ endif()
 # install(TARGETS _nothing DESTINATION nothing)
 
 python_add_library(_nonos MODULE
+  ./src/siconos/py/main.cpp
 #  ./src/siconos/py/py_null.cpp
-  ./src/siconos/py/main_disks.cpp
-  ./src/siconos/py/py_attached_storages.cpp
-  ./src/siconos/py/py_attributes.cpp
-  ./src/siconos/py/py_add.cpp
-  ./src/siconos/py/py_methods.cpp
+#  ./src/siconos/py/main_disks.cpp
+#  ./src/siconos/py/py_attached_storages.cpp
+#  ./src/siconos/py/py_attributes.cpp
+#  ./src/siconos/py/py_add.cpp
+#  ./src/siconos/py/py_methods.cpp
   WITH_SOABI)
 
 set_target_properties(_nonos PROPERTIES COMPILE_FLAGS "${flags}")

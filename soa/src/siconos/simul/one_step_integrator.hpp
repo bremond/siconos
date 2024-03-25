@@ -147,15 +147,49 @@ struct one_step_integrator {
 
         auto &ndss = storage::prop_values<interaction, "nds">(data, step);
 
-        // global h_matrix is not assembled at this stage
-        for (auto [y, ydot, hm1, hm2, ds1, ds2, nds] : view::zip(
-                 ys, ydots, h_matrices1, h_matrices2, ds1s, ds2s, ndss)) {
-          y = hm1 * qs[ds1.get()];
-          ydot = hm1 * velocities[ds1.get()];
+        const auto &inters = storage::handles<interaction>(data, step);
 
-          if (nds == 2) {
-            y += hm2 * qs[ds2.get()];
-            ydot += hm2 * velocities[ds2.get()];
+        // global h_matrix is not assembled at this stage
+        for (auto [y, ydot, hm1, hm2, ds1, ds2, nds, inter] :
+             view::zip(ys, ydots, h_matrices1, h_matrices2, ds1s, ds2s, ndss,
+                       inters)) {
+          bool linear_case = siconos::variant::visit(
+              data, inter.relation(),
+              ground::overload(
+                  [&](match::linear_relation auto rrel) { return true; },
+                  [&](auto) { return false; }));
+
+          if (linear_case) {
+            y = hm1 * qs[ds1.get()];
+            ydot = hm1 * velocities[ds1.get()];
+
+            if (nds == 2) {
+              y += hm2 * qs[ds2.get()];
+              ydot += hm2 * velocities[ds2.get()];
+            }
+          }
+          else {
+            auto hds1 = storage::handle(data, ds1);
+            auto hds2 = storage::handle(data, ds2);
+
+            y[0] =
+              siconos::variant::visit(data, inter.relation(),
+                                      ground::overload(
+                                        [&](match::linear_relation auto rrel)
+                                        {
+                                          assert(false);
+                                          return 0.;
+                                        },
+                                        [&](match::relation1 auto rrel) {
+                                          return rrel.compute_h(hds1);
+                                        },
+                                        [&](match::relation2 auto rrel) {
+                                          return rrel.compute_h(hds1, hds2);
+                                        }));
+            ydot = hm1 * velocities[ds1.get()];
+            if (nds == 2) {
+              ydot += hm2 * velocities[ds2.get()];
+            }
           }
         }
       }
@@ -237,6 +271,7 @@ struct one_step_integrator {
                   // no b() present
                   [](auto) { return 0.; }));
           // on normal component
+          std::cout << "y:" << y[0] << " ydot:" << ydot[0] << " ACTIVATION:" << (y + gamma_v * h * ydot)(0) <<std::endl;
           activation = ((y + gamma_v * h * ydot)(0) + b <=
                         self()->constraint_activation_threshold());
 
@@ -259,7 +294,8 @@ struct one_step_integrator {
             //          print(
             //              "\nstep: {}, time: {} => ACTIVATION {}<->{}
             //              !\ny:{}, " "ydot:{}\n",
-            //             step, step * h, ids1.get(), ids2.get(), y, ydot);
+            //             step, step * h, ids1.get(), ids2.get(), y,
+            //             ydot);
           }
         }
         return std::pair{inter_counter, ds_counter};
@@ -363,7 +399,8 @@ struct one_step_integrator {
         resize(tmp_matrix, size1(h_matrix_assembled()),
                size0(h_matrix_assembled()));
         // M^-1 H^t
-        //        if constexpr (has_property<mass_matrix, some::diagonal>) {
+        //        if constexpr (has_property<mass_matrix, some::diagonal>)
+        //        {
         //          prod(inv(mass_matrix_assembled()),
         //          trans(h_matrix_assembled(), tmp_matrix));
         //        }
@@ -519,7 +556,11 @@ struct one_step_integrator {
                     rrel.compute_jachq(step, hds1, hds2, hhm1, hhm2);
                   },
                   [](auto rrel) { assert(false); }));
+
+          std::cout << "HM1:" << hm1 << std::endl;
         }
+
+
       }
 
       void update_h_matrices(auto step)

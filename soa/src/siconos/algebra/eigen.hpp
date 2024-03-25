@@ -14,7 +14,8 @@ template <typename T>
 concept vector = matrix<T> && T::ColsAtCompileTime == 1;
 
 template <typename T>
-concept diagonal_matrix = !matrix<T> && requires(T m) { m.diagonal()[0]; };
+concept diagonal_matrix = !
+matrix<T>&& requires(T m) { m.diagonal()[0]; };
 
 template <typename T>
 concept any_matrix = (diagonal_matrix<T> || matrix<T>);
@@ -25,6 +26,10 @@ namespace siconos::algebra {
 
 template <typename T, size_t M, size_t N>
 using matrix = Eigen::Matrix<T, M, N>;  // column storage
+
+template <typename T, size_t N>
+using unbounded_col_matrix =
+    Eigen::Matrix<T, Eigen::Dynamic, N, Eigen::RowMajor>;
 
 template <typename T>
 using unbounded_matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;

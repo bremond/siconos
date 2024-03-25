@@ -5,6 +5,8 @@
 #include "siconos/siconos.hpp"
 #include "siconos/utils/print.hpp"
 
+#include "siconos/io/io.hpp"
+
 namespace siconos::config {
 
 using disk = model::lagrangian_ds;
@@ -24,6 +26,8 @@ using pointl = collision::point<collision::shape::line>;
 using neighborhood = collision::neighborhood<pointd, pointl>;
 using space_filter = collision::space_filter<topo, neighborhood>;
 
+  using io = io::io<disk>;
+
 using params = map<iparam<"dof", 3>>;
 }  // namespace siconos::config
 
@@ -34,7 +38,7 @@ int main(int argc, char* argv[])
   using namespace storage;
 
   auto data = storage::make<
-      standard_environment<config::params>, config::simulation,
+    standard_environment<config::params>, config::io, config::simulation,
       config::space_filter, config::disk_shape, config::diskdisk_r,
       wrap<some::unbounded_collection, config::disk>,
       wrap<some::unbounded_collection, config::diskline_r>,
@@ -61,7 +65,7 @@ int main(int argc, char* argv[])
   double m = 1.;               // Disk mass
   double g = 9.81;             // Gravity
 
-  unsigned int ndisks = 700000;
+  unsigned int ndisks = 3;
 
   print("====> Model loading ...\n");
 
@@ -72,6 +76,8 @@ int main(int argc, char* argv[])
   for (unsigned int i = 0; i < ndisks; ++i) {
     auto d1 = storage::add<config::disk>(data);
     //  auto d2 = storage::add<config::disk>(data);
+
+    storage::prop<"id">(d1) = i+1;
 
     d1.q() = {0, position_init * (i + 1), 0};
     d1.velocity() = {0, velocity_init, 0};
@@ -111,6 +117,8 @@ int main(int argc, char* argv[])
   // --- Simulation ---
   // ------------------
   auto simulation = storage::add<config::simulation>(data);
+
+  auto io = storage::add<config::io>(data);
 
   simulation.one_step_integrator().theta() = theta;
   simulation.one_step_integrator().constraint_activation_threshold() = 0.;
@@ -176,8 +184,8 @@ int main(int argc, char* argv[])
             storage::attr<"velocity">(disk2, simulation.current_step())(1),
             0., 0.);
 
-  auto& vds = storage::prop_values<config::interaction, "vd">(
-      data, simulation.current_step());
+  // auto& vds = storage::prop_values<config::interaction, "vd">(
+  //     data, simulation.current_step());
 
   while (simulation.has_next_event()) {
     ngbh.update(0);
@@ -185,6 +193,8 @@ int main(int argc, char* argv[])
     spacef.update_index_set0();
 
     auto ninvds = simulation.compute_one_step();
+
+    // auto& positions = io.positions(0);
 
     double p0, lambda;
     if (ninvds > 0) {

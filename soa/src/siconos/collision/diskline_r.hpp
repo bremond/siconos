@@ -2,11 +2,11 @@
 
 #include "siconos/collision/collision_head.hpp"
 #include "siconos/collision/shape/line.hpp"
-//#include "siconos/model/model.hpp"
+// #include "siconos/model/model.hpp"
 
 namespace siconos::collision {
 
-  struct diskline_r : item<>, model::relation1, model::any_lagrangian_relation {
+struct diskline_r : item<>, model::relation1, model::any_lagrangian_relation {
   using attributes = gather<attribute<"line", some::item_ref<shape::line>>>;
 
   template <typename Handle>
@@ -18,9 +18,11 @@ namespace siconos::collision {
       return handle(self()->data(), attr<"line">(*self()));
     };
 
-    decltype(auto) compute_h(match::vector auto& q)
+    decltype(auto) compute_h(auto& ds)
     {
-      return line().distance(q);
+      auto& q = storage::attr<"q">(ds);
+      return line().distance(q) -
+             handle(self()->data(), prop<"shape">(ds)).radius();
     }
 
     decltype(auto) compute_jachq(auto step, auto& ds, auto& h_matrix1)
@@ -28,7 +30,7 @@ namespace siconos::collision {
       auto& data = self()->data();
 
       auto& q = storage::attr<"q">(ds);
-      auto& r = storage::handle(data, storage::prop<"shape">(ds)).radius();
+      // auto& r = storage::handle(data, storage::prop<"shape">(ds)).radius();
 
       auto& x = q(0);
       auto& y = q(1);
@@ -41,12 +43,12 @@ namespace siconos::collision {
       auto sd1 = copysign(1, d1);
 
       h_matrix1(0, 0) = a * sd1 * invsqrta2pb2;
-      h_matrix1(1, 0) = -b * sd1 * invsqrta2pb2;
+      h_matrix1(1, 0) = 0 ;//-b * sd1 * invsqrta2pb2;
       h_matrix1(0, 1) = b * sd1 * invsqrta2pb2;
-      h_matrix1(1, 1) = a * sd1 * invsqrta2pb2;
+      h_matrix1(1, 1) = 0 ;//a * sd1 * invsqrta2pb2;
       h_matrix1(0, 2) = 0;
-      h_matrix1(1, 2) = -r;
+      h_matrix1(1, 2) = 0;//- r;
     }
   };
 };
-}
+}  // namespace siconos::collision

@@ -4,13 +4,13 @@
 #include "siconos/siconos.hpp"
 #include "siconos/utils/print.hpp"
 
+#include <bits/stdc++.h>
+
 namespace siconos::config {
 
 using disk = model::lagrangian_ds;
 using fc2d = simul::nonsmooth_problem<FrictionContactProblem>;
-//  using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
-//  using osnspb = simul::one_step_nonsmooth_problem<lcp>;
-  using osnspb = simul::one_step_nonsmooth_problem<fc2d>;
+using osnspb = simul::one_step_nonsmooth_problem<fc2d>;
 using nslaw = model::newton_impact_friction;
 using disk_shape = collision::shape::disk;
 using diskdisk_r = collision::diskdisk_r;
@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
 
   // unsigned int nDof = 3;         // degrees of freedom for the disk
   double t0 = 0;               // initial computation time
-  double tmax = 20;            // final computation time
+  double tmax = 10;            // final computation time
   double h = 0.005;            // time step
   double position_init = 1.0;  // initial position for lowest bead.
   double velocity_init = 0.0;  // initial velocity for lowest bead.
@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
   // -- The dynamical_system --
   // --------------------------
   auto d1 = storage::add<config::disk>(data);
-  //  auto d2 = storage::add<config::disk>(data);
+//  auto d2 = storage::add<config::disk>(data);
 
   d1.q() = {0, position_init, 0};
   d1.velocity() = {0, velocity_init, 0};
@@ -79,26 +79,25 @@ int main(int argc, char* argv[])
   // d2.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
 
   storage::handle(data, prop<"shape">(d1)).radius() = radius;
-  //  storage::handle(data, prop<"shape">(d2)).radius() = 2;
+//  storage::handle(data, prop<"shape">(d2)).radius() = 2;
 
   // -- Set external forces (weight) --
   d1.fext() = {0., -m * g, 0.};
-  //  d2.fext() = {-m * g, 0., 0.};
+//  d2.fext() = {-m * g, 0., 0.};
 
   // ------------------
   // -- The relation --
   // ------------------
 
   // -- nslaw --
-  double e = 0.95;
+  double e = 0.9;
   auto nslaw = storage::add<config::nslaw>(data);
   nslaw.e() = e;
 
-//  auto lcp = storage::add<config::lcp>(data);
-    auto fc2d = storage::add<config::fc2d>(data);
+  auto fc2d = storage::add<config::fc2d>(data);
   fc2d.create();
-//  lcp.instance()->dimension = 2;
-  //  fc2d.instance()->mu = 0.1;
+  fc2d.instance()->dimension = 2;
+//  fc2d.instance()->mu = 0.1;
 
   // ------------------
   // --- Simulation ---
@@ -122,7 +121,7 @@ int main(int argc, char* argv[])
 
   auto ngbh = storage::add<config::neighborhood>(data);
 
-  ngbh.create(0.6);  // radius
+  ngbh.create(2.);  // radius
 
   auto diskdisk_r = storage::add<config::diskdisk_r>(data);
   auto ground_r = storage::add<config::diskline_r>(data);
@@ -150,17 +149,15 @@ int main(int argc, char* argv[])
   // fix this for constant fext
   simulation.initialize();
 
-  //  auto out = fmt::output_file("result.dat");
+//  auto out = fmt::output_file("result.dat");
   std::ofstream cout("result.dat");
 
   // https://stackoverflow.com/questions/72767354/how-to-flush-fmt-output-in-debug-mode
-  cout << fmt::format(
-              "{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
-              simulation.current_step() * simulation.time_step(),
-              storage::attr<"q">(d1, simulation.current_step())(1),
-              storage::attr<"velocity">(d1, simulation.current_step())(1), 0.,
-              0.)
-       << std::flush;
+  cout << fmt::format("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
+            simulation.current_step() * simulation.time_step(),
+            storage::attr<"q">(d1, simulation.current_step())(1),
+            storage::attr<"velocity">(d1, simulation.current_step())(1), 0.,
+                          0.) << std::flush;
 
   while (simulation.has_next_event()) {
     ngbh.update(0);
@@ -172,7 +169,7 @@ int main(int argc, char* argv[])
     double p0, lambda;
     if (ninvds > 0) {
       p0 = get_vector(simulation.one_step_integrator().p0_vector_assembled(),
-                      0)(1);
+                      0)(0);
       lambda = get_vector(
           simulation.one_step_integrator().lambda_vector_assembled(), 0)(0);
     }
@@ -181,13 +178,11 @@ int main(int argc, char* argv[])
       lambda = 0;
     }
 
-    cout << fmt::format(
-                "{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
-                simulation.current_step() * simulation.time_step(),
-                storage::attr<"q">(d1, simulation.current_step())(1),
-                storage::attr<"velocity">(d1, simulation.current_step())(1),
-                p0, lambda)
-         << std::flush;
+    cout << fmt::format("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
+              simulation.current_step() * simulation.time_step(),
+              storage::attr<"q">(d1, simulation.current_step())(1),
+              storage::attr<"velocity">(d1, simulation.current_step())(1), p0,
+                            lambda) << std::flush;
   }
   //  io::close(fd);
 }

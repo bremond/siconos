@@ -170,7 +170,7 @@ class Simulation(Stored):
     
 class Body(Stored):
 
-    _ident = 0
+    _ident = 1
     
     def __init__(self, radius, mass, position, velocity):
 
@@ -198,8 +198,15 @@ class Body(Stored):
 class OSNSPB(Stored):
     def __init__(self, dim, solvopts):
 
+        self._so = vkernel.disks.add_solver_options(self.data())
+        self._so.create(404)
+        self._fc2d = vkernel.disks.add_fc2d(self.data())
         self._handle = vkernel.disks.add_osnspb(self.data())
-
+        self._handle.set_options(self._so)
+        self._fc2d.create(404)
+        self.handle().set_problem(self._fc2d)
+#        self._fc2d.instance().dimension = 2
+        
     def setMaxSize(self, maxs):
         self._maxSize = maxs
 
@@ -237,6 +244,8 @@ class MechanicsIO(Stored):
         self._handle = vkernel.disks.add_io(self.data())
     
     def positions(self, nsds):
+        pos = self.handle().positions(0)
+        print("POS:", pos.shape, pos)
         return self.handle().positions(0)
 
     def velocities(self, nsds):
@@ -244,4 +253,4 @@ class MechanicsIO(Stored):
 
 class SpaceFilterOptions():
 
-    neighborhood_radius = 1
+    neighborhood_radius = 3

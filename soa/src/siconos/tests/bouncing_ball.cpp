@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
   nslaw.e() = e;
 
   auto lcp = storage::add<config::lcp>(data);
-  lcp.create();
+  lcp.create(SICONOS_LCP_LEMKE);
 
   // ------------------
   // --- Simulation ---

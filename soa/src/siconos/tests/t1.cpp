@@ -155,6 +155,15 @@ static_assert(
         storage::make<standard_environment<int>,
                       wrap<some::unbounded_collection, item0>>())))>);
 
+static_assert(
+    match::push_back<
+        std::decay_t<decltype(storage::attr_values<item0, "attr0">(
+            storage::add<item0>(
+                storage::make<standard_environment<int>,
+                              wrap<some::unbounded_collection, item0>>())
+                .data(),
+            0))>>);
+
 static_assert(match::diagonal_matrix<
               decltype(storage::attr<"attr0">(storage::add<item0>(
                   storage::make<standard_environment<int>,
@@ -378,7 +387,6 @@ using space_filter = collision::space_filter<topo, neighborhood>;
 
 using params = map<iparam<"dof", 3>>;
 }  // namespace siconos::config
-
 
 // static_assert(
 //     typename std::decay_t<decltype(ground::get<storage::info>(

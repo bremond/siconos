@@ -28,8 +28,9 @@ using diskline_r = collision::diskline_r;
 using line_shape = collision::shape::line;
 using disk_shape = collision::shape::disk;
 
-using fcp = simul::nonsmooth_problem<FrictionContactProblem>;
-using osnspb = simul::one_step_nonsmooth_problem<fcp>;
+using fc2d = simul::nonsmooth_problem<FrictionContactProblem>;
+using osnspb = simul::one_step_nonsmooth_problem<fc2d>;
+using solver_options = simul::solver_options;
 using interaction = simul::interaction<nslaw, diskdisk_r, diskline_r>;
 using osi = simul::one_step_integrator<disk, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
@@ -39,8 +40,7 @@ using pointl = collision::point<collision::shape::line>;
 using neighborhood = collision::neighborhood<pointd, pointl>;
 using space_filter = collision::space_filter<topo, neighborhood>;
 using interaction_manager = simul::interaction_manager<space_filter>;
-using simulation =
-    simul::time_stepping<td, osi, osnspb, topo>;
+using simulation = simul::time_stepping<td, osi, osnspb, topo>;
 
 using io = io::io<disk>;
 using params = map<iparam<"dof", 3>, iparam<"ncgroups", 1>>;
@@ -60,16 +60,18 @@ static auto imake_storage()
   return storage::make<
       standard_environment<config::params>, config::simulation,
       config::interaction_manager, config::neighborhood, config::space_filter,
-      config::io, pattern::wrap<some::unbounded_collection, config::disk>,
-      pattern::wrap<some::unbounded_collection, config::diskdisk_r>,
-      pattern::wrap<some::unbounded_collection, config::diskline_r>,
-      pattern::wrap<some::unbounded_collection, config::pointl>,
-      pattern::wrap<some::unbounded_collection, config::pointd>,
-
-      pattern::wrap<some::unbounded_collection, config::interaction>,
-      pattern::wrap<some::unbounded_collection, config::line_shape>,
-      pattern::wrap<some::unbounded_collection, config::disk_shape>,
+      config::io, config::disk, config::diskdisk_r, config::diskline_r,
+      config::pointl, config::pointd, config::interaction, config::line_shape,
+      config::disk_shape,
       storage::with_properties<
+          storage::wrapped<config::disk, some::unbounded_collection>,
+          storage::wrapped<config::diskdisk_r, some::unbounded_collection>,
+          storage::wrapped<config::diskline_r, some::unbounded_collection>,
+          storage::wrapped<config::pointl, some::unbounded_collection>,
+          storage::wrapped<config::pointd, some::unbounded_collection>,
+          storage::wrapped<config::interaction, some::unbounded_collection>,
+          storage::wrapped<config::line_shape, some::unbounded_collection>,
+          storage::wrapped<config::disk_shape, some::unbounded_collection>,
           storage::attached<config::disk, storage::pattern::symbol<"shape">,
                             storage::some::item_ref<config::disk_shape>>,
           storage::time_invariant<
@@ -89,12 +91,13 @@ static auto imake_storage()
           storage::bind<config::interaction_manager, "interaction_manager">,
           storage::bind<config::interaction, "interaction">,
           storage::bind<config::osnspb, "osnspb">,
+          storage::bind<config::solver_options, "solver_options">,
           storage::bind<config::osi, "osi">,
           storage::bind<config::td, "time_discretization">,
           storage::bind<config::topo, "topology">,
           storage::bind<config::simulation, "simulation">,
           storage::bind<config::osnspb, "osnspb">,
-          storage::bind<config::fcp, "fcp">,
+          storage::bind<config::fc2d, "fc2d">,
           storage::bind<config::io, "io">>>();
 }
 
@@ -102,10 +105,11 @@ static auto idata = imake_storage();
 
 using idata_t = std::decay_t<decltype(idata)>;
 
-//static_assert(storage::pattern::match::diagonal_matrix<
-//              decltype(storage::get<
-//                       storage::pattern::attr_t<config::disk, "mass_matrix">>(
-//                  idata_t{}, 0, storage::add<config::disk>(idata_t{})))>);
+// static_assert(storage::pattern::match::diagonal_matrix<
+//               decltype(storage::get<
+//                        storage::pattern::attr_t<config::disk,
+//                        "mass_matrix">>(
+//                   idata_t{}, 0, storage::add<config::disk>(idata_t{})))>);
 
 // just hide idata_t to pybind11
 struct data_t {
@@ -115,7 +119,6 @@ struct data_t {
 
   idata_t _data;
 };
-
 
 }  // namespace siconos::python::disks
 
@@ -163,55 +166,54 @@ static decltype(auto) in_formatter(H&& h, T&& in_value)
 
 using namespace boost::hana::literals;
 
-static auto py_handles(py::module& mod)
-{
-  using disks_info_t = std::decay_t<decltype(ground::get<storage::info>(
-                                               siconos::python::disks::idata_t{}))>;
+// static auto py_handles(py::module& mod)
+// {
+//   using disks_info_t = std::decay_t<decltype(ground::get<storage::info>(
+//       siconos::python::disks::idata_t{}))>;
 
-  using disks_properties_t = typename disks_info_t::all_properties_t;
+//   using disks_properties_t = typename disks_info_t::all_properties_t;
 
-  using disks_items_t = decltype(ground::transform(
-      typename disks_info_t::all_items_t{}, []<match::item I>(I) {
-        if constexpr (match::wrap<I>) {
-          return typename I::type{};
-        }
-        else {
-          return I{};
-        }
-      }));
+//   using disks_items_t = decltype(ground::transform(
+//       typename disks_info_t::all_items_t{}, []<match::item I>(I) {
+//         if constexpr (match::wrap<I>) {
+//           return typename I::type{};
+//         }
+//         else {
+//           return I{};
+//         }
+//       }));
 
-  // ground::type_trace<disks_items_t>();
-  auto named_disks_items = ground::filter(
-      disks_items_t{}, ground::is_a_model<[]<typename T>() {
-        return storage::has_property_from<T, storage::property::bind,
-                                          disks_properties_t>();
-      }>);
+//   // ground::type_trace<disks_items_t>();
+//   auto named_disks_items = ground::filter(
+//       disks_items_t{}, ground::is_a_model<[]<typename T>() {
+//         return storage::has_property_from<T, storage::property::bind,
+//                                           disks_properties_t>();
+//       }>);
 
-  // ground::type_trace<std::decay_t<decltype(named_disks_items)>>();
+//   // ground::type_trace<std::decay_t<decltype(named_disks_items)>>();
 
-  auto disks_handles = ground::transform(
-      // only named items
-      named_disks_items, []<match::item I>(I item) {
-        // get handle
-        return storage::add<I>(siconos::python::disks::idata_t{});
-      });
+//   auto disks_handles = ground::transform(
+//       // only named items
+//       named_disks_items, []<match::item I>(I item) {
+//         // get handle
+//         return storage::add<I>(siconos::python::disks::idata_t{});
+//       });
 
-  // add corresponding py::class_
-  auto pyhandles = ground::transform(disks_handles, [&mod]<typename H>(
-                                                        H handle) {
-    using item_t = typename H::type;
-    using base_index_t = typename H::base_index_t;
-    auto base_index = py::class_<base_index_t>(
-        mod, fmt::format("index_{}",
-                           storage::bind_name<item_t, disks_properties_t>())
-                   .c_str());
-    return ground::make_tuple(
-        base_index,
-        py::class_<H>(mod, storage::bind_name<item_t, disks_properties_t>(),
-                      base_index),
-        ground::type_c<H>);
-  });
+//   // add corresponding py::class_
+//   auto pyhandles = ground::transform(disks_handles, [&mod]<typename H>(
+//                                                         H handle) {
+//     using item_t = typename H::type;
+//     using base_index_t = typename H::base_index_t;
+//     auto base_index = py::class_<base_index_t>(
+//         mod, fmt::format("index_{}",
+//                          storage::bind_name<item_t, disks_properties_t>())
+//                  .c_str());
+//     return ground::make_tuple(
+//         base_index,
+//         py::class_<H>(mod, storage::bind_name<item_t, disks_properties_t>(),
+//                       base_index),
+//         ground::type_c<H>);
+//   });
 
-  return pyhandles;
-
-}
+//   return pyhandles;
+// }

@@ -4,7 +4,6 @@ namespace siconos::python::disks {
 data_t make_storage() { return data_t(); };
 }  // namespace siconos::python::disks
 
-
 using namespace boost::hana::literals;
 PYBIND11_MODULE(_nonos, m)
 {
@@ -30,11 +29,11 @@ PYBIND11_MODULE(_nonos, m)
       }));
 
   // ground::type_trace<disks_items_t>();
-  auto named_disks_items = ground::filter(
+  auto named_disks_items = ground::tuple_unique(ground::filter(
       disks_items_t{}, ground::is_a_model<[]<typename T>() {
         return storage::has_property_from<T, storage::property::bind,
                                           disks_properties_t>();
-      }>);
+      }>));
 
   // ground::type_trace<std::decay_t<decltype(named_disks_items)>>();
 

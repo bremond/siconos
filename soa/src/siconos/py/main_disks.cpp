@@ -6,6 +6,11 @@ void py_attached_storage(py::module&);
 void py_methods(py::module&);
 void py_add(py::module&);
 
+
+namespace siconos::python::disks {
+data_t make_storage() { return data_t(); };
+}  // namespace siconos::python::disks
+
 PYBIND11_MODULE(_nonos, m)
 {
   // sub module disks
