@@ -272,7 +272,7 @@ struct one_step_integrator {
                   [](auto) { return 0.; }));
           // on normal component
           std::cout << "y:" << y[0] << " ydot:" << ydot[0] << " ACTIVATION:" << (y + gamma_v * h * ydot)(0) <<std::endl;
-          activation = ((y + gamma_v * h * ydot)(0) + b <=
+          activation = ((ydot(0) < 0) && (y + gamma_v * h * ydot)(0) + b <=
                         self()->constraint_activation_threshold());
 
           if (activation) {
