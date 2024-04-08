@@ -58,6 +58,10 @@ esac
 time=`which time`
 while [ $# -gt 0 ]; do 
   case $1 in
+    --help)
+      cat README.md
+      exit 0
+      ;;
     --install)
       shift
       rm -rf venv
@@ -67,13 +71,6 @@ while [ $# -gt 0 ]; do
       pip install --upgrade pip
       venv/bin/pip3 --version
       venv/bin/pip3 install .
-      ;;
-    --export)
-      shift
-      nprocs=${1:-1}
-      siconos_vexport --global-filter --gen-para-script=$nprocs disks.hdf5 > pprocess
-      chmod +x ./pprocess
-      $time -f '%E %M' ./pprocess
       ;;
     --repl)
       shift
@@ -86,6 +83,23 @@ while [ $# -gt 0 ]; do
       . venv/bin/activate
       export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
       bash -i
+      ;;
+    --vview)
+      shift
+      . venv/bin/activate
+      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
+      siconos_vview $@
+      ;;
+    --vexport)
+      shift
+      siconos_vexport $@
+      ;;
+    --export-para)
+      shift
+      case $1 in --nprocs) shift; nprocs=$1;; *) nprocs=1;; esac
+      siconos_vexport --global-filter --gen-para-script=$nprocs $1 > vrun-pprocess
+      chmod +x vrun-pprocess
+      $time -f '%E %M' ./vrun-pprocess
       ;;
     *)
       script=$1
