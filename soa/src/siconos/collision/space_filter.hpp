@@ -10,9 +10,8 @@
 #include "siconos/collision/shape/line.hpp"
 #include "siconos/storage/pattern/base.hpp"
 #include "siconos/storage/storage.hpp"
-#include "siconos/utils/variant.hpp"
-
 #include "siconos/utils/print.hpp"
+#include "siconos/utils/variant.hpp"
 
 #define USE_DOUBLE
 #include "CompactNSearch/CompactNSearch.h"
@@ -62,6 +61,7 @@ struct neighborhood
       ground::for_each(points_t{}, [&data, &step, &i, &psid,
                                     &instance]<typename Point>(Point) {
         auto& coords = storage::attr_values<Point, "coord">(data, step);
+
         psid[i++] =
             instance->add_point_set(coords.front().data(), coords.size());
       });
@@ -98,6 +98,7 @@ struct neighborhood
 template <typename Topology, typename Neighborhood>
 struct space_filter : item<> {
   using topology = Topology;
+  using dynamical_system = typename topology::dynamical_system;
   using interaction = typename topology::interaction;
   using nslaw = typename interaction::nslaw;
 
@@ -107,7 +108,7 @@ struct space_filter : item<> {
       attribute<"topology", some::item_ref<topology>>,
       attribute<"neighborhood", some::item_ref<neighborhood>>,
       attribute<"nslaw", some::item_ref<nslaw>>,
-      attribute<"diskdisk_r", some::item_ref<collision::diskdisk_r>>,
+      attribute<"diskdisk_r", some::item_ref<diskdisk_r>>,
       attribute<"disklines",
                 some::map<some::array<some::scalar, some::indice_value<3>>,
                           some::item_ref<diskline_r>>>>;
@@ -135,6 +136,19 @@ struct space_filter : item<> {
 
     decltype(auto) disklines() { return storage::attr<"disklines">(*self()); }
 
+    void insert_line(auto dl)
+    {
+      auto hdl = storage::handle(self()->data(), dl);
+      storage::attr<"disklines">(
+          *self())[{hdl.line().a(), hdl.line().b(), hdl.line().c()}] = dl;
+
+      // for (auto hds : storage::handles<dynamical_system>(self()->data())) {
+      //   auto inter = self()->topology().link(hds);
+      //   inter.relation() = dl;
+      //   inter.nslaw() = nslaw();
+      // }
+    }
+
     void make_points()
     {
       auto& data = self()->data();
@@ -147,7 +161,7 @@ struct space_filter : item<> {
         if constexpr (std::derived_from<item_t, model::lagrangian_ds>) {
           auto all_ds = storage::handles<item_t>(data);
           for (auto ds : all_ds) {
-//            print("add disk point : {}\n", ds.get());
+            //            print("add disk point : {}\n", ds.get());
             auto new_point = storage::add<Point>(data);
             new_point.item() = ds;
             new_point.update();
@@ -161,7 +175,9 @@ struct space_filter : item<> {
           auto all_lines = storage::handles<item_t>(data);
           for (auto line : all_lines) {
             for (auto point_coord : line.points_coords()) {
-//              print("line point: {},{}\n", point_coord(0), point_coord(1));
+              // print("line point for {},{},{} : {},{}\n", line.a(),
+              // line.b(),
+              //       line.c(), point_coord(0), point_coord(1));
               auto new_point = storage::add<Point>(data);
               new_point.item() = line;
               new_point.coord() = point_coord;
@@ -170,9 +186,11 @@ struct space_filter : item<> {
         }
       });
     }
-    void update_index_set0()
+    void update_index_set0(auto step)
     {
       using env = decltype(self()->env());
+      using indice = typename env::indice;
+      using scalar = typename env::scalar;
 
       auto& data = self()->data();
       auto topo = storage::handle(data, self()->topology());
@@ -184,216 +202,269 @@ struct space_filter : item<> {
       using ngbh_t = typename std::decay_t<decltype(ngbh)>::type;
       using points_t = typename ngbh_t::points_t;
 
-      auto& dsg0 = topo.dynamical_system_graphs()[0];
-      auto& index_set0 = topo.interaction_graphs()[0];
+      auto ds_ds_prox =
+          std::map<ground::pair<storage::index<dynamical_system, indice>,
+                                storage::index<dynamical_system, indice>>,
+                   storage::index<interaction, indice>>();
+
+      auto ds_line_prox =
+          std::map<ground::pair<storage::index<dynamical_system, indice>,
+                                std::array<scalar, 3>>,
+                   storage::index<interaction, indice>>();
+
+      auto& ds1s = storage::prop_values<interaction, "ds1">(data, step);
+      auto& ds2s = storage::prop_values<interaction, "ds2">(data, step);
+      auto interactions = storage::handles<interaction>(data, step);
+
+      for (auto [ds1, ds2, inter] : view::zip(ds1s, ds2s, interactions)) {
+        if (ds1 != ds2) {
+          ds_ds_prox[ground::make_pair(ds1, ds2)] = inter;
+        }
+        else {
+          auto linecoefs = siconos::variant::visit(
+              data, inter.relation(),
+              ground::overload(
+                  [&]<match::handle<diskline_r> DiskLineR>(DiskLineR rel) {
+                    auto line = storage::handle(data, rel.line());
+                    return std::array{line.a(), line.b(), line.c()};
+                  },
+                  []<bool flag = false>(auto) {
+                    assert(flag);
+                    // should send an exception here
+                    return std::array{0., 0., 0.};
+                    // static_assert(flag,
+                    //               "should not
+                    //               happen");
+                  }));
+
+          ds_line_prox[ground::make_pair(ds1, linecoefs)] = inter;
+        }
+      }
+
+      auto& activations =
+          storage::prop_values<interaction, "activation">(data, 0);
+
+      int activations_size = activations.size();
+      if (activations_size > 0) {
+        for (auto [activation] : view::zip(activations)) {
+          activation = false;
+        }
+      }
 
       constexpr auto npointsets = ground::size(points_t{});
-      ground::for_each(ground::range<npointsets-ground::size_c<1_c>>, [&](auto ip1) {
-        auto p1 = points_t{}[ground::size_c<ip1>];
-        using p1_t = decltype(p1);
-        auto psid1 = ngbh.point_set_id()[ip1];
+      ground::for_each(
+          ground::range<npointsets - ground::size_c<1_c>>, [&](auto ip1) {
+            auto p1 = points_t{}[ground::size_c<ip1>];
+            using p1_t = decltype(p1);
+            auto psid1 = ngbh.point_set_id()[ip1];
 
-        ground::for_each(
-            ground::range_c<std::size_t, ip1, npointsets>, [&](auto ip2) {
-              auto p2 = points_t{}[ground::size_c<ip2>];
-              using p2_t = decltype(p2);
-              auto psid2 = ngbh.point_set_id()[ip2];
+            ground::for_each(
+                ground::range_c<std::size_t, ip1, npointsets>, [&](auto ip2) {
+                  auto p2 = points_t{}[ground::size_c<ip2>];
+                  using p2_t = decltype(p2);
+                  auto psid2 = ngbh.point_set_id()[ip2];
 
-              auto& ps1 = ngbh.instance()->point_set(psid1);
-//              auto& ps2 = ngbh.instance()->point_set(psid2);
+                  auto& ps1 = ngbh.instance()->point_set(psid1);
+                  //              auto& ps2 =
+                  //              ngbh.instance()->point_set(psid2);
 
-              for (size_t i = 0; i < ps1.n_points(); ++i) {
-                auto pid1 = i;
-                auto index_point1 = storage::index<p1_t, size_t>(pid1);
-                auto handle_point1 = storage::handle(data, index_point1);
-                auto body1 = storage::handle(data, handle_point1.item());
+                  for (size_t i = 0; i < ps1.n_points(); ++i) {
+                    auto pid1 = i;
+                    auto index_point1 = storage::index<p1_t, size_t>(pid1);
+                    auto handle_point1 = storage::handle(data, index_point1);
+                    auto body1 = storage::handle(data, handle_point1.item());
 
-                for (size_t j = 0; j < ps1.n_neighbors(psid2, i); ++j) {
-                  const unsigned int pid2 = ps1.neighbor(psid2, i, j);
-                  auto index_point2 = storage::index<p2_t, size_t>(pid2);
-                  auto handle_point2 = storage::handle(data, index_point2);
-                  auto body2 = storage::handle(data, handle_point2.item());
-                  using system1_t = typename p1_t::item_t;
-                  using system2_t = typename p2_t::item_t;
+                    for (size_t j = 0; j < ps1.n_neighbors(psid2, i); ++j) {
+                      const unsigned int pid2 = ps1.neighbor(psid2, i, j);
 
-//                  print("point1 {},{},{}\n", ground::type_name<system1_t>().c_str(), handle_point1.coord()(0), handle_point1.coord()(1));
-//                  print("point2 {},{},{}\n", ground::type_name<system2_t>().c_str(), handle_point2.coord()(0), handle_point2.coord()(1));
+                      // print("pid2 : {}\n", pid2);
+                      auto index_point2 = storage::index<p2_t, size_t>(pid2);
+                      auto handle_point2 =
+                          storage::handle(data, index_point2);
+                      auto body2 =
+                          storage::handle(data, handle_point2.item());
+                      using system1_t = typename p1_t::item_t;
+                      using system2_t = typename p2_t::item_t;
 
-                  if constexpr (std::derived_from<system1_t,
-                                                  model::lagrangian_ds>) {
-                    // proximity with another disk, only disks are dynamics
-                    // check if interaction already exists
+                      // print("point1 {},{},{}\n",
+                      //       ground::type_name<system1_t>().c_str(),
+                      //       handle_point1.coord()(0),
+                      //       handle_point1.coord()(1));
+                      // print("point2 {},{},{}\n",
+                      //       ground::type_name<system2_t>().c_str(),
+                      //       handle_point2.coord()(0),
+                      //       handle_point2.coord()(1));
 
-                    if constexpr (std::derived_from<system2_t,
-                                                    model::lagrangian_ds>) {
-                      auto& ds1 = body1;
-                      auto& ds2 = body2;
-
-                      auto& ds1d = storage::prop<"vd">(ds1);
-                      // or dsg0.descriptor(ds1) with std::map
-                      auto& ds2d =
-                          storage::prop<"vd">(ds2);  // dsg0.descriptor(ds2);
-
-                      // at most one edge between 2 ds !!
-                      auto [edged, edge_exists] = dsg0.edge(ds1d, ds2d);
-
-                      if (edge_exists) {
-                        // keep this edge
-                        auto inter =
-                            storage::handle(data, dsg0.bundle(edged));
-                        index_set0.color(storage::prop<"vd">(inter)) =
-                            env::white_color;
-                      }
-                      else {
-                        // create the edge
-                        auto inter = topo.link(body1, body2);
-                        inter.nslaw() = nslaw;  // one nslaw for the moment
-
-                        index_set0.color(storage::prop<"vd">(inter)) =
-                            env::white_color;
-                        inter.relation() =
-                            diskdisk_r;  // the diskdisk_r, need
-                                         // only one relation!
-
-                        // then flag edge (color ?) + remove all edges without
-                        // the flag
-                      }
-                    }
-                    else {
                       if constexpr (std::derived_from<system1_t,
                                                       model::lagrangian_ds>) {
-                        // body2 is a static line
-                        // for all self edges find the one with the
-                        // corresponding line
+                        // proximity with another disk, only disks are
+                        // dynamics check if interaction already exists
 
-                        auto line = storage::handle(data, body2);
-                        auto a = line.a();
-                        auto b = line.b();
-                        auto c = line.c();
+                        if constexpr (std::derived_from<
+                                          system2_t, model::lagrangian_ds>) {
+                          auto& ds1 = body1;
+                          auto& ds2 = body2;
 
-                        auto& ds1 = body1;
-                        auto& ds1d = storage::prop<"vd">(ds1);
-
-                        bool found = false;
-                        for (auto [oei, oeiend] = dsg0.out_edges(ds1d);
-                             (oei != oeiend); ++oei) {
-                          if (dsg0.target(*oei) == ds1d) {
-                            // self edge
-                            // is it this line ?
-                            auto inter =
-                                storage::handle(data, dsg0.bundle(*oei));
-
-                            auto vds =
-                                storage::prop_values<interaction, "vd">(data,
-                                                                        0);
-
-                            if (siconos::variant::visit(
-                                    data, inter.relation(),
-                                    ground::overload(
-                                        [&]<match::handle<diskline_r>
-                                                DiskLineR>(DiskLineR rel) {
-                                          auto line = storage::handle(
-                                              data, rel.line());
-                                          return line.a() == a &&
-                                                 line.b() == b &&
-                                                 line.c() == c;
-                                        },
-                                        []<bool flag = false>(auto) {
-                                          assert(flag);
-                                          return false;
-                                          // static_assert(flag,
-                                          //               "should not
-                                          //               happen");
-                                        }))) {
-                              // keep this interaction
-                              index_set0.color(storage::prop<"vd">(inter)) =
-                                  env::white_color;
-                              found = true;  // found the edge
-                            }
-                            else {  // found an edge corresponding to another
-                                    // line, nothing to do
-                            }
-                          }
-                          else {  // not a self edge, nothing to do
-                          }
-                        }
-
-                        auto vds =
-                            storage::prop_values<interaction, "vd">(data, 0);
-
-                        if (!found) {
-                          // create the edge
-                          auto inter = topo.link(body1);
-                          inter.nslaw() = nslaw;  // one nslaw for the moment
-
-                          if (auto search = disklines.find({a, b, c});
-                              search != disklines.end()) {
-                            inter.relation() = search->second;
+                          // at most one edge between 2 ds !!
+                          auto find_inter =
+                              ds_ds_prox.find(ground::make_pair(ds1, ds2));
+                          if (find_inter != ds_ds_prox.end()) {
+                            // keep this edge
+                            auto inter = storage::handle(
+                                data, std::get<1>(*find_inter));
+                            storage::prop<"activation">(inter) = true;
                           }
                           else {
-                            auto dl = storage::add<diskline_r>(data);
-                            auto line = storage::handle(data, dl.line());
-                            line.a() = a;
-                            line.b() = b;
-                            line.c() = c;
+                            // create the edge
+                            auto inter = topo.link(body1, body2);
+                            inter.nslaw() =
+                                nslaw;  // one nslaw for the moment
 
-                            inter.relation() = dl;
+                            storage::prop<"activation">(inter) = true;
+
+                            inter.relation() =
+                                diskdisk_r;  // the diskdisk_r, need
+                                             // only one relation!
+                            ds_ds_prox[ground::make_pair(ds1, ds2)] = inter;
                           }
-                          index_set0.color(storage::prop<"vd">(inter)) =
-                              env::white_color;
                         }
                         else {
-                          break;
+                          if constexpr (std::derived_from<
+                                            system1_t,
+                                            model::lagrangian_ds>) {
+                            // body2 is a static line
+                            // for all self edges find the one with the
+                            // corresponding line
+
+                            auto line = storage::handle(data, body2);
+                            auto a = line.a();
+                            auto b = line.b();
+                            auto c = line.c();
+
+                            // print("PROXIMITY with {},{},{}\n", a, b, c);
+
+                            auto& ds1 = body1;
+
+                            auto find_inter =
+                                ds_line_prox.find(ground::make_pair(
+                                    ds1.index_cast(), std::array{a, b, c}));
+
+                            if (find_inter != ds_line_prox.end()) {
+                              auto inter = storage::handle(
+                                  data, std::get<1>(*find_inter));
+                              // keep this interaction
+                              storage::prop<"activation">(inter) = true;
+
+                              // print("interaction FOUND for {},{},{}\n", a,
+                              // b,
+                              //       c);
+                            }
+                            else {
+                              // print("interaction NOT FOUND for {},{},{}\n",
+                              // a,
+                              //       b, c);
+                              // create the edge
+                              auto inter = topo.link(body1);
+                              inter.nslaw() =
+                                  nslaw;  // one nslaw for the moment
+
+                              if (auto search = disklines.find({a, b, c});
+                                  search != disklines.end()) {
+                                inter.relation() = search->second;
+                              }
+                              else {
+                                auto dl = storage::add<diskline_r>(data);
+                                auto line = storage::handle(data, dl.line());
+                                line.a() = a;
+                                line.b() = b;
+                                line.c() = c;
+
+                                inter.relation() = dl;
+                                disklines[{a, b, c}] = dl;
+                              }
+                              storage::prop<"activation">(inter) = true;
+                              ds_line_prox[ground::make_pair(
+                                  ds1.index_cast(), std::array{a, b, c})] =
+                                  inter;
+                            }
+                          }
                         }
                       }
                     }
                   }
-                }
-              }
-            });
-      });
-      auto hh = storage::handles<interaction>(data);
-      for (auto inter : hh) {
-        auto& inter_vd = storage::prop<"vd">(inter);
-        if (!inter_vd) {
-          // fix: this case should not exist
-          storage::remove(data, inter);
-        }
-        else if (index_set0.color(inter_vd) != env::white_color) {
-          // remove interaction
-          auto& ds1d = storage::prop<"ds1d">(inter);
-          //          auto& ds2d = storage::prop<"ds2d">(inter);
+                });
+          });
 
-          // interaction graph
-          index_set0.remove_vertex(inter_vd);
+      for (auto [activation, inter] : view::zip(activations, interactions)) {
+        if (!activation) {
+          // print("START REMOVE interaction {}\n", inter.get());
 
-          // dynamical system graph
-          bool done = false;
-          for (auto [oei, oeiend] = dsg0.out_edges(ds1d);
-               !done && (oei != oeiend); ++oei) {
-            if (dsg0.bundle(*oei).get() == inter.get()) {
-              // only one edge for an interaction
-              dsg0.remove_edge(*oei);
-              // iterator invalidated, we must escape
-              done = true;
-            }
+          if (storage::prop<"ds1">(inter) != storage::prop<"ds2">(inter)) {
+            auto finter = ds_ds_prox.find(ground::make_pair(
+                storage::prop<"ds1">(inter), storage::prop<"ds2">(inter)));
+            ds_ds_prox.erase(finter);
+            // print("  REMOVE ds ds interaction between {} {}\n",
+            //       storage::prop<"ds1">(inter).get(),
+            //       storage::prop<"ds2">(inter).get());
           }
+          else {
+            auto linecoefs = siconos::variant::visit(
+                data, inter.relation(),
+                ground::overload(
+                    [&]<match::handle<diskline_r> DiskLineR>(DiskLineR rel) {
+                      auto line = storage::handle(data, rel.line());
+                      return std::array{line.a(), line.b(), line.c()};
+                    },
+                    []<bool flag = false>(auto) {
+                      assert(flag);
+                      // should send an exception here
+                      return std::array{0., 0., 0.};
+                      // static_assert(flag,
+                      //               "should not
+                      //               happen");
+                    }));
+            // print("  REMOVE ds line interaction between {} ({},{},{})\n",
+            //       storage::prop<"ds1">(inter).get(), linecoefs[0],
+            //       linecoefs[1], linecoefs[2]);
 
-          // with move_back
-          storage::remove(data, inter);
+            auto finter = ds_line_prox.find(
+                ground::make_pair(storage::prop<"ds1">(inter), linecoefs));
+            ds_line_prox.erase(finter);
+          }
         }
       }
+
+      auto fact = std::find(activations.begin(), activations.end(), false);
+
+      while (fact != activations.end()) {
+        auto inter =
+            storage::handle(data, storage::index<interaction, indice>(*fact));
+
+        // with move_back : order is modified
+        storage::remove(data, inter);
+
+        // XXX remove from ds_ds_prox or ds_line_prox
+
+        // activations has been modified, search first false element starting
+        // at current position
+        fact = std::find(fact, activations.end(), false);
+      }
+
+      // print("END of interactions removal\n");
     }
 
     auto methods()
     {
-      //      using env_t = decltype(self()->env());
-      //      using indice = typename env_t::indice;
-      //      using scalar = typename env_t::scalar;
+      using env_t = decltype(self()->env());
+      using indice = typename env_t::indice;
+      // using scalar = typename env_t::scalar;
+      using diskline_r_t = storage::index<diskline_r, indice>;
 
-      return collect(
-          method("make_points", &interface<Handle>::make_points),
-          method("update_index_set0", &interface<Handle>::update_index_set0));
+      return collect(method("make_points", &interface<Handle>::make_points),
+                     method("update_index_set0",
+                            &interface<Handle>::update_index_set0<indice>),
+                     method("insert_line",
+                            &interface<Handle>::insert_line<diskline_r_t>));
     }
   };
 };

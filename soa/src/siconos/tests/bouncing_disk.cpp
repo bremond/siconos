@@ -10,7 +10,7 @@ using disk = model::lagrangian_ds;
 using fc2d = simul::nonsmooth_problem<FrictionContactProblem>;
 //  using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
 //  using osnspb = simul::one_step_nonsmooth_problem<lcp>;
-  using osnspb = simul::one_step_nonsmooth_problem<fc2d>;
+using osnspb = simul::one_step_nonsmooth_problem<fc2d>;
 using nslaw = model::newton_impact_friction;
 using disk_shape = collision::shape::disk;
 using diskdisk_r = collision::diskdisk_r;
@@ -58,7 +58,7 @@ int main(int argc, char* argv[])
   double position_init = 1.0;  // initial position for lowest bead.
   double velocity_init = 0.0;  // initial velocity for lowest bead.
   double theta = 0.5;          // theta for MoreauJeanOSI integrator
-  double radius = 0.1;         // Disk radius
+  double radius = 0.5;         // Disk radius
   double m = 1.;               // Disk mass
   double g = 9.81;             // Gravity
 
@@ -90,14 +90,14 @@ int main(int argc, char* argv[])
   // ------------------
 
   // -- nslaw --
-  double e = 0.95;
+  double e = 2.95;
   auto nslaw = storage::add<config::nslaw>(data);
   nslaw.e() = e;
 
-//  auto lcp = storage::add<config::lcp>(data);
-    auto fc2d = storage::add<config::fc2d>(data);
+  //  auto lcp = storage::add<config::lcp>(data);
+  auto fc2d = storage::add<config::fc2d>(data);
   fc2d.create();
-//  lcp.instance()->dimension = 2;
+  //  lcp.instance()->dimension = 2;
   //  fc2d.instance()->mu = 0.1;
 
   // ------------------
@@ -117,12 +117,12 @@ int main(int argc, char* argv[])
 
   // -- set the options --
   auto so = storage::add<simul::solver_options>(data);
-  so.create(SICONOS_FRICTION_2D_LEMKE);
+  so.create(SICONOS_FRICTION_2D_NSGS);
   osnspb.options() = so;
 
   auto ngbh = storage::add<config::neighborhood>(data);
 
-  ngbh.create(0.6);  // radius
+  ngbh.create(10);  // compactnsearch radius
 
   auto diskdisk_r = storage::add<config::diskdisk_r>(data);
   auto ground_r = storage::add<config::diskline_r>(data);
@@ -137,7 +137,7 @@ int main(int argc, char* argv[])
   spacef.neighborhood() = ngbh;
   spacef.diskdisk_r() = diskdisk_r;
   spacef.nslaw() = nslaw;
-  spacef.disklines()[{0., 1., 0.}] = ground_r;
+  spacef.insert_line(ground_r);
   spacef.make_points();
   ngbh.add_point_sets(0);
   // =========================== End of model definition
@@ -165,9 +165,11 @@ int main(int argc, char* argv[])
   while (simulation.has_next_event()) {
     ngbh.update(0);
     ngbh.search();
-    spacef.update_index_set0();
+    spacef.update_index_set0(simulation.current_step());
 
     auto ninvds = simulation.compute_one_step();
+//    auto q = storage::attr<"q">(d1, simulation.current_step())(1);
+//    auto v = storage::attr<"velocity">(d1, simulation.current_step())(1);
 
     double p0, lambda;
     if (ninvds > 0) {
@@ -188,6 +190,7 @@ int main(int argc, char* argv[])
                 storage::attr<"velocity">(d1, simulation.current_step())(1),
                 p0, lambda)
          << std::flush;
+
   }
   //  io::close(fd);
 }

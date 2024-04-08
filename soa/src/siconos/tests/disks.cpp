@@ -136,7 +136,7 @@ int main(int argc, char* argv[])
   spacef.neighborhood() = ngbh;
   spacef.diskdisk_r() = diskdisk_r;
   spacef.nslaw() = nslaw;
-  spacef.disklines()[{0., 1., 0.}] = ground_r;
+  spacef.insert_line(ground_r);
   spacef.make_points();
   ngbh.add_point_sets(0);
   // =========================== End of model definition

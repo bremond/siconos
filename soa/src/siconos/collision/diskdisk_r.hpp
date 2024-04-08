@@ -39,13 +39,13 @@ struct diskdisk_r : item<>, model::relation2, model::any_lagrangian_relation {
     decltype(auto) compute_jachq(S step, DS1& ds1, DS2& ds2, M& h_matrix1,
                                  M& h_matrix2)
     {
-      // auto& data = self()->data();
+      auto& data = self()->data();
 
       auto& q1 = storage::attr<"q">(ds1);
       auto& q2 = storage::attr<"q">(ds2);
 
-      // auto& r1 = storage::handle(data, storage::prop<"shape">(ds1)).radius();
-      // auto& r2 = storage::handle(data, storage::prop<"shape">(ds2)).radius();
+      auto& r1 = storage::handle(data, storage::prop<"shape">(ds1)).radius();
+      auto& r2 = storage::handle(data, storage::prop<"shape">(ds2)).radius();
 
       auto x1 = q1(0);
       auto y1 = q1(1);
@@ -64,18 +64,18 @@ struct diskdisk_r : item<>, model::relation2, model::any_lagrangian_relation {
       auto& g2 = h_matrix2;
 
       g1(0, 0) = -dxsd;
-      g1(1, 0) = 0.;//dysd;
+      g1(1, 0) = dysd;
       g1(0, 1) = -dysd;
-      g1(1, 1) =0.;//-dxsd;
+      g1(1, 1) =-dxsd;
       g1(0, 2) = 0.;
-      g1(1, 2) = 0.;//-r1;
+      g1(1, 2) = -r1;
 
       g2(0, 0) = dxsd;
-      g2(1, 0) = 0.;//-dysd;
+      g2(1, 0) = -dysd;
       g2(0, 1) = dysd;
-      g2(1, 1) = 0.;//dxsd;
+      g2(1, 1) = dxsd;
       g2(0, 2) = 0.;
-      g2(1, 2) = 0.;//-r2;
+      g2(1, 2) = -r2;
     }
   };
 

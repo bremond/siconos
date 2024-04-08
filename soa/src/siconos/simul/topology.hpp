@@ -69,21 +69,21 @@ struct topology : item<> {
     {
       auto &data = self()->data();
 
-      auto &dsg0 = self()->dynamical_system_graphs()[0];
-      auto &ig0 = self()->interaction_graphs()[0];
       auto inter = storage::add<interaction>(data);
-      auto dsgv = dsg0.add_vertex(ds);
-      auto [dsg0_ed, ig0_vd] = dsg0.add_edge(dsgv, dsgv, inter, ig0);
+//      auto dsgv = dsg0.add_vertex(ds);
+//      auto [dsg0_ed, ig0_vd] = dsg0.add_edge(dsgv, dsgv, inter, ig0);
 
       attr<"y">(inter).setZero();
       attr<"ydot">(inter).setZero();
 
-      prop<"vd">(ds) = dsgv;
-      prop<"vd">(inter) = ig0_vd;
+//      prop<"vd">(ds) = dsgv;
+//      prop<"vd">(inter) = ig0_vd;
       prop<"nds">(inter) = 1;
       prop<"ds1">(inter) = ds;
       prop<"ds2">(inter) = ds;
 
+//      prop<"ds1d">(inter) = dsgv;
+//      prop<"ds2d">(inter) = dsgv;
       //      dsg0.update_vertices_indices();
       //      dsg0.update_edges_indices();
 
@@ -108,29 +108,26 @@ struct topology : item<> {
     {
       auto &data = self()->data();
 
-      auto &dsg0 = self()->dynamical_system_graphs()[0];
-      auto &ig0 = self()->interaction_graphs()[0];
-
       auto inter = storage::add<interaction>(data);
-      auto dsgv1 = dsg0.add_vertex(ds1);
-      auto dsgv2 = dsg0.add_vertex(ds2);
-      auto [dsg0_ed, ig0_vd] = dsg0.add_edge(dsgv1, dsgv2, inter, ig0);
+//      auto dsgv1 = dsg0.add_vertex(ds1);
+//      auto dsgv2 = dsg0.add_vertex(ds2);
+//      auto [dsg0_ed, ig0_vd] = dsg0.add_edge(dsgv1, dsgv2, inter, ig0);
       // dsg0_ed may be invalidated on edge removal so it is useless to store
       // it
 
       attr<"y">(inter).setZero();
       attr<"ydot">(inter).setZero();
 
-      ds1.property(symbol<"vd">{}) = dsgv1;
-      ds2.property(symbol<"vd">{}) = dsgv2;
+//      ds1.property(symbol<"vd">{}) = dsgv1;
+//      ds2.property(symbol<"vd">{}) = dsgv2;
 
       inter.property(symbol<"nds">{}) = 2;
-      inter.property(symbol<"vd">{}) = ig0_vd;
+//      inter.property(symbol<"vd">{}) = ig0_vd;
       inter.property(symbol<"ds1">{}) = ds1;
       inter.property(symbol<"ds2">{}) = ds2;
 
-      inter.property(symbol<"ds1d">{}) = dsgv1;
-      inter.property(symbol<"ds2d">{}) = dsgv2;
+//      inter.property(symbol<"ds1d">{}) = dsgv1;
+//      inter.property(symbol<"ds2d">{}) = dsgv2;
 
       return inter;
     };

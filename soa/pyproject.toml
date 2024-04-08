@@ -33,7 +33,7 @@ cmake.verbose = true
 logging.level = "INFO"
 
 cmake.targets=["_nonos"]
-cmake.build-type = "Debug"
+cmake.build-type = "Release"
 wheel.expand-macos-universal-tags = true
 wheel.packages = ["src/siconos/py/nonos"]
 

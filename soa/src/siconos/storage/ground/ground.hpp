@@ -80,6 +80,7 @@ using hana::flatten;
 using hana::integral_constant;
 using hana::is_valid;
 using hana::make_lazy;
+using hana::pair;
 using hana::size;
 using hana::size_c;
 using hana::tuple;

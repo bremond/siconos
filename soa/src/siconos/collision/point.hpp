@@ -1,9 +1,9 @@
 #pragma once
 
+#include <concepts>
+
 #include "siconos/collision/collision_head.hpp"
 #include "siconos/model/lagrangian_ds.hpp"
-
-#include <concepts>
 namespace siconos::collision {
 
 // a point linked to an item (a dynamical system or a shape)
@@ -28,12 +28,10 @@ struct point : item<> {
 
       if constexpr (std::derived_from<item_t, model::lagrangian_ds>) {
         // one body / one point
-        if constexpr (std::derived_from<item_t, model::lagrangian_ds>) {
-          auto hbody = storage::handle(data, item());
-          storage::attr<"coord">(*self())[0] = storage::attr<"q">(hbody)(0);
-          storage::attr<"coord">(*self())[1] = storage::attr<"q">(hbody)(1);
-          storage::attr<"coord">(*self())[2] = 0.; /* 2D */
-        }
+        auto hbody = storage::handle(data, item());
+        storage::attr<"coord">(*self())[0] = storage::attr<"q">(hbody)(0);
+        storage::attr<"coord">(*self())[1] = storage::attr<"q">(hbody)(1);
+        storage::attr<"coord">(*self())[2] = 0.; /* 2D */
       }
     }
   };

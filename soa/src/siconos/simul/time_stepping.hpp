@@ -13,7 +13,6 @@ struct time_stepping : item<> {
   using one_step_nonsmooth_problem_t = nth_t<2, items>;
   using topology_t = nth_t<3, items>;
 
-
   using formulation_t =
       typename one_step_nonsmooth_problem_t::problem_t::formulation_t;
   using attributes = types::attributes_of_items<Items...>;
@@ -48,24 +47,33 @@ struct time_stepping : item<> {
       auto osi = one_step_integrator();
       auto step = current_step();
 
+      // do nothing if lagrangian_r is time_invariant
+      osi.update_h_matrices(step);
+
+      // do nothing if fext is time_invariant
+      osi.update_iteration_matrix(step);
+
+      // vfree stored in v(step+1)
       osi.compute_free_state(step, time_step());
 
-      // -> ydot (step+1)
+      // xfree stored in positions(step+1)
       osi.update_positions(step, time_step());
+
+      // -> y & ydot (step & step+1)
       osi.compute_output(step);
       osi.compute_output(step + 1);
 
-      // activations of interactions
-      update_indexsets(0);
-
       // compute active interactions
       auto [ninter, nds] = osi.compute_active_interactions(step, time_step());
+
+      // activations of interactions
+//      update_indexsets(0);
 
       if (nds > 0) {
         // a least one activated interaction
 
         //        print("ninter, nds = {},{}\n", ninter, nds);
-
+        osi.compute_h_matrices(step+1);
         osi.assemble_h_matrix_for_involved_ds(step, ninter, nds);
         osi.assemble_mass_matrix_for_involved_ds(step, nds);
 
@@ -78,19 +86,14 @@ struct time_stepping : item<> {
 
         self()->template solve_nonsmooth_problem<formulation_t>(step, ninter);
 
+        osi.keep_lambdas(step);
         osi.compute_input();
-        osi.update_all_velocities(step);
+        osi.update_state(step, time_step());
         osi.update_positions(step, time_step());
       }
       else {
         print(".");
       }
-
-      // do nothing if lagrangian_r is time_invariant
-      osi.update_h_matrices(step);
-
-      // do nothing if fext is time_invariant
-      osi.update_iteration_matrix(step);
 
       current_step() += 1;
 
@@ -133,6 +136,8 @@ struct time_stepping : item<> {
       auto& index_set1 = topo.interaction_graphs()[1];
       //        auto& dsg0 = topo.dynamical_system_graphs()[0];
 
+      print("index_set0.size:{}\n", index_set0.size());
+      print("index_set1.size:{}\n", index_set1.size());
       // Check index_set1
       auto [ui1, ui1end] = index_set1.vertices();
 
@@ -287,6 +292,7 @@ struct time_stepping : item<> {
       //      using scalar = typename env_t::scalar;
 
       return collect(
+          method("initialize", &interface<Handle>::initialize),
           method("time_discretization",
                  &interface<Handle>::time_discretization),
           method("one_step_integrator",

@@ -37,8 +37,16 @@ class SpaceFilter(Stored):
         line.set_a(a)
         line.set_b(b)
         line.set_c(c)
-        line.set_maxpoints(1000)
+        line.set_maxpoints(5000)
         line.initialize()
+
+        print("new line,  p0:", line.p0())
+        print("--------, dir:", line.direction())
+
+        diskline = vkernel.disks.add_diskline_r(self.data())
+        diskline.set_line(line)
+
+        self.handle().insert_line(diskline)
 
     def insertDisk(self, radius):
         disk_shape = vkernel.disks.add_disk_shape(self.data())
@@ -55,7 +63,7 @@ class SpaceFilter(Stored):
             
         self._ngbh.update(0)
         self._ngbh.search()
-        self._handle.update_index_set0();
+        self._handle.update_index_set0(0);
 
 class NewtonImpactFrictionNSL(Stored):
 
@@ -65,7 +73,7 @@ class NewtonImpactFrictionNSL(Stored):
         self._handle.set_mu(mu)
         #self._handle.set_dimension(dimension)
 
-class Osi(Stored, vkernel.disks.osi):
+class Osi(Stored):
 
     def __init__(self, theta):
         self._handle = vkernel.disks.add_osi(data())
@@ -117,7 +125,9 @@ class Simulation(Stored):
         self._timedisc = timedisc
         self._timedisc.handle().set_tmax(self._nsds._T) # vkernel does not have nsds
         self._handle = vkernel.disks.add_simulation(self.data())
-
+        self.handle().initialize()
+        self.handle().one_step_integrator().set_theta(0.50001)
+        
     def insertIntegrator(self, osi):
         pass # unimplemented
 
@@ -181,10 +191,11 @@ class Body(Stored):
         body.set_id(self._ident)
         body.set_q(array(position))
         body.set_velocity(array(velocity))
-        body.set_mass_matrix(array([mass, mass, mass]))
+        body.set_mass_matrix(array([mass, mass, mass*radius*radius/2]))
         disk_shape = vkernel.disks.add_disk_shape(self.data())
         body.set_shape(disk_shape)
         body.shape().set_radius(radius)
+        body.set_fext(array([0,0,0])) # default 
 
     def scalarMass(self):
         return self.handle().mass_matrix()[0]
@@ -199,12 +210,15 @@ class OSNSPB(Stored):
     def __init__(self, dim, solvopts):
 
         self._so = vkernel.disks.add_solver_options(self.data())
-        self._so.create(404)
+        self._so.create(400)
+        self._so.set_iparam(0, 10)
         self._fc2d = vkernel.disks.add_fc2d(self.data())
         self._handle = vkernel.disks.add_osnspb(self.data())
         self._handle.set_options(self._so)
-        self._fc2d.create(404)
+        self._fc2d.create(400)
         self.handle().set_problem(self._fc2d)
+        self.handle().set_mu(0.3)
+        self.handle().set_verbose(True)
 #        self._fc2d.instance().dimension = 2
         
     def setMaxSize(self, maxs):
@@ -244,8 +258,6 @@ class MechanicsIO(Stored):
         self._handle = vkernel.disks.add_io(self.data())
     
     def positions(self, nsds):
-        pos = self.handle().positions(0)
-        print("POS:", pos.shape, pos)
         return self.handle().positions(0)
 
     def velocities(self, nsds):
@@ -253,4 +265,4 @@ class MechanicsIO(Stored):
 
 class SpaceFilterOptions():
 
-    neighborhood_radius = 3
+    neighborhood_radius = 2.5

@@ -7,6 +7,7 @@
 #include <fmt/ranges.h>
 #include <lcp_cst.h>
 #include <siconos/numerics/Friction_cst.h>
+#include <siconos/numerics/NumericsVerbose.h>
 
 #include "SolverOptions.h"
 #include "siconos/simul/simul_head.hpp"
@@ -31,9 +32,27 @@ struct solver_options : storage::data_holder<SolverOptions> {
                                });
     }
 
+    void set_iparam(auto index, auto value)
+    {
+      self()->instance()->iparam[index] = value;
+    }
+
+    void set_dparam(auto index, auto value)
+    {
+      self()->instance()->dparam[index] = value;
+    }
+
     auto methods()
     {
-      return collect(method("create", &interface<Handle>::create));
+      using env_t = decltype(self()->env());
+      using indice = typename env_t::indice;
+      using scalar = typename env_t::scalar;
+
+      return collect(method("create", &interface<Handle>::create),
+                     method("set_iparam",
+                            &interface<Handle>::set_iparam<indice, indice>),
+                     method("set_dparam",
+                            &interface<Handle>::set_dparam<indice, scalar>));
     }
   };
 };
@@ -66,6 +85,8 @@ struct one_step_nonsmooth_problem : item<> {
   using problem_t = NonsmoothProblem;
   using attributes =
       gather<attribute<"level", some::indice>,
+             attribute<"verbose", some::boolean>,
+             attribute<"mu", some::scalar>,
              attribute<"options", some::item_ref<solver_options>>,
              attribute<"problem", some::item_ref<NonsmoothProblem>>>;
 
@@ -88,6 +109,8 @@ struct one_step_nonsmooth_problem : item<> {
                algebra::vec<V>& z_vec, algebra::vec<V>& w_vec)
     {
       using fmt::print;
+
+      numerics_set_verbose(storage::attr<"verbose">(*self()));
       if constexpr (std::derived_from<Formulation,
                                       LinearComplementarityProblem>) {
         // w_mat cannot be sparse
@@ -147,8 +170,11 @@ struct one_step_nonsmooth_problem : item<> {
         self()->problem().instance()->mu =
             (double*)malloc(size0(w_mat) * sizeof(double));
 
+        // auto w_mat_dense = NM_create(NM_DENSE, size0(w_mat), size1(w_mat));
+        // NM_to_dense(w_mat._m, w_mat_dense);
+
         for (unsigned int i = 0; i < size0(w_mat); ++i)
-          self()->problem().instance()->mu[i] = 0.;
+          self()->problem().instance()->mu[i] = storage::attr<"mu">(*self());
         fc2d_driver(&*self()->problem().instance(), z_vec._v->matrix0,
                     w_vec._v->matrix0, &*options().instance());
 

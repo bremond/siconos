@@ -534,9 +534,43 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
        shell --pure --expose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} fclib  strace benchmark clang-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
-       make -j1 bouncing_ball && { cd ./src/siconos/tests; ./bouncing_ball ;}
+       make -j1 bouncing_ball && { cd ./src/siconos/tests; ./bouncing_ball > /tmp/bb ;}
 #+end_src
 
+
+#+name: mybenchmarks-make-clang-debug-siconos-ref
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug-siconos
+#+begin_src sh :compile :results output silent
+    install_prefix=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/
+    guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+         shell --container -N --emulate-fhs --share=$src_dir=$src_dir --share=$install_prefix=$install_prefix --pure gcc-toolchain cppunit ccache bash -D siconos --\
+         bash -c "\
+    PYTHONPATH=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/
+    /scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/bin/siconos ${src_dir}/src/siconos/tests/disks-o.py
+    cp disks-o.hdf5 .."
+#+end_src
+
+#+name: mybenchmarks-make-clang-debug-siconos-ref
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug-siconos
+#+begin_src sh :compile :results output silent
+    install_prefix=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/
+    guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+         shell --container -N --emulate-fhs --share=$src_dir=$src_dir --share=$install_prefix=$install_prefix --pure gcc-toolchain cppunit ccache bash -D siconos --\
+         bash -c "\
+    PYTHONPATH=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/
+    /scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/bin/siconos /scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/bin/siconos_vview"
+#+end_src
+
+#+name: mybenchmarks-make-clang-debug-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug-siconos
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --pure --expose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} fclib  strace benchmark clang-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
+       make -j1 disks 
+#+end_src
 
 
 #+name: mybenchmarks-make-clang-debug-siconos-run-bouncing-disk
@@ -919,6 +953,14 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 | Your     | terminal | lacks     | the     | ability | to       | clear       | the | screen | or    | position | the         | cursor. |
 |          |          |           |         |         |          |             |     |        |       |          |             |         |
 
+
+
+* disks
+
+
+#+begin_src sh
+guix time-machine -C ./siconos-2023-11-08.scm -- shell siconos time parallel -- siconos_vexport --global-filter --gen-para-script=10 disks.hdf5 > pprocess  
+#+end_src
 
 
 ** COMMENT Org Babel settings

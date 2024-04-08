@@ -30,7 +30,7 @@ struct diskline_r : item<>, model::relation1, model::any_lagrangian_relation {
       auto& data = self()->data();
 
       auto& q = storage::attr<"q">(ds);
-      // auto& r = storage::handle(data, storage::prop<"shape">(ds)).radius();
+      auto& r = storage::handle(data, storage::prop<"shape">(ds)).radius();
 
       auto& x = q(0);
       auto& y = q(1);
@@ -43,11 +43,11 @@ struct diskline_r : item<>, model::relation1, model::any_lagrangian_relation {
       auto sd1 = copysign(1, d1);
 
       h_matrix1(0, 0) = a * sd1 * invsqrta2pb2;
-      h_matrix1(1, 0) = 0 ;//-b * sd1 * invsqrta2pb2;
+      h_matrix1(1, 0) = -b * sd1 * invsqrta2pb2;
       h_matrix1(0, 1) = b * sd1 * invsqrta2pb2;
-      h_matrix1(1, 1) = 0 ;//a * sd1 * invsqrta2pb2;
+      h_matrix1(1, 1) = a * sd1 * invsqrta2pb2;
       h_matrix1(0, 2) = 0;
-      h_matrix1(1, 2) = 0;//- r;
+      h_matrix1(1, 2) = -r;
     }
   };
 };

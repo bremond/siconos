@@ -32,10 +32,10 @@ struct interaction_manager : item<> {
       return storage::handle(data, attr<"nslaws">(*self())(gid1, gid2));
     }
 
-    void update_interactions()
+    void update_interactions(auto step)
     {
       auto& data = self()->data();
-      storage::handle(data, attr<"space_filter">(*self())).update_index_set0();
+      storage::handle(data, attr<"space_filter">(*self())).update_index_set0(step);
     }
 
     auto methods()
@@ -52,7 +52,7 @@ struct interaction_manager : item<> {
           method("get_nonsmooth_law",
                  &interface<Handle>::get_nonsmooth_law<indice, indice>),
           method("update_interactions",
-                 &interface<Handle>::update_interactions));
+                 &interface<Handle>::update_interactions<indice>));
     }
   };
 

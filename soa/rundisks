@@ -1,0 +1,87 @@
+#!/bin/bash
+#!/bin/bash
+#OAR --project siconos
+#OAR -l /nodes=1/cpu=2/core=16,walltime=1:00:00
+################################################################################
+case $1 in
+  --env-ok)
+    shift;;
+  --fast)
+    shift
+    pwd=`pwd`
+    . $pwd/.siconos-guix-profile/etc/profile && $0 --env-ok $@
+    ;;
+  *)
+    set -x
+    MYDIR=`dirname $0`
+    
+    cat>siconos-disks-manifest.scm<<EOF
+(specifications->manifest
+ '( "siconos" "benchmark" "clang-toolchain"  "valgrind"
+    "suitesparse" "eigen" "boost" "fmt" "range-v3"
+    "cmake" "ninja" "bash" "coreutils" "which" "python" "python-pip" "python-numpy" 
+    "pybind11" "strace" "jupyter" "python-ipykernel" "procps" "gdb" "git" "emacs-next"
+    "time" "parallel" "findutils"))
+EOF
+    cat>siconos-2023-11-08.scm<<EOF
+(list (channel
+        (name 'guix)
+        (url "https://git.savannah.gnu.org/git/guix.git")
+        (branch "master")
+        (commit
+          "461577f0fce1b69a88a752857eeee2e9e1116d6c")
+        (introduction
+          (make-channel-introduction
+            "9edb3f66fd807b096b48283debdcddccfea34bad"
+            (openpgp-fingerprint
+              "BBB0 2DDF 2CEA F6A8 0D1D  E643 A2A0 6DF2 A33A 54FA"))))
+      (channel
+        (name 'guix-hpc)
+        (url "https://gitlab.inria.fr/bremond/guix-hpc.git")
+        (branch "add-siconos")
+        (commit
+         "f6d6373f6a4542585397178c2ec3e58c4990f0da")))
+EOF
+    # guix environment setup
+    # export PATH=/var/guix/profiles/per-user/root/current-guix/bin:$PATH
+    # export GUIX_DAEMON_SOCKET=guix://luke.u-ga.fr
+    [ -f /applis/site/guix-start.sh ] && . /applis/site/guix-start.sh
+    pwd=`pwd`
+    rm -f $pwd/.siconos-guix-profile
+#    guix_isolation_args="--container -N --emulate-fhs --share=/tmp --share=$HOME"
+    guix_isolation_args="--pure"
+    guix_cmd="guix time-machine -C ./siconos-2023-11-08.scm --"
+    exec $guix_cmd shell $guix_args \
+         --root=.siconos-guix-profile \
+         --manifest=siconos-disks-manifest.scm -- $0 --env-ok $@
+    ;;
+esac
+
+case $1 in --install)
+             shift
+             rm -rf venv
+             python3 -m venv --system-site-packages venv
+             . venv/bin/activate
+             
+             pip install --upgrade pip
+             venv/bin/pip3 --version
+             venv/bin/pip3 install .
+             ;;
+esac
+
+. venv/bin/activate
+env
+export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
+
+time=`which time`
+
+$time -f '%E %M' python3 src/siconos/tests/disks.py > disks-log
+
+case $1 in --export)
+             shift
+             nprocs=${1:-1}
+             siconos_vexport --global-filter --gen-para-script=$nprocs disks.hdf5 > pprocess
+             chmod +x ./pprocess
+             $time -f '%E %M' ./pprocess
+             ;;
+esac

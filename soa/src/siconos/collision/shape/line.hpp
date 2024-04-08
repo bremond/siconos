@@ -49,7 +49,7 @@ struct line : item<> {
 
       invsqrta2pb2() = 1. / (sqrt(a() * a() + b() * b()));
 
-      direction() = vect_t {{b(), a(), 0.}};
+      direction() = vect_t {{-b(), a(), 0.}} * invsqrta2pb2();
     }
     decltype(auto) points_coords()
     {
@@ -58,7 +58,7 @@ struct line : item<> {
       auto& dir = self()->direction();
       return view::iota(0, self()->maxpoints()) |
              view::transform(
-                 [&](auto i) { return p0 + (i - maxpoints / 2) * dir; });
+               [&](auto i) { return p0 + ((i - maxpoints / 2)/10.) * dir; });
     }
     decltype(auto) distance(auto& q)
     {

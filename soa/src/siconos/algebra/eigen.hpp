@@ -129,4 +129,5 @@ static constexpr decltype(auto) ncols(T)
   }
 }
 
+void set_zero(match::matrix auto& m) { m.setZero(); };
 }  // namespace siconos::algebra

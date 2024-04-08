@@ -264,7 +264,8 @@ static constexpr auto apply_wrapper(Storage storage)
                               return std::is_same_v<Item, typename T::type>;
                             }>);
   if constexpr (ground::size(tpl) > ground::size_c<0>) {
-    return typename std::decay_t<decltype(tpl[0_c])>::template wrapper<Storage>{};
+    return typename std::decay_t<decltype(tpl[0_c])>::template wrapper<
+        Storage>{};
   }
   else {
     // without wrapper
@@ -400,8 +401,12 @@ static constexpr auto refine_recursively_attribute =
 
 static auto move_back = [](const auto i, auto& a) constexpr {
   if constexpr (match::push_back<std::decay_t<decltype(a)>>) {
+    assert((int)a.size() >= 1);
+
     a[i] = std::move(a.back());
     a.pop_back();
+
+    assert((int)a.size() >= 0);
   }
   // else...
 };
@@ -637,7 +642,8 @@ static auto make = []() constexpr -> decltype(auto) {
                     typename traits::config<typename info_t::env>::
                         template convert<storage_wrapped>::type;
 
-                return ground::key_value<Attr, storage_wrapped_and_converted>{};
+                return ground::key_value<Attr,
+                                         storage_wrapped_and_converted>{};
               }
               else {
                 return ground::key_value<
@@ -663,7 +669,8 @@ static auto remove = [](auto& data, auto& h) {
 
   using indice = typename info_t::env::indice;
 
-  auto attrs = concat(attributes(item_t{}), attached_storages(h, data));
+  auto attrs = ground::tuple_unique(
+      concat(attributes(item_t{}), attached_storages(h, data)));
 
   if constexpr (ground::size(attrs) > ground::size_c<0>) {
     ground::for_each(attrs, [&data, &h]<match::attribute A>(A) {
@@ -694,10 +701,6 @@ static auto add = [](auto&& data) constexpr -> decltype(auto) {
 
   using attrs_t = std::decay_t<decltype(attrs)>;
 
-  // std::cout << "ALL_PROPERTIES:" << ground::type_name<typename
-  // info_t::all_properties_t>().c_str() << std::endl;
-  //  attributes
-
   if constexpr (ground::size(attrs_t{}) > ground::size_c<0>) {
     indice index = 0;
     ground::for_each(attrs, [&data, &index]<match::attribute A>(A) {
@@ -710,12 +713,6 @@ static auto add = [](auto&& data) constexpr -> decltype(auto) {
             using storage_t = std::decay_t<decltype(storage)>;
 
             if constexpr (match::push_back<storage_t>) {
-              // std::cout << "attribute: " << ground::type_name<A>().c_str()
-              //           << " step:" << step
-              //           << " type: " <<
-              //           ground::type_name<storage_t>().c_str()
-              //           << " size: " << std::size(storage) << " "
-              //           << std::endl;
               storage.push_back(typename storage_t::value_type{});
               assert(index > 0 ? index == std::size(storage) - 1
                                : index == 0);
