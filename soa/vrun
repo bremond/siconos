@@ -1,5 +1,4 @@
 #!/bin/bash
-#!/bin/bash
 #OAR --project siconos
 #OAR -l /nodes=1/cpu=2/core=16,walltime=1:00:00
 ################################################################################
@@ -12,7 +11,7 @@ case $1 in
     . $pwd/.siconos-guix-profile/etc/profile && $0 --env-ok $@
     ;;
   *)
-    set -x
+    case $1 in -x) shift; set -x;; esac
     MYDIR=`dirname $0`
     
     cat>siconos-disks-manifest.scm<<EOF
@@ -56,32 +55,44 @@ EOF
          --manifest=siconos-disks-manifest.scm -- $0 --env-ok $@
     ;;
 esac
-
-case $1 in --install)
-             shift
-             rm -rf venv
-             python3 -m venv --system-site-packages venv
-             . venv/bin/activate
-             
-             pip install --upgrade pip
-             venv/bin/pip3 --version
-             venv/bin/pip3 install .
-             ;;
-esac
-
-. venv/bin/activate
-env
-export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
-
 time=`which time`
-
-$time -f '%E %M' python3 src/siconos/tests/disks.py > disks-log
-
-case $1 in --export)
-             shift
-             nprocs=${1:-1}
-             siconos_vexport --global-filter --gen-para-script=$nprocs disks.hdf5 > pprocess
-             chmod +x ./pprocess
-             $time -f '%E %M' ./pprocess
-             ;;
-esac
+while [ $# -gt 0 ]; do 
+  case $1 in
+    --install)
+      shift
+      rm -rf venv
+      python3 -m venv --system-site-packages venv
+      . venv/bin/activate
+      
+      pip install --upgrade pip
+      venv/bin/pip3 --version
+      venv/bin/pip3 install .
+      ;;
+    --export)
+      shift
+      nprocs=${1:-1}
+      siconos_vexport --global-filter --gen-para-script=$nprocs disks.hdf5 > pprocess
+      chmod +x ./pprocess
+      $time -f '%E %M' ./pprocess
+      ;;
+    --repl)
+      shift
+      . venv/bin/activate
+      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
+      python3
+      ;;
+    --shell)
+      shift
+      . venv/bin/activate
+      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
+      bash -i
+      ;;
+    *)
+      script=$1
+      shift
+      . venv/bin/activate
+      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
+      $time -f '%E %M' python3 $script > `basename $script`.log
+      ;;
+  esac
+done
