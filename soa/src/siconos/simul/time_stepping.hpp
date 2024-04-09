@@ -66,9 +66,7 @@ struct time_stepping : item<> {
       // compute active interactions
       auto [ninter, nds] = osi.compute_active_interactions(step, time_step());
 
-      // activations of interactions
-//      update_indexsets(0);
-
+      print("nds :{}, ninter: {}\n", nds, ninter);
       if (nds > 0) {
         // a least one activated interaction
 
@@ -124,164 +122,6 @@ struct time_stepping : item<> {
                  current_step() * time_discretization().h() <
              time_discretization().tmax();
     }
-    void update_indexsets(auto i)
-    {
-      auto& data = self()->data();
-      using info_t = std::decay_t<decltype(ground::get<storage::info>(data))>;
-      using env = typename info_t::env;
-
-      auto topo = self()->topology();
-
-      auto& index_set0 = topo.interaction_graphs()[0];
-      auto& index_set1 = topo.interaction_graphs()[1];
-      //        auto& dsg0 = topo.dynamical_system_graphs()[0];
-
-      print("index_set0.size:{}\n", index_set0.size());
-      print("index_set1.size:{}\n", index_set1.size());
-      // Check index_set1
-      auto [ui1, ui1end] = index_set1.vertices();
-
-      // Remove interactions from the index_set1
-      for (auto v1next = ui1; ui1 != ui1end; ui1 = v1next) {
-        ++v1next;
-        auto inter1 = storage::handle(
-            self()->data(), index_set1.bundle(*ui1));  // get inter handle
-        //          auto rel1 = inter1.relation();
-
-        if (index_set0.is_vertex(inter1)) {
-          auto inter1_descr0 = index_set0.descriptor(inter1);
-          assert((index_set0.color(inter1_descr0) == env::white_color));
-
-          index_set0.color(inter1_descr0) = env::gray_color;
-          if constexpr (!std::derived_from<
-                            attr_t<typename topology_t::interaction, "nslaw">,
-                            model::equality_condition>) {
-            // We assume that the integrator of the ds1 drive the update of
-            // the index set SP::OneStepIntegrator Osi =
-            // index_set1.properties(*ui1).osi;
-            //              auto&& ds1 = edge1(index_set1, *ui1);
-            //              auto& osi =
-            //              dsg0.properties(dsg0.descriptor(ds1)).osi;
-
-            //              //if(predictorDeactivate(inter1,i))
-            //            if (osi.remove_interaction_from_index_set(
-            if (!inter1.property(symbol<"activation">{})) {
-              //                // Interaction is not active
-              //                // ui1 becomes invalid
-              index_set0.color(inter1_descr0) = env::black_color;
-              //                index_set1.eraseProperties(*ui1);
-
-              //              InteractionsGraph::OEIterator oei, oeiend;
-              for (auto [oei, oeiend] = index_set1.out_edges(*ui1);
-                   oei != oeiend; ++oei) {
-                auto [ed1, ed2] = index_set1.edges(index_set1.source(*oei),
-                                                   index_set1.target(*oei));
-                if (ed2 != ed1) {
-                  //                    index_set1.eraseProperties(ed1);
-                  //                    index_set1.eraseProperties(ed2);
-                }
-                else {
-                  //                    index_set1.eraseProperties(ed1);
-                }
-              }
-              index_set1.remove_vertex(inter1);
-              //           /* \warning V.A. 25/05/2012 : Multiplier lambda are
-              //           only set to zero if they are removed from the
-              //           IndexSet*/
-              inter1.lambda() = {};
-              //                topo->setHasChanged(true);
-            }
-          }
-        }
-        else {
-          // Interaction is not in index_set0 anymore.
-          // ui1 becomes invalid
-          //            index_set1.eraseProperties(*ui1);
-          for (auto [oei, oeiend] = index_set1.out_edges(*ui1); oei != oeiend;
-               ++oei) {
-            auto [ed1, ed2] = index_set1.edges(index_set1.source(*oei),
-                                               index_set1.target(*oei));
-            if (ed2 != ed1) {
-              //                index_set1.eraseProperties(ed1);
-              //                index_set1.eraseProperties(ed2);
-            }
-            else {
-              //                index_set1.eraseProperties(ed1);
-            }
-          }
-
-          index_set1.remove_vertex(inter1);
-          //       topo->setHasChanged(true);
-        }
-      }
-
-      //   // index_set0\index_set1 scan
-      //   InteractionsGraph::VIterator ui0, ui0end;
-      //   //Add interaction in index_set1
-      for (auto [ui0, ui0end] = index_set0.vertices(); ui0 != ui0end; ++ui0) {
-        if (index_set0.color(*ui0) == env::black_color) {
-          // reset
-          index_set0.color(*ui0) = env::white_color;
-        }
-        else {
-          if (index_set0.color(*ui0) == env::gray_color) {
-            // reset
-            index_set0.color(*ui0) = env::white_color;
-
-            assert(index_set1.is_vertex(index_set0.bundle(*ui0)));
-            //         /*assert( {
-            //         !predictorDeactivate(index_set0->bundle(*ui0),i) ||
-            //           Type::value(*(index_set0->bundle(*ui0)->nonSmoothLaw()))
-            //           == Type::EqualityConditionNSL ;
-            //           });*/
-          }
-          else {
-            assert(index_set0.color(*ui0) == env::white_color);
-
-            auto inter0 =
-                storage::handle(self()->data(), index_set0.bundle(*ui0));
-            assert(!index_set1.is_vertex(inter0));
-            bool activate = true;
-            if constexpr (
-                !std::derived_from<
-                    attr_t<typename topology_t::interaction, "nslaw">,
-                    model::equality_condition> &&
-                !std::derived_from<
-                    attr_t<typename topology_t::interaction, "nslaw">,
-                    model::relay>)
-            //             && Type::value(*(inter0->nonSmoothLaw())) !=
-            //             Type::RelayNSL)
-            {
-              // SP::OneStepIntegrator Osi = index_set0->properties(*ui0).osi;
-              //           // We assume that the integrator of the ds1 drive
-              //           the update of the index set
-              //              auto&& ds1 = edge1(index_set1, *ui0);
-              //           OneStepIntegrator& osi =
-              //           *DSG0.properties(DSG0.descriptor(ds1)).osi;
-              activate = inter0.property(symbol<"activation">{});
-              //                  osi.add_interaction_in_index_set(inter0,
-              //                  time_step(), i);
-            }
-            if (activate) {
-              assert(!index_set1.is_vertex(inter0));
-
-              //           // vertex and edges insertion in index_set1
-              index_set1.copy_vertex(inter0, index_set0);
-              //           topo->setHasChanged(true);
-              assert(index_set1.is_vertex(inter0));
-            }
-          }
-        }
-      }
-
-      //   assert(index_set1->size() <= index_set0->size());
-
-      //   DEBUG_PRINTF("TimeStepping::updateIndexSet(unsigned int i). update
-      //   index_sets end : index_set0 size : %ld\n", index_set0->size());
-      //   DEBUG_PRINTF("TimeStepping::updateIndexSet(unsigned int i). update
-      //   IndexSets end : index_set1 size : %ld\n", index_set1->size());
-      // }
-    };
 
     void initialize() { one_step_integrator().initialize(current_step()); }
 
@@ -303,9 +143,7 @@ struct time_stepping : item<> {
           method("current_step", &interface<Handle>::current_step),
           method("time_step", &interface<Handle>::time_step),
           method("compute_one_step", &interface<Handle>::compute_one_step),
-          method("has_next_event", &interface<Handle>::has_next_event),
-          method("update_indexsets",
-                 &interface<Handle>::update_indexsets<indice>));
+          method("has_next_event", &interface<Handle>::has_next_event));
     }
   };
 };
