@@ -446,10 +446,9 @@ struct one_step_integrator {
       {
         auto &data = self()->data();
 
-        // auto &lambdas =
-        //     storage::attr_values<interaction, "lambda">(data, step);
-        // auto &ydots = storage::attr_values<interaction, "ydot">(
-        //     data, step);  // step+1 ?
+        auto &lambdas =
+            storage::attr_values<interaction, "lambda">(data, step);
+        auto &ydots = storage::attr_values<interaction, "ydot">(data, step);
 
         auto activations =
             storage::prop_values<interaction, "activation">(data, step);
@@ -460,15 +459,15 @@ struct one_step_integrator {
         resize(self()->ydot_vector_assembled(), ninter);
         resize(self()->lambda_vector_assembled(), ninter);
 
-//         size_t k = 0;
-//         for (auto [lambda, ydot, inter, activation] :
-//              view::zip(lambdas, ydots, interactions, activations)) {
-//           if (activation) {
-//             set_value(lambda_vector_assembled(), k, lambda);
-// //            set_value(ydot_vector_assembled(), k, ydot);
-//             k++;
-//           }
-//         }
+        size_t k = 0;
+        for (auto [lambda, ydot, inter, activation] :
+             view::zip(lambdas, ydots, interactions, activations)) {
+          if (activation) {
+            set_value(lambda_vector_assembled(), k, lambda);
+            set_value(ydot_vector_assembled(), k, ydot);
+            k++;
+          }
+        }
       }
 
       void assemble_mass_matrix_for_involved_ds(auto step, auto size)
@@ -609,16 +608,19 @@ struct one_step_integrator {
         auto &data = self()->data();
         auto &vs_next =
             storage::attr_values<system, "velocity">(data, step + 1);
-
-        for (auto &v_next : vs_next) {
-          algebra::set_zero(v_next);
-        };
-
         auto &lambdas =
             storage::attr_values<interaction, "lambda">(data, step);
 
-        for (auto &lambda : lambdas) {
+        auto &ydots = storage::attr_values<interaction, "ydot">(data, step);
+        auto &ydots_next =
+            storage::attr_values<interaction, "ydot">(data, step + 1);
+
+        for (auto [v_next, lambda, ydot, ydot_next] :
+               view::zip(vs_next, lambdas, ydots, ydots_next)) {
+          algebra::set_zero(v_next);
           algebra::set_zero(lambda);
+          algebra::set_zero(ydot);
+          algebra::set_zero(ydot_next);
         };
 
         compute_iteration_matrix(step);

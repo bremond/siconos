@@ -75,6 +75,7 @@ struct topology : item<> {
 
       attr<"y">(inter).setZero();
       attr<"ydot">(inter).setZero();
+      attr<"lambda">(inter).setZero();
 
 //      prop<"vd">(ds) = dsgv;
 //      prop<"vd">(inter) = ig0_vd;
@@ -117,6 +118,7 @@ struct topology : item<> {
 
       attr<"y">(inter).setZero();
       attr<"ydot">(inter).setZero();
+      attr<"lambda">(inter).setZero();
 
 //      ds1.property(symbol<"vd">{}) = dsgv1;
 //      ds2.property(symbol<"vd">{}) = dsgv2;

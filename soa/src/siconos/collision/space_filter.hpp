@@ -413,7 +413,7 @@ struct space_filter : item<> {
             auto finter = ds_ds_prox.find(make_ipair(
                 storage::prop<"ds1">(inter), storage::prop<"ds2">(inter)));
 
-            assert(inter.get() == finter.get());
+            assert(inter.get() == std::get<1>(*finter).get());
 
             ds_ds_prox.erase(finter);
             print("  REMOVE ds ds interaction between {} {}\n",
