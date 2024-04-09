@@ -298,7 +298,7 @@ struct one_step_integrator {
         }
       }
 
-      auto update_positions(auto step, auto h)
+      void update_positions(auto step, auto h)
       {
         auto &data = self()->data();
 
@@ -446,10 +446,10 @@ struct one_step_integrator {
       {
         auto &data = self()->data();
 
-        auto &lambdas =
-            storage::attr_values<interaction, "lambda">(data, step);
-        auto &ydots = storage::attr_values<interaction, "ydot">(
-            data, step);  // step+1 ?
+        // auto &lambdas =
+        //     storage::attr_values<interaction, "lambda">(data, step);
+        // auto &ydots = storage::attr_values<interaction, "ydot">(
+        //     data, step);  // step+1 ?
 
         auto activations =
             storage::prop_values<interaction, "activation">(data, step);
@@ -471,7 +471,7 @@ struct one_step_integrator {
 //         }
       }
 
-      auto assemble_mass_matrix_for_involved_ds(auto step, auto size)
+      void assemble_mass_matrix_for_involved_ds(auto step, auto size)
       {
         auto &data = self()->data();
 
@@ -497,7 +497,7 @@ struct one_step_integrator {
         }
       }
       // compute H vfree
-      auto compute_q_nsp_vector_assembled(auto step, auto ninter)
+      void compute_q_nsp_vector_assembled(auto step, auto ninter)
       {
         auto &data = self()->data();
         auto &h_matrix = self()->h_matrix_assembled();
@@ -527,7 +527,7 @@ struct one_step_integrator {
         prod(h_matrix, velo, q_v);  // then add nsl effect
       }
       // compute H M^-1 H^t
-      auto compute_w_matrix(auto step)
+      void compute_w_matrix(auto step)
       {
         auto &data = self()->data();
         using info_t =

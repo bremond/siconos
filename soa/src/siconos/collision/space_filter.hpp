@@ -186,6 +186,18 @@ struct space_filter : item<> {
         }
       });
     }
+
+    decltype(auto) make_ipair(auto ds1, auto ds2)
+    {
+      auto i1 = ds1.get();
+      auto i2 = ds2.get();
+      if (i1 < i2) {
+        return ground::make_pair(i1, i2);
+      }
+      else {
+        return ground::make_pair(i2, i1);
+      }
+    }
     void update_index_set0(auto step)
     {
       using env = decltype(self()->env());
@@ -202,23 +214,21 @@ struct space_filter : item<> {
       using ngbh_t = typename std::decay_t<decltype(ngbh)>::type;
       using points_t = typename ngbh_t::points_t;
 
-      auto ds_ds_prox =
-          std::map<ground::pair<storage::index<dynamical_system, indice>,
-                                storage::index<dynamical_system, indice>>,
-                   storage::index<interaction, indice>>();
+      auto ds_ds_prox = std::map<ground::pair<indice, indice>,
+                                 storage::index<interaction, indice>>();
 
       auto ds_line_prox =
-          std::map<ground::pair<storage::index<dynamical_system, indice>,
-                                std::array<scalar, 3>>,
+          std::map<ground::pair<indice, std::array<scalar, 3>>,
                    storage::index<interaction, indice>>();
 
       auto& ds1s = storage::prop_values<interaction, "ds1">(data, step);
       auto& ds2s = storage::prop_values<interaction, "ds2">(data, step);
       auto interactions = storage::handles<interaction>(data, step);
 
+      // build (ds ds -> inter) & (ds line -> inter) maps
       for (auto [ds1, ds2, inter] : view::zip(ds1s, ds2s, interactions)) {
         if (ds1 != ds2) {
-          ds_ds_prox[ground::make_pair(ds1, ds2)] = inter;
+          ds_ds_prox[make_ipair(ds1, ds2)] = inter;
         }
         else {
           auto linecoefs = siconos::variant::visit(
@@ -237,7 +247,7 @@ struct space_filter : item<> {
                     //               happen");
                   }));
 
-          ds_line_prox[ground::make_pair(ds1, linecoefs)] = inter;
+          ds_line_prox[ground::make_pair(ds1.get(), linecoefs)] = inter;
         }
       }
 
@@ -307,7 +317,7 @@ struct space_filter : item<> {
 
                           // at most one edge between 2 ds !!
                           auto find_inter =
-                              ds_ds_prox.find(ground::make_pair(ds1, ds2));
+                              ds_ds_prox.find(make_ipair(ds1, ds2));
                           if (find_inter != ds_ds_prox.end()) {
                             // keep this edge
                             auto inter = storage::handle(
@@ -325,7 +335,7 @@ struct space_filter : item<> {
                             inter.relation() =
                                 diskdisk_r;  // the diskdisk_r, need
                                              // only one relation!
-                            ds_ds_prox[ground::make_pair(ds1, ds2)] = inter;
+                            ds_ds_prox[make_ipair(ds1, ds2)] = inter;
                           }
                         }
                         else {
@@ -347,7 +357,7 @@ struct space_filter : item<> {
 
                             auto find_inter =
                                 ds_line_prox.find(ground::make_pair(
-                                    ds1.index_cast(), std::array{a, b, c}));
+                                    ds1.get(), std::array{a, b, c}));
 
                             if (find_inter != ds_line_prox.end()) {
                               auto inter = storage::handle(
@@ -384,8 +394,7 @@ struct space_filter : item<> {
                               }
                               storage::prop<"activation">(inter) = true;
                               ds_line_prox[ground::make_pair(
-                                  ds1.index_cast(), std::array{a, b, c})] =
-                                  inter;
+                                  ds1.get(), std::array{a, b, c})] = inter;
                             }
                           }
                         }
@@ -395,17 +404,21 @@ struct space_filter : item<> {
                 });
           });
 
+      print("BEFORE REMOVAL: size of indexset0: {}\n", activations.size());
       for (auto [activation, inter] : view::zip(activations, interactions)) {
         if (!activation) {
-          // print("START REMOVE interaction {}\n", inter.get());
+          print("START REMOVE interaction {}\n", inter.get());
 
           if (storage::prop<"ds1">(inter) != storage::prop<"ds2">(inter)) {
-            auto finter = ds_ds_prox.find(ground::make_pair(
+            auto finter = ds_ds_prox.find(make_ipair(
                 storage::prop<"ds1">(inter), storage::prop<"ds2">(inter)));
+
+            assert(inter.get() == finter.get());
+
             ds_ds_prox.erase(finter);
-            // print("  REMOVE ds ds interaction between {} {}\n",
-            //       storage::prop<"ds1">(inter).get(),
-            //       storage::prop<"ds2">(inter).get());
+            print("  REMOVE ds ds interaction between {} {}\n",
+                  storage::prop<"ds1">(inter).get(),
+                  storage::prop<"ds2">(inter).get());
           }
           else {
             auto linecoefs = siconos::variant::visit(
@@ -423,34 +436,45 @@ struct space_filter : item<> {
                       //               "should not
                       //               happen");
                     }));
-            // print("  REMOVE ds line interaction between {} ({},{},{})\n",
-            //       storage::prop<"ds1">(inter).get(), linecoefs[0],
-            //       linecoefs[1], linecoefs[2]);
+            print("  REMOVE ds line interaction between {} {},{},{})\n",
+                  storage::prop<"ds1">(inter).get(), linecoefs[0],
+                  linecoefs[1], linecoefs[2]);
 
-            auto finter = ds_line_prox.find(
-                ground::make_pair(storage::prop<"ds1">(inter), linecoefs));
+            auto finter = ds_line_prox.find(ground::make_pair(
+                storage::prop<"ds1">(inter).get(), linecoefs));
             ds_line_prox.erase(finter);
           }
         }
       }
 
-      auto fact = std::find(activations.begin(), activations.end(), false);
+      auto fact = std::ranges::find(activations, false);
+
+      print("  START REMOVE interactions\n");
 
       while (fact != activations.end()) {
-        auto inter =
-            storage::handle(data, storage::index<interaction, indice>(*fact));
+        auto fact_index = fact - activations.begin();
+        print("  activation of {} is false\n", fact_index);
+        auto inter = storage::handle(
+            data, storage::index<interaction, indice>(fact_index));
 
         // with move_back : order is modified
+
+        print("  remove interaction {}\n", inter.get());
         storage::remove(data, inter);
 
         // XXX remove from ds_ds_prox or ds_line_prox
 
         // activations has been modified, search first false element starting
         // at current position
-        fact = std::find(fact, activations.end(), false);
+        fact = std::ranges::find(activations, false);
+
+        print("  find new false at : {}\n", fact - activations.begin());
       }
 
-      // print("END of interactions removal\n");
+      print("AFTER REMOVAL: size of indexset0: {}\n", activations.size());
+      print("END of interactions removal\n");
+      print("size of ds ds map: {}\n", ds_ds_prox.size());
+      print("size of ds line map: {}\n", ds_line_prox.size());
     }
 
     auto methods()

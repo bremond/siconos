@@ -42,11 +42,11 @@ with MechanicsHdf5Runner() as io:
     # io.add_object('ground3', [Contactor('Ground3')],
     #               translation=[0, 0])
 
-    N = 10
+    N = 20
     for i in range(N):
         for j in range(N):
             io.add_object('disk{}-{}'.format(i,j), [Contactor('DiskR')],
-                          translation=[2*i-N, 2*j+3*N],
+                          translation=[2*i-N, 2*j+0.33*N],
                           orientation=[0], velocity=[0, 0, 0], mass=1)
 
 

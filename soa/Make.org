@@ -957,10 +957,17 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 
 * disks
 
-
-#+begin_src sh
-guix time-machine -C ./siconos-2023-11-08.scm -- shell siconos time parallel -- siconos_vexport --global-filter --gen-para-script=10 disks.hdf5 > pprocess  
+#+name: massiveattack-rsync
+#+begin_src sh :compile :results none
+  rsync -avt . --exclude=build-* --exclude=venv massiveattack:/scratch/bremond/disks/local-src
 #+end_src
+
+#+name: massiveattack-run
+#+header: :dir /rsync:massiveattack:/scratch/bremond/disks/local-src
+#+begin_src sh :compile :results none
+  nohup ./vrun src/siconos/tests/disks.py 
+#+end_src
+
 
 
 ** COMMENT Org Babel settings

@@ -60,18 +60,22 @@ struct time_stepping : item<> {
       osi.update_positions(step, time_step());
 
       // -> y & ydot (step & step+1)
-      osi.compute_output(step);
+      // osi.compute_output(step);
       osi.compute_output(step + 1);
 
       // compute active interactions
       auto [ninter, nds] = osi.compute_active_interactions(step, time_step());
 
-      print("nds :{}, ninter: {}\n", nds, ninter);
+      print(
+          "[compute_one_step] number of involved ds :{}, number of "
+          "interactions: {}\n",
+          nds, ninter);
+
       if (nds > 0) {
         // a least one activated interaction
 
         //        print("ninter, nds = {},{}\n", ninter, nds);
-        osi.compute_h_matrices(step+1);
+        osi.compute_h_matrices(step + 1);
         osi.assemble_h_matrix_for_involved_ds(step, ninter, nds);
         osi.assemble_mass_matrix_for_involved_ds(step, nds);
 
@@ -127,9 +131,9 @@ struct time_stepping : item<> {
 
     auto methods()
     {
-      using env_t = decltype(self()->env());
-      using indice = typename env_t::indice;
-      //      using scalar = typename env_t::scalar;
+      // using env_t = decltype(self()->env());
+      // using indice = typename env_t::indice;
+      // using scalar = typename env_t::scalar;
 
       return collect(
           method("initialize", &interface<Handle>::initialize),
