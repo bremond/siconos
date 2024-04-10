@@ -88,7 +88,7 @@ while [ $# -gt 0 ]; do
       shift
       . venv/bin/activate
       export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
-      siconos_vview $@
+      python3 ./src/siconos/py/nonos/vview.py $@
       ;;
     --vexport)
       shift
