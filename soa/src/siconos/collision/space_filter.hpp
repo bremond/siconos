@@ -152,7 +152,6 @@ struct space_filter : item<> {
     void make_points()
     {
       auto& data = self()->data();
-      auto topo = self()->topology();
 
       using points_t = typename neighborhood::points_t;
 
@@ -166,8 +165,6 @@ struct space_filter : item<> {
             new_point.item() = ds;
             new_point.update();
 
-            auto dsgv = topo.dynamical_system_graphs()[0].add_vertex(ds);
-            storage::prop<"vd">(ds) = dsgv;
           }
         }
         else if constexpr (std::derived_from<item_t,

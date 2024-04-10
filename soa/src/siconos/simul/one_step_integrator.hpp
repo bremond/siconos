@@ -123,24 +123,131 @@ struct one_step_integrator {
       }
       decltype(auto) w_matrix() { return attr<"w_matrix">(*self()); }
 
+      auto compute_iteration_matrix(auto step)
+      {
+        auto &data = self()->data();
+        auto &mass_matrices =
+            storage::attr_memory<system, "mass_matrix">(data);
+        auto &external_forces = storage::attr_memory<fext>(data);
+
+        auto &mats = storage::memory(step, mass_matrices);
+        auto &fs = storage::memory(step, external_forces);
+
+        for (auto [mat, f] : view::zip(mats, fs)) {
+          f = mat.inverse() * f;
+        }
+      }
+
+      void initialize(auto step)
+      {
+        auto &data = self()->data();
+        auto &vs_next =
+            storage::attr_values<system, "velocity">(data, step + 1);
+        auto &lambdas =
+            storage::attr_values<interaction, "lambda">(data, step);
+
+        auto &ydots = storage::attr_values<interaction, "ydot">(data, step);
+        auto &ydots_next =
+            storage::attr_values<interaction, "ydot">(data, step + 1);
+
+        for (auto [v_next, lambda, ydot, ydot_next] :
+             view::zip(vs_next, lambdas, ydots, ydots_next)) {
+          algebra::set_zero(v_next);
+          algebra::set_zero(lambda);
+          algebra::set_zero(ydot);
+          algebra::set_zero(ydot_next);
+        };
+
+        compute_iteration_matrix(step);
+        compute_h_matrices(step);
+      }
+
+      void compute_h_matrices(auto step)
+      {
+        auto &data = self()->data();
+
+        auto &h_matrices1 = storage::attr_values<h_matrix1>(data, step);
+        auto &h_matrices2 = storage::attr_values<h_matrix2>(data, step);
+        auto &ndss = storage::prop_values<interaction, "nds">(data, step);
+
+        auto &ds1s = storage::prop_values<interaction, "ds1">(data, step);
+        auto &ds2s = storage::prop_values<interaction, "ds2">(data, step);
+        auto &relations = storage::attr_values<relation>(data, step);
+
+        for (auto [rel, hm1, hm2, nds, ds1, ds2] : view::zip(
+                 relations, h_matrices1, h_matrices2, ndss, ds1s, ds2s)) {
+          // local binding not enough to be passed to lambda...
+          auto &hhm1 = hm1;
+          auto &hhm2 = hm2;
+          auto hds1 = storage::handle(data, ds1);
+          auto hds2 = storage::handle(data, ds2);
+          auto rnds = nds;
+
+          siconos::variant::visit(
+              data, rel,
+              ground::overload(
+                  [&step, &hhm1, &hhm2, &hds1, &hds2,
+                   &rnds](match::linear_relation auto &&rrel) {
+                    if (rnds == 1) {
+                      rrel.compute_jachq(step, hds1, hhm1);
+                    }
+                    else {
+                      assert(rnds == 2);
+                      rrel.compute_jachq(step, hds1, hds2, hhm1, hhm2);
+                    }
+                  },
+                  [&step, &hhm1, &hds1](match::relation1 auto &rrel) {
+                    rrel.compute_jachq(step, hds1, hhm1);
+                  },
+                  [&step, &hhm1, &hhm2, &hds1,
+                   &hds2](match::relation2 auto &rrel) {
+                    rrel.compute_jachq(step, hds1, hds2, hhm1, hhm2);
+                  },
+                  [](auto rrel) { assert(false); }));
+
+          // std::cout << "HM1:" << hm1 << std::endl;
+        }
+      }
+
+      void update_h_matrices(auto step)
+      {
+        auto &data = self()->data();
+        using data_t = const std::decay_t<decltype(data)>;
+        if constexpr (!storage::has_property_t<
+                          interaction, property::time_invariant, data_t>()) {
+          compute_h_matrices(step);
+        }
+      };
+
+      void update_iteration_matrix(auto current_step)
+      {
+        using data_t = const std::decay_t<decltype(self()->data())>;
+        if constexpr (!storage::has_property_t<attr_t<system, "fext">,
+                                               property::time_invariant,
+                                               data_t>()) {
+          // constant fext => constant iteration matrix
+          compute_iteration_matrix(current_step);
+        }
+      }
+
       // update v(step + 1)
       auto compute_free_state(auto step, auto h)
       {
         auto &data = self()->data();
-        auto &velocities = storage::attr_memory<velocity>(data);
-        auto &fexts = storage::attr_memory<fext>(data);
-        auto &theta_ = self()->theta();
 
-        auto &vs = storage::memory(step, velocities);
-        auto &vs_next = storage::memory(step + 1, velocities);
-        auto &minv_fs = storage::memory(step, fexts);
-        auto &minv_fs_next = storage::memory(step + 1, fexts);
+        auto &vs = storage::attr_values<system, "velocity">(data, step);
+        auto &vs_next =
+            storage::attr_values<system, "velocity">(data, step + 1);
+
+        auto &minv_fs = storage::attr_values<system, "fext">(data, step);
+        auto &minv_fs_next =
+            storage::attr_values<system, "fext">(data, step + 1);
 
         // for all ds
         for (auto [v, v_next, minv_f, minv_f_next] :
              view::zip(vs, vs_next, minv_fs, minv_fs_next)) {
           // note: theta useless if fext is constant
-          v_next = v + h * theta_ * minv_f + h * (1 - theta_) * minv_f_next;
+          v_next = v + h * theta() * minv_f + h * (1 - theta()) * minv_f_next;
 
           // std::cout << "v" << v << std::endl;
           // std::cout << "v_next:" << v_next << std::endl;
@@ -218,19 +325,23 @@ struct one_step_integrator {
         auto &data = self()->data();
 
         auto &lambda_assembled = lambda_vector_assembled();
+        auto &ydot_assembled = ydot_vector_assembled();
+
         auto &lambdas =
             storage::attr_values<interaction, "lambda">(data, step);
+        auto &ydots_bck =
+            storage::prop_values<interaction, "ydot_backup">(data, step);
 
         auto activations =
             storage::prop_values<interaction, "activation">(data, step);
 
-        auto interactions = storage::handles<interaction>(data, step);
-
         size_t k = 0;
-        for (auto [lambda, inter, activation] :
-             view::zip(lambdas, interactions, activations)) {
+        for (auto [lambda, ydot_bck, activation] :
+             view::zip(lambdas, ydots_bck, activations)) {
           if (activation) {
-            lambda = get_vector(lambda_assembled, k++);
+            lambda = get_vector(lambda_assembled, k);
+            ydot_bck = get_vector(ydot_assembled, k);
+            k++;
           }
         }
       }
@@ -269,29 +380,21 @@ struct one_step_integrator {
                 numerics::display(velo);*/
       }
 
-      void update_state(auto step, auto h)
+      void update_velocities(auto step, auto h)
       {
         auto &data = self()->data();
         auto &velo = velocity_vector_assembled();
 
-        auto &xs = storage::attr_values<system, "q">(data, step);
-        auto &xs_next = storage::attr_values<system, "q">(data, step + 1);
-
-        auto &vs = storage::attr_values<velocity>(data, step);
         auto &vs_next = storage::attr_values<velocity>(data, step + 1);
+
         auto &involveds =
             storage::prop_values<system, "involved">(data, step);
 
         auto &indices = storage::prop_values<system, "index">(data, step);
 
-        auto &minv_fs = storage::attr_values<fext>(data, step);
-        auto &minv_fs_next = storage::attr_values<fext>(data, step + 1);
-
         // involved ds velocities -> ds velocities
-        for (auto [v, v_next, x, x_next, involved, index, minv_f,
-                   minv_f_next] :
-             view::zip(vs, vs_next, xs, xs_next, involveds, indices, minv_fs,
-                       minv_fs_next)) {
+        for (auto [v_next, involved, index] :
+             view::zip(vs_next, involveds, indices)) {
           if (involved) {
             v_next += get_vector(velo, index);
           }
@@ -448,24 +551,20 @@ struct one_step_integrator {
 
         auto &lambdas =
             storage::attr_values<interaction, "lambda">(data, step);
-        auto &ydots =
-            storage::attr_values<interaction, "ydot">(data, step + 1);
-
+        auto &ydots_bck =
+            storage::prop_values<interaction, "ydot_backup">(data, step);
         auto activations =
             storage::prop_values<interaction, "activation">(data, step);
 
-        auto interactions = storage::handles<interaction>(data, step);
-
-        resize(self()->y_vector_assembled(), ninter);
         resize(self()->ydot_vector_assembled(), ninter);
         resize(self()->lambda_vector_assembled(), ninter);
 
         size_t k = 0;
-        for (auto [lambda, ydot, inter, activation] :
-             view::zip(lambdas, ydots, interactions, activations)) {
+        for (auto [lambda, ydot_bck, activation] :
+             view::zip(lambdas, ydots_bck, activations)) {
           if (activation) {
             set_value(lambda_vector_assembled(), k, lambda);
-            set_value(ydot_vector_assembled(), k, ydot);
+            set_value(ydot_vector_assembled(), k, ydot_bck);
             k++;
           }
         }
@@ -496,25 +595,7 @@ struct one_step_integrator {
                   size1(mass_matrix_assembled()));*/
         }
       }
-      // compute H vfree
-      void compute_q_nsp_vector_assembled(auto step, auto ninter)
-      {
-        auto &data = self()->data();
 
-        resize(q_nsp_vector_assembled(), ninter);
-
-        auto &ydots_next = storage::attr_values<ydot>(data, step + 1);
-        auto &activations =
-            storage::prop_values<interaction, "activation">(data, step);
-
-        auto k = 0;
-        for (auto [ydot_next, activation] :
-             view::zip(ydots_next, activations)) {
-          if (activation) {
-            set_value(q_nsp_vector_assembled(), k++, ydot_next);
-          }
-        }
-      }
       // compute H M^-1 H^t
       void compute_w_matrix(auto step)
       {
@@ -561,127 +642,40 @@ struct one_step_integrator {
         // print("================\n");
       }
 
-      void update_velocity_for_involved_ds() {}
-
       void nsl_effect_on_free_output(auto step)
       {
         auto &data = self()->data();
         auto &ydots = storage::attr_values<ydot>(data, step);
         auto &ydots_next = storage::attr_values<ydot>(data, step + 1);
 
+        auto &es = storage::attr_values<nslaw, "e">(data, step);
+
         auto &inslaws =
             storage::attr_values<attr_t<interaction, "nslaw">>(data, step);
 
         for (auto [ydot, ydot_next, inslaw] :
              view::zip(ydots, ydots_next, inslaws)) {
-          ydot_next += storage::handle(data, inslaw).e() * ydot;
+          ydot_next += es[inslaw.get()] * ydot;
         }
       }
 
-      auto compute_iteration_matrix(auto step)
-      {
-        auto &data = self()->data();
-        auto &mass_matrices =
-            storage::attr_memory<system, "mass_matrix">(data);
-        auto &external_forces = storage::attr_memory<fext>(data);
-
-        auto &mats = storage::memory(step, mass_matrices);
-        auto &fs = storage::memory(step, external_forces);
-
-        for (auto [mat, f] : view::zip(mats, fs)) {
-          f = mat.inverse() * f;
-        }
-      }
-
-      void initialize(auto step)
-      {
-        auto &data = self()->data();
-        auto &vs_next =
-            storage::attr_values<system, "velocity">(data, step + 1);
-        auto &lambdas =
-            storage::attr_values<interaction, "lambda">(data, step);
-
-        auto &ydots = storage::attr_values<interaction, "ydot">(data, step);
-        auto &ydots_next =
-            storage::attr_values<interaction, "ydot">(data, step + 1);
-
-        for (auto [v_next, lambda, ydot, ydot_next] :
-             view::zip(vs_next, lambdas, ydots, ydots_next)) {
-          algebra::set_zero(v_next);
-          algebra::set_zero(lambda);
-          algebra::set_zero(ydot);
-          algebra::set_zero(ydot_next);
-        };
-
-        compute_iteration_matrix(step);
-        compute_h_matrices(step);
-      }
-
-      void compute_h_matrices(auto step)
+      // compute H vfree
+      void compute_q_nsp_vector_assembled(auto step, auto ninter)
       {
         auto &data = self()->data();
 
-        auto &h_matrices1 = storage::attr_values<h_matrix1>(data, step);
-        auto &h_matrices2 = storage::attr_values<h_matrix2>(data, step);
-        auto &ndss = storage::prop_values<interaction, "nds">(data, step);
+        resize(q_nsp_vector_assembled(), ninter);
 
-        auto &ds1s = storage::prop_values<interaction, "ds1">(data, step);
-        auto &ds2s = storage::prop_values<interaction, "ds2">(data, step);
-        auto &relations = storage::attr_values<relation>(data, step);
+        auto &ydots_next = storage::attr_values<ydot>(data, step + 1);
+        auto &activations =
+            storage::prop_values<interaction, "activation">(data, step);
 
-        for (auto [rel, hm1, hm2, nds, ds1, ds2] : view::zip(
-                 relations, h_matrices1, h_matrices2, ndss, ds1s, ds2s)) {
-          // local binding not enough to be passed to lambda...
-          auto &hhm1 = hm1;
-          auto &hhm2 = hm2;
-          auto hds1 = storage::handle(data, ds1);
-          auto hds2 = storage::handle(data, ds2);
-          auto rnds = nds;
-
-          siconos::variant::visit(
-              data, rel,
-              ground::overload(
-                  [&step, &hhm1, &hhm2, &hds1, &hds2,
-                   &rnds](match::linear_relation auto &&rrel) {
-                    if (rnds == 1) {
-                      rrel.compute_jachq(step, hds1, hhm1);
-                    }
-                    else {
-                      assert(rnds == 2);
-                      rrel.compute_jachq(step, hds1, hds2, hhm1, hhm2);
-                    }
-                  },
-                  [&step, &hhm1, &hds1](match::relation1 auto &rrel) {
-                    rrel.compute_jachq(step, hds1, hhm1);
-                  },
-                  [&step, &hhm1, &hhm2, &hds1,
-                   &hds2](match::relation2 auto &rrel) {
-                    rrel.compute_jachq(step, hds1, hds2, hhm1, hhm2);
-                  },
-                  [](auto rrel) { assert(false); }));
-
-          // std::cout << "HM1:" << hm1 << std::endl;
-        }
-      }
-
-      void update_h_matrices(auto step)
-      {
-        auto &data = self()->data();
-        using data_t = const std::decay_t<decltype(data)>;
-        if constexpr (!storage::has_property_t<
-                          interaction, property::time_invariant, data_t>()) {
-          compute_h_matrices(step);
-        }
-      };
-
-      void update_iteration_matrix(auto current_step)
-      {
-        using data_t = const std::decay_t<decltype(self()->data())>;
-        if constexpr (!storage::has_property_t<attr_t<system, "fext">,
-                                               property::time_invariant,
-                                               data_t>()) {
-          // constant fext => constant iteration matrix
-          compute_iteration_matrix(current_step);
+        auto k = 0;
+        for (auto [ydot_next, activation] :
+             view::zip(ydots_next, activations)) {
+          if (activation) {
+            set_value(q_nsp_vector_assembled(), k++, ydot_next);
+          }
         }
       }
 
@@ -714,12 +708,10 @@ struct one_step_integrator {
                                                                    indice>),
             method("compute_w_matrix",
                    &interface<Handle>::compute_w_matrix<indice>),
-            method("update_velocity_for_involved_ds",
-                   &interface<Handle>::update_velocity_for_involved_ds),
             method("nsl_effect_on_free_output",
                    &interface<Handle>::nsl_effect_on_free_output<indice>),
-            method("update_state",
-                   &interface<Handle>::update_state<indice, indice>),
+            method("update_velocities",
+                   &interface<Handle>::update_velocities<indice, indice>),
             method("update_positions",
                    &interface<Handle>::update_positions<indice, indice>),
             method("compute_iteration_matrix",

@@ -29,7 +29,6 @@ class SpaceFilter(Stored):
         self._handle = vkernel.disks.add_space_filter(self.data())
         self._handle.set_neighborhood(self._ngbh)
         self._handle.set_diskdisk_r(vkernel.disks.add_diskdisk_r(self.data()))
-        self._handle.set_nslaw(self._interman.get_nonsmooth_law(0,0)) # one nslaw!!
         
 
     def insertLine(self, a, b , c):
@@ -54,13 +53,14 @@ class SpaceFilter(Stored):
         
     def insertNonSmoothLaw(self, nslaw, gid1, gid2):
         self._interman.insert_nonsmooth_law(nslaw.handle(), gid1, gid2)
+        self._handle.set_nslaw(self._interman.get_nonsmooth_law(gid1, gid2)) # one nslaw!!
 
     def updateInteractions(self):
         if not self._initialized:
             self._handle.make_points()
             self._ngbh.add_point_sets(0)
             self._initialized = True
-            
+
         self._ngbh.update(0)
         self._ngbh.search()
         self._handle.update_index_set0(0);
@@ -212,12 +212,13 @@ class OSNSPB(Stored):
         self._so = vkernel.disks.add_solver_options(self.data())
         self._so.create(400)
         self._so.set_iparam(0, 20)
+        self._so.set_dparam(0, 1e-4)
         self._fc2d = vkernel.disks.add_fc2d(self.data())
         self._handle = vkernel.disks.add_osnspb(self.data())
         self._handle.set_options(self._so)
         self._fc2d.create(400)
         self.handle().set_problem(self._fc2d)
-        self.handle().set_mu(0.3)
+        self.handle().set_mu(0.5)
         self.handle().set_verbose(True)
 #        self._fc2d.instance().dimension = 2
         

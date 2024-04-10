@@ -89,9 +89,14 @@ struct time_stepping : item<> {
 
         self()->template solve_nonsmooth_problem<formulation_t>(step, ninter);
 
+        // lambda_vector_assembled -> lambdas
         osi.keep_lambdas(step);
+
+        // velocity_vector_assembled <- mass_matrix^-1 * (h_matrix^t * lambda)
         osi.compute_input();
-        osi.update_state(step, time_step());
+
+        // velocity_vector_assembled -> velocities
+        osi.update_velocities(step, time_step());
         osi.update_positions(step, time_step());
       }
       else {
