@@ -359,11 +359,11 @@ struct one_step_integrator {
                   // no b() present
                   [](auto) { return 0.; }));
           // on normal component
-          // std::cout << "y:" << y[0] << " ydot:" << ydot[0] << "
-          // ACTIVATION:" << (y + gamma_v * h * ydot)(0) <<std::endl;
-          activation = ((ydot(0) <= 0.) &&
-                        (y + gamma_v * h * ydot)(0) + b <=
-                            self()->constraint_activation_threshold());
+          // std::cout << "y:" << y[0] << " ydot:" << ydot[0]
+          //           << "ACTIVATION:" << (y + gamma_v * h * ydot)(0)
+          //           << std::endl;
+          activation = ((y + gamma_v * h * ydot)(0) + b <=
+                        self()->constraint_activation_threshold());
 
           if (activation) {
             inter_counter++;
@@ -442,13 +442,14 @@ struct one_step_integrator {
               numerics::display(h_matrix_assembled());
               print("================\n");*/
 
-      auto resize_assembled_vectors(auto step, auto ninter)
+      auto resize_assembled_vectors(auto step, auto ninter, auto nds)
       {
         auto &data = self()->data();
 
         auto &lambdas =
             storage::attr_values<interaction, "lambda">(data, step);
-        auto &ydots = storage::attr_values<interaction, "ydot">(data, step);
+        auto &ydots =
+            storage::attr_values<interaction, "ydot">(data, step + 1);
 
         auto activations =
             storage::prop_values<interaction, "activation">(data, step);
@@ -499,31 +500,20 @@ struct one_step_integrator {
       void compute_q_nsp_vector_assembled(auto step, auto ninter)
       {
         auto &data = self()->data();
-        auto &h_matrix = self()->h_matrix_assembled();
-        auto &velocities =
-            storage::attr_values<system, "velocity">(data, step + 1);
-        auto &involveds =
-            storage::prop_values<system, "involved">(data, step);
-        auto &indices = storage::prop_values<system, "index">(data, step);
 
-        auto &velo = velocity_vector_assembled();
-        auto &q_v = q_nsp_vector_assembled();
+        resize(q_nsp_vector_assembled(), ninter);
 
-        resize(velo, size1(h_matrix));
-        resize(q_nsp_vector_assembled(), size0(h_matrix));
+        auto &ydots_next = storage::attr_values<ydot>(data, step + 1);
+        auto &activations =
+            storage::prop_values<interaction, "activation">(data, step);
 
-        for (auto [velocity, involved, index] :
-             view::zip(velocities, involveds, indices)) {
-          if (involved) {
-            set_value(velo, index, velocity);
+        auto k = 0;
+        for (auto [ydot_next, activation] :
+             view::zip(ydots_next, activations)) {
+          if (activation) {
+            set_value(q_nsp_vector_assembled(), k++, ydot_next);
           }
         }
-
-        // auto h_mat_dense =
-        //     NM_create(NM_DENSE, size0(h_matrix), size1(h_matrix));
-        // NM_to_dense(h_matrix._m, h_mat_dense);
-
-        prod(h_matrix, velo, q_v);  // then add nsl effect
       }
       // compute H M^-1 H^t
       void compute_w_matrix(auto step)
@@ -616,7 +606,7 @@ struct one_step_integrator {
             storage::attr_values<interaction, "ydot">(data, step + 1);
 
         for (auto [v_next, lambda, ydot, ydot_next] :
-               view::zip(vs_next, lambdas, ydots, ydots_next)) {
+             view::zip(vs_next, lambdas, ydots, ydots_next)) {
           algebra::set_zero(v_next);
           algebra::set_zero(lambda);
           algebra::set_zero(ydot);
@@ -713,7 +703,8 @@ struct one_step_integrator {
                        indice, indice, indice>),
             method(
                 "resize_assembled_vectors",
-                &interface<Handle>::resize_assembled_vectors<indice, indice>),
+                &interface<Handle>::resize_assembled_vectors<indice, indice,
+                                                             indice>),
             method("assemble_mass_matrix_for_involved_ds",
                    &interface<Handle>::assemble_mass_matrix_for_involved_ds<
                        indice, indice>),

@@ -90,7 +90,7 @@ int main(int argc, char* argv[])
   // ------------------
 
   // -- nslaw --
-  double e = 2.95;
+  double e = 0.9;
   auto nslaw = storage::add<config::nslaw>(data);
   nslaw.e() = e;
 

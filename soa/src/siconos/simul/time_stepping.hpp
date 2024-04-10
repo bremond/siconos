@@ -47,6 +47,7 @@ struct time_stepping : item<> {
       auto osi = one_step_integrator();
       auto step = current_step();
 
+      // update jacobians
       // do nothing if lagrangian_r is time_invariant
       osi.update_h_matrices(step);
 
@@ -60,7 +61,7 @@ struct time_stepping : item<> {
       osi.update_positions(step, time_step());
 
       // -> y & ydot (step & step+1)
-      // osi.compute_output(step);
+      osi.compute_output(step);
       osi.compute_output(step + 1);
 
       // compute active interactions
@@ -79,7 +80,7 @@ struct time_stepping : item<> {
         osi.assemble_h_matrix_for_involved_ds(step, ninter, nds);
         osi.assemble_mass_matrix_for_involved_ds(step, nds);
 
-        osi.resize_assembled_vectors(step, ninter);
+        osi.resize_assembled_vectors(step, ninter, nds);
 
         // H M^-1 H^t
         osi.compute_w_matrix(step);

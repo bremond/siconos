@@ -211,7 +211,7 @@ class OSNSPB(Stored):
 
         self._so = vkernel.disks.add_solver_options(self.data())
         self._so.create(400)
-        self._so.set_iparam(0, 10)
+        self._so.set_iparam(0, 20)
         self._fc2d = vkernel.disks.add_fc2d(self.data())
         self._handle = vkernel.disks.add_osnspb(self.data())
         self._handle.set_options(self._so)
