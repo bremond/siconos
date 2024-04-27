@@ -130,4 +130,9 @@ static constexpr decltype(auto) ncols(T)
 }
 
 void set_zero(match::matrix auto& m) { m.setZero(); };
+
+decltype(auto) dot(match::vector auto& v, match::vector auto& w)
+{
+  return v.dot(w);
+};
 }  // namespace siconos::algebra

@@ -28,7 +28,7 @@ from contextlib import contextmanager
 
 # Siconos imports
 
-import siconos.io.mechanics_hdf5
+import nonos.mechanics_hdf5 as mechanics_hdf5
 import siconos.numerics as sn
 import siconos.kernel as sk
 
@@ -46,7 +46,7 @@ import siconos.io.io_base as iob
 from siconos.io.FrictionContactTrace import GlobalFrictionContactTrace as GFCTrace
 from siconos.io.FrictionContactTrace import FrictionContactTrace as FCTrace
 from siconos.io.FrictionContactTrace import GlobalRollingFrictionContactTrace as GRFCTrace
-from siconos.io.mechanics_hdf5 import MechanicsHdf5
+from nonos.mechanics_hdf5 import MechanicsHdf5
 
 
 # Imports for mechanics 'collision' submodule
@@ -87,6 +87,11 @@ class NativeCircleShape(NativeShape):
 class NativeLineShape(NativeShape):
     def __init__(self, a, b, c):
         self.params = [a, b, c]
+
+class NativeSegmentShape(NativeShape):
+    def __init__(self, x1, y1, x2, y2):
+        self.params = [x1, y1, x2, y2]
+
 
 # It is necessary to select a back-end, although currently only Bullet
 # is supported for general objects.
@@ -481,7 +486,8 @@ class ShapeCollection():
         if backend == 'native' or backend == 'vnative':
             self._primitive = {'Disk': NativeDiskShape,
                                'Circle': NativeCircleShape,
-                               'Line': NativeLineShape}
+                               'Line': NativeLineShape,
+                               'Segment': NativeSegmentShape}
         else:
             self._primitive = {'Sphere': SiconosSphere,
                                'Box': SiconosBox,
@@ -852,7 +858,7 @@ class MechanicsHdf5Runner_run_options(dict):
         pp.pprint(self)
 
 
-class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
+class MechanicsHdf5Runner(mechanics_hdf5.MechanicsHdf5):
 
     """a Hdf5 context manager that reads the translations and
        orientations of collision objects from hdf5 file
@@ -1071,15 +1077,28 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
                 'origin': translation,
                 'orientation': orientation}
 
-            # only one contactor
             ctor = contactors[0]
             shape = self._shape.get(ctor.shape_name, new_instance=True)
-            a = self._shape._io.shapes()[ctor.shape_name][:][0][0]
-            b = self._shape._io.shapes()[ctor.shape_name][:][0][1]
-            c = self._shape._io.shapes()[ctor.shape_name][:][0][2]
 
-            self._interman.insertLine(a, b, c)
+            # only one contactor
+            if self._shape.attributes(ctor.shape_name)['primitive'] == 'Line':
+                a = self._shape._io.shapes()[ctor.shape_name][:][0][0]
+                b = self._shape._io.shapes()[ctor.shape_name][:][0][1]
+                c = self._shape._io.shapes()[ctor.shape_name][:][0][2]
 
+                self._interman.insertLine(a, b, c)
+            elif self._shape.attributes(ctor.shape_name)['primitive'] == 'Segment':
+                x1 = self._shape._io.shapes()[ctor.shape_name][:][0][0]
+                y1 = self._shape._io.shapes()[ctor.shape_name][:][0][1]
+                x2 = self._shape._io.shapes()[ctor.shape_name][:][0][2]
+                y2 = self._shape._io.shapes()[ctor.shape_name][:][0][3]
+
+                self._interman.insertSegment(x1, y1, x2, y2)
+            else:
+                self.print_verbose(
+                    'unknown primitive:{}'.format(
+                        self._shape.attributes(ctor.shape_name)['primitive']))
+                raise RuntimeError('unknown primitive')
             body = None
             flag = 'static'
         else:
@@ -1424,7 +1443,7 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
 
             points = self.joints()[name].attrs.get('points', [])
             axes = self.joints()[name].attrs.get('axes', [])
-            siconos.io.mechanics_hdf5.check_points_axes(name, joint_class,
+            mechanics_hdf5.check_points_axes(name, joint_class,
                                                         points, axes)
 
             ds1_name = self.joints()[name].attrs['object1']

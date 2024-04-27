@@ -510,14 +510,51 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+end_src
 
 
-#+name: mybenchmarks-make-clang-debug-siconos
+#+name: mybenchmarks-bouncing-disk-clang-debug-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug-siconos
+#+begin_src sh :compile :results output silent
+                              guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+                                   shell --pure --exp
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} fclib  strace benchmark clang-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
+                                   make -j1 bouncing_disk && { cd ./src/siconos/tests; ./bouncing_disk ;}
+#+end_src
+
+#+name: mybenchmarks-bouncing-disk-clang-debug-siconos
 #+header: :var src_dir=src-dir
 #+header: :dir build-clang-debug-siconos
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
        shell --pure --expose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} fclib  strace benchmark clang-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
-       make -j1 bouncing_disk && { cd ./src/siconos/tests; ./bouncing_disk ;}
+       make -j1 bouncing_disk_sf && { cd ./src/siconos/tests; ./bouncing_disk_sf ;}
 #+end_src
+
+
+
+#+name: mybenchmarks-bouncing-disk-line-clang-debug-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug-siconos
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --pure --expose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} fclib  strace benchmark clang-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
+       make -j1 bouncing_disk_line && { cd ./src/siconos/tests; ./bouncing_disk_line ;}
+#+end_src
+
+
 
 #+name: mybenchmarks-make-clang-debug-siconos
 #+header: :var src_dir=src-dir
@@ -551,11 +588,19 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
     cp disks.hdf5 ../disks-o.hdf5"
 #+end_src
 
-#+name: mybenchmarks-make-clang-debug-siconos-vview
+#+name: vrunn-disks.py
 #+header: :dir .
 #+begin_src sh :compile :results output silent
-  ./vrun src/siconos/tests/disks.py --vview ./disks.hdf5
+  ./vrunn src/siconos/tests/diskss.py 
 #+end_src
+
+#+name: vrunn-vview-disks
+#+header: :dir .
+#+begin_src sh :compile :results output silent
+  ./vrunn --vview diskss.hdf5
+#+end_src
+
+
 
 #+name: mybenchmarks-make-clang-debug-siconos
 #+header: :var src_dir=src-dir
@@ -951,9 +996,17 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 
 * disks
 
+#+name: vrun-install
+#+header: :dir .
+#+begin_src sh :compile :results none
+  ./vrunn --install
+#+end_src
+
+
+
 #+name: massiveattack-rsync
 #+begin_src sh :compile :results none
-  rsync -avt . --exclude=build-* --exclude=venv massiveattack:/scratch/bremond/disks/local-src
+  rsync -avt . --exclude=build-* --exclude=venv --exclude *.hdf5 massiveattack:/scratch/bremond/disks/local-src
 #+end_src
 
 #+name: massiveattack-install
@@ -963,11 +1016,238 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+end_src
 
 
-
-#+name: massiveattack-run
+#+name: massiveattack-run-10
 #+header: :dir /rsync:massiveattack:/scratch/bremond/disks/local-src
 #+begin_src sh :compile :results none
-  nohup ./vrun src/siconos/tests/disks.py 
+  nohup ./vrun src/siconos/tests/disks-10.py > disks-10.txt 
+#+end_src
+
+#+name: massiveattack-run-10-vview
+#+header: :dir .
+#+begin_src sh :compile :results none
+  rsync massiveattack:/scratch/bremond/disks/local-src/disks-10.hdf5 disks-10.hdf5
+  ./vrun --vview disks-10.hdf5
+#+end_src
+
+#+name: massiveattack-run-50-vview
+#+header: :dir .
+#+begin_src sh :compile :results none
+  rsync massiveattack:/scratch/bremond/disks/local-src/disks-50.hdf5 disks-50.hdf5
+  ./vrun --vview disks-50.hdf5
+#+end_src
+
+#+name: massiveattack-run-50
+#+header: :dir /rsync:massiveattack:/scratch/bremond/disks/local-src
+#+begin_src sh :compile :results none
+  nohup ./vrun src/siconos/tests/disks-50.py > disks-50.txt
+#+end_src
+
+#+name: massiveattack-run-100
+#+header: :dir /rsync:massiveattack:/scratch/bremond/disks/local-src
+#+begin_src sh :compile :results none
+  nohup ./vrun src/siconos/tests/disks-100.py > disks-100.txt 
+#+end_src
+
+#+name: massiveattack-run-500
+#+header: :dir /rsync:massiveattack:/scratch/bremond/disks/local-src
+#+begin_src sh :compile :results none
+  nohup ./vrun src/siconos/tests/disks-500.py > disks-500.txt 
+#+end_src
+
+#+name: massiveattack-run-1000
+#+header: :dir /rsync:massiveattack:/scratch/bremond/disks/local-src
+#+begin_src sh :compile :results none
+  nohup ./vrun src/siconos/tests/disks-1000.py > disks-1000.txt 
+#+end_src
+
+
+
+#+name: massiveattack-run-100-vview
+#+header: :dir .
+#+begin_src sh :compile :results none
+  rsync massiveattack:/scratch/bremond/disks/local-src/disks-100.hdf5 disks-100.hdf5
+  ./vrun --vview disks-100.hdf5
+#+end_src
+
+#+name: massiveattack-run-500-vview
+#+header: :dir .
+#+begin_src sh :compile :results none
+  rsync massiveattack:/scratch/bremond/disks/local-src/disks-500.hdf5 disks-500.hdf5
+  ./vrun --vview disks-500.hdf5
+#+end_src
+
+
+#+name: massiveattack-run-10-ref
+#+header: :dir /rsync:massiveattack:/scratch/bremond/disks/local-src/ref
+#+begin_src sh :compile :results none
+  src_dir=/scratch/bremond/disks/local-src
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --container -N --emulate-fhs  --share=${src_dir} siconos coreutils time -- \
+  nohup time -f '%E %M' siconos ../src/siconos/tests/disks-10.py > disks-10.txt
+#+end_src
+
+#+name: massiveattack-run-10-ref-vview
+#+header: :dir .
+#+begin_src sh :compile :results none
+  rsync massiveattack:/scratch/bremond/disks/local-src/ref/disks-10.hdf5 ref-disks-10.hdf5
+  ./vrun --vview ref-disks-10.hdf5
+#+end_src
+
+
+#+name: massiveattack-run-50-ref
+#+header: :dir /rsync:massiveattack:/scratch/bremond/disks/local-src/ref
+#+begin_src sh :compile :results none
+  src_dir=/scratch/bremond/disks/local-src
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --container -N --emulate-fhs  --share=${src_dir} siconos coreutils time -- \
+  nohup time -f '%E %M' siconos ../src/siconos/tests/disks-50.py > disks-50.txt
+#+end_src
+
+#+name: massiveattack-run-100-ref
+#+header: :dir /rsync:massiveattack:/scratch/bremond/disks/local-src/ref
+#+begin_src sh :compile :results none
+  src_dir=/scratch/bremond/disks/local-src
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --container -N --emulate-fhs  --share=${src_dir} siconos coreutils time -- \
+  nohup time -f '%E %M' siconos ../src/siconos/tests/disks-100.py > disks-100.txt
+#+end_src
+
+#+name: massiveattack-run-10-bullet-ref
+#+header: :dir /rsync:massiveattack:/scratch/bremond/disks/local-src/ref
+#+begin_src sh :compile :results none
+  src_dir=/scratch/bremond/disks/local-src
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --container -N --emulate-fhs  --share=${src_dir} siconos coreutils time -- \
+  nohup time -f '%E %M' siconos ../src/siconos/tests/disks-bullet-10.py > disks-bullet-10.txt
+#+end_src
+
+
+#+name: run-10-bullet-ref
+#+header: :var src_dir=src-dir
+#+header: :dir ref
+#+begin_src sh :compile :results none
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --container -N --emulate-fhs  --share=/tmp --share=${src_dir} siconos coreutils time -- \
+  time -f '%E %M' siconos ../src/siconos/tests/disks-bullet-10.py > disks-bullet-10.txt
+#+end_src
+
+#+name: run-bulletc-ref
+#+header: :var src_dir=src-dir
+#+header: :dir ref
+#+begin_src sh :compile :results none
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --container -N --emulate-fhs  --share=/tmp --share=${src_dir} siconos coreutils time -- \
+  time -f '%E %M' siconos ../src/siconos/tests/disks-bullet-c.py > disks-bullet-c.txt
+#+end_src
+
+#+name: run-c-ref
+#+header: :var src_dir=src-dir
+#+header: :dir .
+#+begin_src sh :compile :results none
+  ./vrun src/siconos/tests/disks-c.py --vview disks-c.hdf5
+#+end_src
+
+
+
+#+name: run-50-bullet-ref
+#+header: :var src_dir=src-dir
+#+header: :dir ref
+#+begin_src sh :compile :results none
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --container -N --emulate-fhs  --share=${src_dir} siconos coreutils time -- \
+  nohup time -f '%E %M' siconos ../src/siconos/tests/disks-bullet-50.py > disks-bullet-50.txt
+#+end_src
+
+#+name: run-100-bullet-ref
+#+header: :var src_dir=src-dir
+#+header: :dir ref
+#+begin_src sh :compile :results none
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --container -N --emulate-fhs  --share=${src_dir} siconos coreutils time -- \
+  nohup time -f '%E %M' siconos ../src/siconos/tests/disks-bullet-100.py > disks-bullet-100.txt
+#+end_src
+
+#+name: run-10
+#+header: :dir .
+#+begin_src sh :compile :results none
+  nohup ./vrun src/siconos/tests/disks-10.py > disks-10.txt 
+#+end_src
+
+
+#+name: run-10-bullet-ref-vview
+#+begin_src sh :compile :results none
+ ./vrun --vview ref/disks-bullet-10.hdf5
+#+end_src
+
+#+name: run-50-bullet-ref-vview
+#+begin_src sh :compile :results none
+ ./vrun --vview ref/disks-bullet-50.hdf5
+#+end_src
+
+#+name: run-100-bullet-ref-vview
+#+begin_src sh :compile :results none
+ ./vrun --vview ref/disks-bullet-100.hdf5
+#+end_src
+
+#+name: run-50-vview
+#+begin_src sh :compile :results none
+ ./vrun --vview disks-50.hdf5
+#+end_src
+
+#+name: run-100-vview
+#+begin_src sh :compile :results none
+ ./vrun --vview disks-100.hdf5
+#+end_src
+
+#+name: run-c-vview
+#+begin_src sh :compile :results none
+ ./vrun --vview ref/disks-bullet-c.hdf5
+#+end_src
+
+
+
+#+name: run-50
+#+header: :dir .
+#+begin_src sh :compile :results none
+  nohup ./vrun src/siconos/tests/disks-50.py > disks-50.txt 
+#+end_src
+
+
+#+name: run-100
+#+header: :dir .
+#+begin_src sh :compile :results none
+  nohup ./vrun src/siconos/tests/disks-100.py > disks-100.txt 
+#+end_src
+
+#+name: run-100-vview
+#+begin_src sh :compile :results none
+ ./vrun --vview disks-100.hdf5
+#+end_src
+
+
+#+name: massiveattack-run-50-bullet-ref
+#+header: :dir /rsync:massiveattack:/scratch/bremond/disks/local-src/ref
+#+begin_src sh :compile :results none
+  src_dir=/scratch/bremond/disks/local-src
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --container -N --emulate-fhs  --share=${src_dir} siconos coreutils time -- \
+  nohup time -f '%E %M' siconos ../src/siconos/tests/disks-bullet-50.py > disks-bullet-50.txt
+#+end_src
+
+
+#+name: massiveattack-run-100-bullet-ref
+#+header: :dir /rsync:massiveattack:/scratch/bremond/disks/local-src/ref
+#+begin_src sh :compile :results none
+  src_dir=/scratch/bremond/disks/local-src
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --container -N --emulate-fhs  --share=${src_dir} siconos coreutils time -- \
+  nohup time -f '%E %M' siconos ../src/siconos/tests/disks-bullet-100.py > disks-bullet-100.txt
+#+end_src
+
+#+name: occ-vview
+#+header: :dir .
+#+begin_src sh :compile :results none
+  ./vrunn --vview occ_slider_crank.hdf5
 #+end_src
 
 

@@ -3,6 +3,8 @@ add_executable(t1 t1.cpp)
 add_executable(bouncing_ball bouncing_ball.cpp)
 add_executable(bouncing_balls bouncing_balls.cpp)
 add_executable(bouncing_disk bouncing_disk.cpp)
+add_executable(bouncing_disk_line bouncing_disk_line.cpp)
+add_executable(bouncing_disk_sf bouncing_disk_sf.cpp)
 add_executable(bouncing_disks bouncing_disks.cpp)
 #add_executable(tnonos tnonos.cpp)
 
@@ -13,6 +15,9 @@ set_target_properties(t1 PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagno
 set_target_properties(bouncing_ball PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
 set_target_properties(bouncing_balls PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
 set_target_properties(bouncing_disk PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
+set_target_properties(bouncing_disk_sf PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
+set_target_properties(bouncing_disk_line PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
+#set_target_properties(bouncing_disk_sf PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
 set_target_properties(bouncing_disks PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
 
 
@@ -20,6 +25,8 @@ target_link_libraries(t1 Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
 target_link_libraries(bouncing_ball  Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
 target_link_libraries(bouncing_balls Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
 target_link_libraries(bouncing_disk Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch)
+target_link_libraries(bouncing_disk_sf Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch)
+target_link_libraries(bouncing_disk_line Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch)
 target_link_libraries(bouncing_disks Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch)
 
 

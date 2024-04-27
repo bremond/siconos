@@ -1610,6 +1610,7 @@ class VView(object):
                 reader = self.vtk_reader[shape_type]()
                 reader.SetFileName(tmpf[1])
                 reader.Update()
+
                 self.readers[shape_name] = reader
 
                 # a try for smooth rendering but it does not work here
@@ -1663,7 +1664,7 @@ class VView(object):
                 with io_tmpfile(
                         debug=True,
                         suffix='.{0}'.format(shape_type),
-                        contents=str(self.io.shapes()[shape_name][:][0])) as tmpf:
+                        contents=self.io.shapes()[shape_name][:][0].decode('utf-8')) as tmpf:
                     shape = occ_load_file(tmpf[1])
 
                     # whole shape
@@ -1682,7 +1683,8 @@ class VView(object):
                         self.readers[shape_indx] = reader
                         mapper = vtk.vtkDataSetMapper()
                         add_compatiblity_methods(mapper)
-                        mapper.SetInputConnection(reader.GetOutputPort())
+                        if reader is not None:
+                            mapper.SetInputConnection(reader.GetOutputPort())
                         self.mappers[shape_indx] = (x for x in [mapper])
 
                     for i, e in enumerate(edges):
@@ -1857,6 +1859,19 @@ class VView(object):
                 source.SetYLength(attrs[1])
                 source.SetZLength(self.opts.depth_2d)
 
+            elif primitive == 'Segment':
+                line = vtk.vtkLineSource()
+                (x1, y1, x2, y2) = attrs
+
+                line.SetPoint1(x1, y1, 0)
+                line.SetPoint2(x2, y2, 0)
+
+                source = vtk.vtkTubeFilter()
+                source.SetInputConnection(line.GetOutputPort())
+                source.SetRadius(.1)
+                source.SetNumberOfSides(30)
+                source.Update()
+
             elif primitive == 'Line':
                 line = vtk.vtkLineSource()
                 (a, b, c) = attrs
@@ -1993,8 +2008,9 @@ class VView(object):
         transformer = vtk.vtkTransformFilter()
 
         if contact_shape_indx in self.readers:
-            transformer.SetInputConnection(
-                self.readers[contact_shape_indx].GetOutputPort())
+            if self.readers[contact_shape_indx] is not None:
+                transformer.SetInputConnection(
+                    self.readers[contact_shape_indx].GetOutputPort())
         else:
             transformer.SetInputData(self.datasets[contact_shape_indx])
 
@@ -3012,9 +3028,9 @@ from numpy.linalg import norm
 import numpy
 import random
 
-from siconos.io.mechanics_hdf5 import MechanicsHdf5
-from siconos.io.mechanics_hdf5 import tmpfile as io_tmpfile
-from siconos.io.mechanics_hdf5 import occ_topo_list, occ_load_file,\
+from mechanics_hdf5 import MechanicsHdf5
+from mechanics_hdf5 import tmpfile as io_tmpfile
+from mechanics_hdf5 import occ_topo_list, occ_load_file,\
     topods_shape_reader, brep_reader
 
 nan = numpy.nan

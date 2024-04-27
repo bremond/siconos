@@ -8,10 +8,10 @@
 #include <typeinfo>
 
 #include "siconos/collision/diskdisk_r.hpp"
-#include "siconos/collision/diskline_r.hpp"
+#include "siconos/collision/disksegment_r.hpp"
 #include "siconos/collision/point.hpp"
 #include "siconos/collision/shape/disk.hpp"
-#include "siconos/collision/shape/line.hpp"
+#include "siconos/collision/shape/segment.hpp"
 #include "siconos/collision/space_filter.hpp"
 #include "siconos/siconos.hpp"
 #include "siconos/storage/ground/ground.hpp"
@@ -24,19 +24,19 @@ namespace siconos::config::disks {
 using disk = model::lagrangian_ds;
 using nslaw = model::newton_impact_friction;
 using diskdisk_r = collision::diskdisk_r;
-using diskline_r = collision::diskline_r;
-using line_shape = collision::shape::line;
+using disksegment_r = collision::disksegment_r;
+using segment_shape = collision::shape::segment;
 using disk_shape = collision::shape::disk;
 
 using fc2d = simul::nonsmooth_problem<FrictionContactProblem>;
 using osnspb = simul::one_step_nonsmooth_problem<fc2d>;
 using solver_options = simul::solver_options;
-using interaction = simul::interaction<nslaw, diskdisk_r, diskline_r>;
+using interaction = simul::interaction<nslaw, diskdisk_r, disksegment_r>;
 using osi = simul::one_step_integrator<disk, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
 using topo = simul::topology<disk, interaction>;
 using pointd = collision::point<disk>;
-using pointl = collision::point<collision::shape::line>;
+using pointl = collision::point<collision::shape::segment>;
 using neighborhood = collision::neighborhood<pointd, pointl>;
 using space_filter = collision::space_filter<topo, neighborhood>;
 using interaction_manager = simul::interaction_manager<space_filter>;
@@ -60,17 +60,17 @@ static auto imake_storage()
   return storage::make<
       standard_environment<config::params>, config::simulation,
       config::interaction_manager, config::neighborhood, config::space_filter,
-      config::io, config::disk, config::diskdisk_r, config::diskline_r,
-      config::pointl, config::pointd, config::interaction, config::line_shape,
-      config::disk_shape,
+      config::io, config::disk, config::diskdisk_r, config::disksegment_r,
+      config::pointl, config::pointd, config::interaction,
+      config::segment_shape, config::disk_shape,
       storage::with_properties<
           storage::wrapped<config::disk, some::unbounded_collection>,
           storage::wrapped<config::diskdisk_r, some::unbounded_collection>,
-          storage::wrapped<config::diskline_r, some::unbounded_collection>,
+          storage::wrapped<config::disksegment_r, some::unbounded_collection>,
           storage::wrapped<config::pointl, some::unbounded_collection>,
           storage::wrapped<config::pointd, some::unbounded_collection>,
           storage::wrapped<config::interaction, some::unbounded_collection>,
-          storage::wrapped<config::line_shape, some::unbounded_collection>,
+          storage::wrapped<config::segment_shape, some::unbounded_collection>,
           storage::wrapped<config::disk_shape, some::unbounded_collection>,
           storage::attached<config::disk, storage::pattern::symbol<"shape">,
                             storage::some::item_ref<config::disk_shape>>,
@@ -83,10 +83,10 @@ static auto imake_storage()
           storage::bind<config::disk, "disk">,
           storage::bind<config::nslaw, "nslaw">,
           storage::bind<config::diskdisk_r, "diskdisk_r">,
-          storage::bind<config::diskline_r, "diskline_r">,
+          storage::bind<config::disksegment_r, "disksegment_r">,
           storage::bind<config::neighborhood, "neighborhood">,
           storage::bind<config::space_filter, "space_filter">,
-          storage::bind<config::line_shape, "line_shape">,
+          storage::bind<config::segment_shape, "segment_shape">,
           storage::bind<config::disk_shape, "disk_shape">,
           storage::bind<config::interaction_manager, "interaction_manager">,
           storage::bind<config::interaction, "interaction">,
@@ -210,7 +210,8 @@ using namespace boost::hana::literals;
 //                  .c_str());
 //     return ground::make_tuple(
 //         base_index,
-//         py::class_<H>(mod, storage::bind_name<item_t, disks_properties_t>(),
+//         py::class_<H>(mod, storage::bind_name<item_t,
+//         disks_properties_t>(),
 //                       base_index),
 //         ground::type_c<H>);
 //   });

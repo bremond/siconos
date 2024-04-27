@@ -29,14 +29,25 @@ class SpaceFilter(Stored):
         self._handle = vkernel.disks.add_space_filter(self.data())
         self._handle.set_neighborhood(self._ngbh)
         self._handle.set_diskdisk_r(vkernel.disks.add_diskdisk_r(self.data()))
-        
+
+    def insertSegment(self, x1, y1, x2, y2):
+        segment = vkernel.disks.add_segment_shape(self.data())
+        segment.set_p1(array([x1, y1, 0]))
+        segment.set_p2(array([x2, y2, 0]))
+        segment.set_maxpoints(3) # fix / size of smallest disk
+        segment.initialize()
+
+        disksegment = vkernel.disks.add_disksegment_r(self.data())
+        disksegment.set_segment(segment)
+
+        self.handle().insert_segment(disksegment)
 
     def insertLine(self, a, b , c):
         line = vkernel.disks.add_line_shape(self.data())
         line.set_a(a)
         line.set_b(b)
         line.set_c(c)
-        line.set_maxpoints(5000)
+        line.set_maxpoints(10000)
         line.initialize()
 
         print("new line,  p0:", line.p0())
@@ -50,7 +61,7 @@ class SpaceFilter(Stored):
     def insertDisk(self, radius):
         disk_shape = vkernel.disks.add_disk_shape(self.data())
         disk_shape.set_radius(radius)
-        
+
     def insertNonSmoothLaw(self, nslaw, gid1, gid2):
         self._interman.insert_nonsmooth_law(nslaw.handle(), gid1, gid2)
         self._handle.set_nslaw(self._interman.get_nonsmooth_law(gid1, gid2)) # one nslaw!!
@@ -93,7 +104,7 @@ class Topology(Stored):
 
     def indexSetSize(self):
         pass
-    
+
 class NonSmoothDynamicalSystem(Stored):
 
     def __init__(self, t0, T):
@@ -116,7 +127,7 @@ class TimeDiscretisation(Stored):
             vkernel.disks.add_time_discretization(self.data())
         self.handle().set_t0(t0)
         self.handle().set_h(h)
-    
+
 class Simulation(Stored):
 
     def __init__(self, nsds, timedisc):
@@ -127,7 +138,7 @@ class Simulation(Stored):
         self._handle = vkernel.disks.add_simulation(self.data())
         self.handle().initialize()
         self.handle().one_step_integrator().set_theta(0.50001)
-        
+
     def insertIntegrator(self, osi):
         pass # unimplemented
 
@@ -164,7 +175,7 @@ class Simulation(Stored):
     def nextTime(self):
         return self.startingTime() + self.handle().current_step() *\
             self.handle().time_discretization().h()
-    
+
     def hasNextEvent(self):
         return self.handle().has_next_event()
 
@@ -177,11 +188,11 @@ class Simulation(Stored):
 
     def nextStep(self):
         pass # unimplemented
-    
+
 class Body(Stored):
 
     _ident = 1
-    
+
     def __init__(self, radius, mass, position, velocity):
 
         self._ident = self._ident + 1
@@ -195,7 +206,7 @@ class Body(Stored):
         disk_shape = vkernel.disks.add_disk_shape(self.data())
         body.set_shape(disk_shape)
         body.shape().set_radius(radius)
-        body.set_fext(array([0,0,0])) # default 
+        body.set_fext(array([0,0,0])) # default
 
     def scalarMass(self):
         return self.handle().mass_matrix()[0]
@@ -211,8 +222,8 @@ class OSNSPB(Stored):
 
         self._so = vkernel.disks.add_solver_options(self.data())
         self._so.create(400)
-        self._so.set_iparam(0, 20)
-        self._so.set_dparam(0, 1e-4)
+        self._so.set_iparam(0, 50)
+        self._so.set_dparam(0, 1e-3)
         self._fc2d = vkernel.disks.add_fc2d(self.data())
         self._handle = vkernel.disks.add_osnspb(self.data())
         self._handle.set_options(self._so)
@@ -221,7 +232,7 @@ class OSNSPB(Stored):
         self.handle().set_mu(0.5)
         self.handle().set_verbose(True)
 #        self._fc2d.instance().dimension = 2
-        
+
     def setMaxSize(self, maxs):
         self._maxSize = maxs
 
@@ -237,7 +248,7 @@ class OSNSPB(Stored):
     def getSizeOutput(self):
         return 0 # unimplemented
 
-    
+
 class SICONOS_TS_NONLINEAR():
     pass
 
@@ -257,7 +268,7 @@ class MechanicsIO(Stored):
 
     def __init__(self):
         self._handle = vkernel.disks.add_io(self.data())
-    
+
     def positions(self, nsds):
         return self.handle().positions(0)
 

@@ -14,14 +14,14 @@ using osnspb = simul::one_step_nonsmooth_problem<fc2d>;
 using nslaw = model::newton_impact_friction;
 using disk_shape = collision::shape::disk;
 using diskdisk_r = collision::diskdisk_r;
-using diskline_r = collision::diskline_r;
-using interaction = simul::interaction<nslaw, diskdisk_r, diskline_r>;
+using disksegment_r = collision::disksegment_r;
+using interaction = simul::interaction<nslaw, diskdisk_r, disksegment_r>;
 using osi = simul::one_step_integrator<disk, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
 using topo = simul::topology<disk, interaction>;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
 using pointd = collision::point<disk>;
-using pointl = collision::point<collision::shape::line>;
+using pointl = collision::point<collision::shape::segment>;
 using neighborhood = collision::neighborhood<pointd, pointl>;
 using space_filter = collision::space_filter<topo, neighborhood>;
 
@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
       standard_environment<config::params>, config::simulation,
       wrap<some::unbounded_collection, config::disk>, config::disk_shape,
       config::diskdisk_r,
-      wrap<some::unbounded_collection, config::diskline_r>,
+      wrap<some::unbounded_collection, config::disksegment_r>,
       wrap<some::unbounded_collection, config::pointl>,
       wrap<some::unbounded_collection, config::pointd>,
       wrap<some::unbounded_collection, config::interaction>,
@@ -124,19 +124,20 @@ int main(int argc, char* argv[])
   ngbh.create(2.);  // radius
 
   auto diskdisk_r = storage::add<config::diskdisk_r>(data);
-  auto ground_r = storage::add<config::diskline_r>(data);
-  auto line = storage::handle(data, ground_r.line());
-  line.a() = 0.;
-  line.b() = 1.;
-  line.c() = 0.;
-  line.initialize();
-  line.maxpoints() = 10;
+  auto ground_r = storage::add<config::disksegment_r>(data);
+  auto segment = storage::handle(data, ground_r.segment());
+  segment.x1() = 0.;
+  segment.y1() = 0.;
+  segment.x2() = 10.;
+  segment.y2() = 0.;
+  segment.initialize();
+  segment.maxpoints() = 100;
 
   auto spacef = storage::add<config::space_filter>(data);
   spacef.neighborhood() = ngbh;
   spacef.diskdisk_r() = diskdisk_r;
   spacef.nslaw() = nslaw;
-  spacef.insert_line(ground_r);
+  spacef.insert_segment(ground_r);
   spacef.make_points();
   ngbh.add_point_sets(0);
   // =========================== End of model definition

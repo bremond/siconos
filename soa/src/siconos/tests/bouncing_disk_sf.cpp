@@ -1,16 +1,15 @@
-#include <bits/stdc++.h>
 #include <siconos/numerics/Friction_cst.h>
 
 #include "siconos/collision/space_filter.hpp"
 #include "siconos/siconos.hpp"
 #include "siconos/utils/print.hpp"
 
-#include "siconos/io/io.hpp"
-
 namespace siconos::config {
 
 using disk = model::lagrangian_ds;
 using fc2d = simul::nonsmooth_problem<FrictionContactProblem>;
+//  using lcp = simul::nonsmooth_problem<SegmentarComplementarityProblem>;
+//  using osnspb = simul::one_step_nonsmooth_problem<lcp>;
 using osnspb = simul::one_step_nonsmooth_problem<fc2d>;
 using nslaw = model::newton_impact_friction;
 using disk_shape = collision::shape::disk;
@@ -26,8 +25,6 @@ using pointl = collision::point<collision::shape::segment>;
 using neighborhood = collision::neighborhood<pointd, pointl>;
 using space_filter = collision::space_filter<topo, neighborhood>;
 
-  using io = io::io<disk>;
-
 using params = map<iparam<"dof", 3>>;
 }  // namespace siconos::config
 
@@ -38,15 +35,15 @@ int main(int argc, char* argv[])
   using namespace storage;
 
   auto data = storage::make<
-    standard_environment<config::params>, config::io, config::simulation,
-      config::space_filter, config::disk_shape, config::diskdisk_r,
-      wrap<some::unbounded_collection, config::disk>,
+      standard_environment<config::params>, config::simulation,
+      wrap<some::unbounded_collection, config::disk>, config::disk_shape,
+      config::diskdisk_r,
       wrap<some::unbounded_collection, config::disksegment_r>,
       wrap<some::unbounded_collection, config::pointl>,
       wrap<some::unbounded_collection, config::pointd>,
       wrap<some::unbounded_collection, config::interaction>,
+      config::space_filter,
       storage::with_properties<
-          storage::wrapped<config::disk, some::unbounded_collection>,
           storage::attached<config::disk, storage::pattern::symbol<"shape">,
                             storage::some::item_ref<config::disk_shape>>,
           storage::time_invariant<storage::attr_t<config::disk, "fext">>,
@@ -56,48 +53,37 @@ int main(int argc, char* argv[])
 
   // unsigned int nDof = 3;         // degrees of freedom for the disk
   double t0 = 0;               // initial computation time
-  double tmax = 1;            // final computation time
+  double tmax = 20;            // final computation time
   double h = 0.005;            // time step
   double position_init = 1.0;  // initial position for lowest bead.
   double velocity_init = 0.0;  // initial velocity for lowest bead.
   double theta = 0.5;          // theta for MoreauJeanOSI integrator
-  double radius = 0.1;         // Disk radius
+  double radius = 0.5;         // Disk radius
   double m = 1.;               // Disk mass
   double g = 9.81;             // Gravity
-
-  unsigned int ndisks = 3;
 
   print("====> Model loading ...\n");
 
   // --------------------------
   // -- The dynamical_system --
   // --------------------------
+  auto d1 = storage::add<config::disk>(data);
+  //  auto d2 = storage::add<config::disk>(data);
 
-  for (unsigned int i = 0; i < ndisks; ++i) {
-    auto d1 = storage::add<config::disk>(data);
-    //  auto d2 = storage::add<config::disk>(data);
+  d1.q() = {0, position_init, 0};
+  d1.velocity() = {0, velocity_init, 0};
+  d1.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
 
-    storage::prop<"id">(d1) = i+1;
+  // d2.q() = {2 * position_init, 0.1, 0};
+  // d2.velocity() = {velocity_init, 0, 0};
+  // d2.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
 
-    d1.q() = {0, position_init * (i + 1), 0};
-    d1.velocity() = {0, velocity_init, 0};
-    d1.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
+  storage::handle(data, prop<"shape">(d1)).radius() = radius;
+  //  storage::handle(data, prop<"shape">(d2)).radius() = 2;
 
-    // d2.q() = {2 * position_init, 0.1, 0};
-    // d2.velocity() = {velocity_init, 0, 0};
-    // d2.mass_matrix().diagonal() << m, m, 2. / 5. * m * radius * radius;
-
-    storage::handle(data, prop<"shape">(d1)).radius() = radius;
-    //  storage::handle(data, prop<"shape">(d2)).radius() = 2;
-
-    // -- Set external forces (weight) --
-    d1.fext() = {0., -m * g, 0.};
-    //  d2.fext() = {-m * g, 0., 0.};
-  }
-
-  for (auto disk : storage::handles<config::disk>(data, 0)) {
-    print("disk:{} , disk.q()={}\n", disk.get(), disk.q()[0]);
-  }
+  // -- Set external forces (weight) --
+  d1.fext() = {0., -m * g, 0.};
+  //  d2.fext() = {-m * g, 0., 0.};
 
   // ------------------
   // -- The relation --
@@ -108,17 +94,16 @@ int main(int argc, char* argv[])
   auto nslaw = storage::add<config::nslaw>(data);
   nslaw.e() = e;
 
+  //  auto lcp = storage::add<config::lcp>(data);
   auto fc2d = storage::add<config::fc2d>(data);
   fc2d.create();
-  fc2d.instance()->dimension = 2;
-  fc2d.instance()->mu = 0;
+  //  lcp.instance()->dimension = 2;
+  //  fc2d.instance()->mu = 0.1;
 
   // ------------------
   // --- Simulation ---
   // ------------------
   auto simulation = storage::add<config::simulation>(data);
-
-  auto io = storage::add<config::io>(data);
 
   simulation.one_step_integrator().theta() = theta;
   simulation.one_step_integrator().constraint_activation_threshold() = 0.;
@@ -132,12 +117,12 @@ int main(int argc, char* argv[])
 
   // -- set the options --
   auto so = storage::add<simul::solver_options>(data);
-  so.create(SICONOS_FRICTION_2D_LEMKE);
+  so.create(SICONOS_FRICTION_2D_NSGS);
   osnspb.options() = so;
 
   auto ngbh = storage::add<config::neighborhood>(data);
 
-  ngbh.create(0.6);  // radius
+  ngbh.create(10);  // compactnsearch radius
 
   auto diskdisk_r = storage::add<config::diskdisk_r>(data);
   auto ground_r = storage::add<config::disksegment_r>(data);
@@ -147,7 +132,7 @@ int main(int argc, char* argv[])
   segment.x2() = 10.;
   segment.y2() = 0.;
   segment.initialize();
-  segment.maxpoints() = 10;
+  segment.maxpoints() = 1000;
 
   auto spacef = storage::add<config::space_filter>(data);
   spacef.neighborhood() = ngbh;
@@ -163,30 +148,20 @@ int main(int argc, char* argv[])
 
   //  auto fd = io::open<ascii>("result.dat");
 
-  auto disks = storage::handles<config::disk>(data, 0);
-  auto disk1 = (disks | view::take(1)).front();
-  auto disk2 = (disks | view::take(2)).back();
-
-  print("disk1:{}, disk2:{} disk1.q()={}, disk2.q()={}\n", disk1.get(),
-        disk2.get(), disk1.q(), disk2.q());
-
   // fix this for constant fext
   simulation.initialize();
 
-  auto out = fmt::output_file("result-many.dat");
+  //  auto out = fmt::output_file("result.dat");
+  std::ofstream cout("result.dat");
 
   // https://stackoverflow.com/questions/72767354/how-to-flush-fmt-output-in-debug-mode
-  // std::ofstream cout("result.dat");
-  out.print("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
-            simulation.current_step() * simulation.time_step(),
-            storage::attr<"q">(disk1, simulation.current_step())(1),
-            storage::attr<"q">(disk2, simulation.current_step())(1),
-            storage::attr<"velocity">(disk1, simulation.current_step())(1),
-            storage::attr<"velocity">(disk2, simulation.current_step())(1),
-            0., 0.);
-
-  // auto& vds = storage::prop_values<config::interaction, "vd">(
-  //     data, simulation.current_step());
+  cout << fmt::format(
+              "{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
+              simulation.current_step() * simulation.time_step(),
+              storage::attr<"q">(d1, simulation.current_step())(1),
+              storage::attr<"velocity">(d1, simulation.current_step())(1), 0.,
+              0.)
+       << std::flush;
 
   while (simulation.has_next_event()) {
     ngbh.update(0);
@@ -194,13 +169,13 @@ int main(int argc, char* argv[])
     spacef.update_index_set0(simulation.current_step());
 
     auto ninvds = simulation.compute_one_step();
-
-    // auto& positions = io.positions(0);
+//    auto q = storage::attr<"q">(d1, simulation.current_step())(1);
+//    auto v = storage::attr<"velocity">(d1, simulation.current_step())(1);
 
     double p0, lambda;
     if (ninvds > 0) {
       p0 = get_vector(simulation.one_step_integrator().p0_vector_assembled(),
-                      0)(0);
+                      0)(1);
       lambda = get_vector(
           simulation.one_step_integrator().lambda_vector_assembled(), 0)(0);
     }
@@ -209,13 +184,14 @@ int main(int argc, char* argv[])
       lambda = 0;
     }
 
-    out.print("{:.15e} {:.15e} {:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
-              simulation.current_step() * simulation.time_step(),
-              storage::attr<"q">(disk1, simulation.current_step())(1),
-              storage::attr<"q">(disk2, simulation.current_step())(1),
-              storage::attr<"velocity">(disk1, simulation.current_step())(1),
-              storage::attr<"velocity">(disk2, simulation.current_step())(1),
-              p0, lambda);
+    cout << fmt::format(
+                "{:.15e} {:.15e} {:.15e} {:.15e} {:.15e}\n",
+                simulation.current_step() * simulation.time_step(),
+                storage::attr<"q">(d1, simulation.current_step())(1),
+                storage::attr<"velocity">(d1, simulation.current_step())(1),
+                p0, lambda)
+         << std::flush;
+
   }
   //  io::close(fd);
 }

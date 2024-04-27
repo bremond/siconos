@@ -8,14 +8,14 @@ namespace siconos::config {
 
 using disk = model::lagrangian_ds;
 using fc2d = simul::nonsmooth_problem<FrictionContactProblem>;
-//  using lcp = simul::nonsmooth_problem<SegmentarComplementarityProblem>;
+//  using lcp = simul::nonsmooth_problem<LinearComplementarityProblem>;
 //  using osnspb = simul::one_step_nonsmooth_problem<lcp>;
 using osnspb = simul::one_step_nonsmooth_problem<fc2d>;
 using nslaw = model::newton_impact_friction;
 using disk_shape = collision::shape::disk;
 using diskdisk_r = collision::diskdisk_r;
-using disksegment_r = collision::disksegment_r;
-using interaction = simul::interaction<nslaw, diskdisk_r, disksegment_r>;
+using diskline_r = collision::diskline_r;
+using interaction = simul::interaction<nslaw, diskdisk_r, diskline_r>;
 using osi = simul::one_step_integrator<disk, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
 using topo = simul::topology<disk, interaction>;
@@ -32,7 +32,7 @@ int main(int argc, char* argv[])
 
   auto data = storage::make<
       standard_environment<config::params>, config::simulation, config::disk,
-      config::disk_shape, config::diskdisk_r, config::disksegment_r,
+      config::disk_shape, config::diskdisk_r, config::diskline_r,
       config::interaction,
       storage::with_properties<
           storage::attached<config::disk, storage::pattern::symbol<"shape">,
@@ -44,7 +44,7 @@ int main(int argc, char* argv[])
 
   // unsigned int nDof = 3;         // degrees of freedom for the disk
   double t0 = 0;               // initial computation time
-  double tmax = 20;            // final computation time
+  double tmax = 10;            // final computation time
   double h = 0.005;            // time step
   double position_init = 1.0;  // initial position for lowest bead.
   double velocity_init = 0.0;  // initial velocity for lowest bead.
@@ -111,14 +111,13 @@ int main(int argc, char* argv[])
   so.create(SICONOS_FRICTION_2D_NSGS);
   osnspb.options() = so;
 
-  auto ground_r = storage::add<config::disksegment_r>(data);
-  auto segment = storage::handle(data, ground_r.segment());
-  segment.x1() = -1.;
-  segment.y1() = 0;
-  segment.x2() = 1;
-  segment.y2() = 0;
-  segment.initialize();
-  segment.maxpoints() = 1000;
+  auto ground_r = storage::add<config::diskline_r>(data);
+  auto line = storage::handle(data, ground_r.line());
+  line.a() = 0.;
+  line.b() = 1.;
+  line.c() = 0.;
+  line.initialize();
+  line.maxpoints() = 1000;
 
   // Interaction disk-floor
   auto interaction = simulation.topology().link(d1);
