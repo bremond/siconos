@@ -42,7 +42,7 @@ using space_filter = collision::space_filter<topo, neighborhood>;
 using interaction_manager = simul::interaction_manager<space_filter>;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
 
-using io = io::io<disk>;
+  using io = io::io<osi>;
 using params = map<iparam<"dof", 3>, iparam<"ncgroups", 1>>;
 }  // namespace siconos::config::disks
 

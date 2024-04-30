@@ -54,6 +54,9 @@ struct one_step_integrator {
   };
 
   struct moreau_jean : item<> {
+    using system = system;
+    using interaction = interaction;
+
     using attributes = types::attributes<
         attribute<"theta", some::scalar>, attribute<"gamma", some::scalar>,
         attribute<"constraint_activation_threshold", some::scalar>,
@@ -226,7 +229,7 @@ struct one_step_integrator {
                                                property::time_invariant,
                                                data_t>()) {
           // constant fext => constant iteration matrix
-          compute_iteration_matrix(current_step);
+          // FIX ISSUE HERE compute_iteration_matrix(current_step);
         }
       }
 

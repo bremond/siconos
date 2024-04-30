@@ -2,6 +2,7 @@
 
 #include "siconos/utils/print.hpp"
 #include "siconos/collision/collision_head.hpp"
+#include "siconos/collision/collision.hpp"
 
 namespace siconos::collision::shape {
 
@@ -52,17 +53,6 @@ struct segment : item<> {
       compute_normal();
     }
 
-    decltype(auto) distance_sq(match::vector auto& q1, match::vector auto& q2)
-    {
-      const auto dx = q2(0) - q1(0);
-      const auto dy = q2(1) - q1(1);
-      return dx * dx + dy * dy;
-    }
-
-    decltype(auto) distance(match::vector auto& q1, match::vector auto& q2)
-    {
-      return sqrt(distance_sq(q1, q2));
-    }
 
     decltype(auto) distance(match::vector auto& q)
     {
@@ -73,7 +63,7 @@ struct segment : item<> {
       const auto t =
           fmax(0, fmin(1, algebra::dot(qp - p1(), dp2p1()) / length_sq()));
       const auto p = p1() + t * dp2p1();
-      return distance(qp, p);
+      return collision::distance(qp, p);
     }
 
     decltype(auto) points_coords()

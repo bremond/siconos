@@ -23,15 +23,13 @@ disk_radius = 1
 
 with MechanicsHdf5Runner() as io:
 
-    io.add_primitive_shape('PointR', 'Disk', [0.1])
     io.add_primitive_shape('DiskR', 'Disk', [disk_radius])
 
-    grd = numpy.random.rand(10,1)
+    io.add_primitive_shape('Ground-0',
+                           'Segment', (-10, 10, 0, 0))
 
-    print(grd)
-    for i in range(10):
-        io.add_primitive_shape('Ground-{}'.format(i),
-                               'Segment', (-1, -1, 1, 1))
+    io.add_primitive_shape('Ground-1',
+                           'Segment', (0, 0, 10, 10))
 
     io.add_Newton_impact_friction_nsl('contact', mu=0.5, e=0)
 
@@ -43,7 +41,7 @@ with MechanicsHdf5Runner() as io:
     #               translation=[3, 5],
     #               orientation=[0], velocity=[0, 0, 0], mass=1)
 
-    for i in range(10):
+    for i in range(2):
         io.add_object('ground-{}'.format(i), [Contactor('Ground-{}'.format(i))],
                       translation=[0, 0])
 
@@ -54,7 +52,11 @@ with MechanicsHdf5Runner() as io:
     #               translation=[0, 0])
 
     io.add_object('disk{}-{}'.format(0,0), [Contactor('DiskR')],
-                  translation=[-0.90,2], orientation=[0], velocity=[0,0,0], mass=1)
+                  translation=[0,5], orientation=[0], velocity=[0,0,0], mass=1)
+
+
+    io.add_object('disk{}-{}'.format(0,1), [Contactor('DiskR')],
+                  translation=[0,2.01], orientation=[0], velocity=[0,0,0], mass=1)
 
     # N = 1
     # for i in range(N):
@@ -89,5 +91,5 @@ with MechanicsHdf5Runner(mode='r+') as io:
                solver_options=options,
                numerics_verbose=True,
                numerics_verbose_level=1,
-               output_contact_forces=False,
+               output_contact_forces=True,
                output_frequency=None)

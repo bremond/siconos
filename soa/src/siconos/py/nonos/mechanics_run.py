@@ -2107,11 +2107,13 @@ class MechanicsHdf5Runner(mechanics_hdf5.MechanicsHdf5):
         Outputs contact forces
         _output_contact_index_set default value is 1.
         """
+
         if self._nsds.\
                 topology().indexSetsSize() > 1:
             time = self.current_time()
             contact_points = self._io.contactPoints(self._nsds,
                                                     self._output_contact_index_set)
+
             if contact_points is not None:
                 current_line = self._cf_data.shape[0]
                 # Increase the number of lines in cf_data
@@ -2120,7 +2122,7 @@ class MechanicsHdf5Runner(mechanics_hdf5.MechanicsHdf5):
                 times = np.empty((contact_points.shape[0], 1))
                 times.fill(time)
 
-                if self._dimension == 3:
+                if self._dimension == 3 or backend == 'vnative':
                     self._cf_data[current_line:, :] = \
                         np.concatenate((times,
                                         contact_points),

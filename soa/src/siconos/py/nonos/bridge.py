@@ -102,8 +102,8 @@ class Topology(Stored):
     def __init_(self):
         self._handle = vkernel.disks.add_topology(self.data())
 
-    def indexSetSize(self):
-        pass
+    def indexSetsSize(self):
+        return 2
 
 class NonSmoothDynamicalSystem(Stored):
 
@@ -275,6 +275,9 @@ class MechanicsIO(Stored):
     def velocities(self, nsds):
         return self.handle().velocities(0)
 
+    def contactPoints(self, nsds, output_contact_index_set):
+        return self.handle().contact_points(0)
+    
 class SpaceFilterOptions():
 
     neighborhood_radius = 2.5

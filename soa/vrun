@@ -13,8 +13,8 @@ case $1 in
   *)
     case $1 in -x) shift; set -x;; esac
     MYDIR=`dirname $0`
-    
-    cat>siconos-disks-manifest.scm<<EOF
+
+    cat>.siconos-disks-manifest.scm<<EOF
 (specifications->manifest
  '( "siconos" "benchmark" "clang-toolchain"  "valgrind"
     "suitesparse" "eigen" "boost" "fmt" "range-v3"
@@ -22,7 +22,8 @@ case $1 in
     "pybind11" "strace" "jupyter" "python-ipykernel" "procps" "gdb" "git" "emacs-next"
     "time" "parallel" "findutils"))
 EOF
-    cat>siconos-2023-11-08.scm<<EOF
+
+    cat>.siconos-vrun-channels.scm<<EOF
 (list (channel
         (name 'guix)
         (url "https://git.savannah.gnu.org/git/guix.git")
@@ -48,11 +49,11 @@ EOF
     pwd=`pwd`
     rm -f $pwd/.siconos-guix-profile
 #    guix_isolation_args="--container -N --emulate-fhs --share=/tmp --share=$HOME"
-    guix_isolation_args="--pure"
-    guix_cmd="guix time-machine -C ./siconos-2023-11-08.scm --"
-    exec $guix_cmd shell $guix_args \
+    guix_isolation_args="--pure --preserve=OMP*"
+    guix_cmd="guix time-machine -C ./.siconos-vrun-channels.scm --"
+    exec $guix_cmd shell $guix_isolation_args \
          --root=.siconos-guix-profile \
-         --manifest=siconos-disks-manifest.scm -- $0 --env-ok $@
+         -m .siconos-disks-manifest.scm -- $0 --env-ok $@
     ;;
 esac
 time=`which time`
@@ -71,6 +72,12 @@ while [ $# -gt 0 ]; do
       pip install --upgrade pip
       venv/bin/pip3 --version
       venv/bin/pip3 install .
+
+      cd venv/lib/python3.9/site-packages/nonos
+      ln -sf ../../../../../src/siconos/py/nonos/__init__.py .
+      ln -sf ../../../../../src/siconos/py/nonos/bridge.py .
+      ln -sf ../../../../../src/siconos/py/nonos/mechanics_run.py .
+      ln -sf ../../../../../src/siconos/py/nonos/mechanics_hdf5.py .
       ;;
     --repl)
       shift
@@ -94,10 +101,11 @@ while [ $# -gt 0 ]; do
       shift
       siconos_vexport $@
       ;;
-    --export-para)
+    --vexport-para)
       shift
-      case $1 in --nprocs) shift; nprocs=$1;; *) nprocs=1;; esac
-      siconos_vexport --global-filter --gen-para-script=$nprocs $1 > vrun-pprocess
+      set -x
+      case $1 in --nprocs) shift; nprocs=$1; shift;; *) nprocs=1;; esac
+      python3 ./src/siconos/py/nonos/siconos_vexport.py --global-filter --gen-para-script=$nprocs $1 > vrun-pprocess
       chmod +x vrun-pprocess
       $time -f '%E %M' ./vrun-pprocess
       ;;
@@ -106,7 +114,7 @@ while [ $# -gt 0 ]; do
       shift
       . venv/bin/activate
       export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
-      $time -f '%E %M' python3 $script > `basename $script`.log
+      $time -f '[Time:%E Memory:%M]' python3 $script > `basename $script`.log 2>&1
       ;;
   esac
 done

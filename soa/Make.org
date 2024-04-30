@@ -505,7 +505,8 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+header: :dir build-clang-debug-siconos
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
-       shell --pure --expose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} fclib  strace benchmark clang-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
+       shell --container -N --expose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} \
+       -m ../.siconos-disks-manifest.scm -- \
        make -j1 _nonos
 #+end_src
 
@@ -514,24 +515,9 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+header: :var src_dir=src-dir
 #+header: :dir build-clang-debug-siconos
 #+begin_src sh :compile :results output silent
-                              guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
-                                   shell --pure --exp
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-ose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} fclib  strace benchmark clang-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
-                                   make -j1 bouncing_disk && { cd ./src/siconos/tests; ./bouncing_disk ;}
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --pure --expose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} fclib  strace benchmark clang-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
+       make -j1 bouncing_disk && { cd ./src/siconos/tests; ./bouncing_disk ;}
 #+end_src
 
 #+name: mybenchmarks-bouncing-disk-clang-debug-siconos
@@ -597,7 +583,13 @@ ose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} fclib 
 #+name: vrunn-vview-disks
 #+header: :dir .
 #+begin_src sh :compile :results output silent
-  ./vrunn --vview diskss.hdf5
+  ./vrunn --vview --global-filter diskss.hdf5
+#+end_src
+
+#+name: vrunn-vvexport-disks
+#+header: :dir .
+#+begin_src sh :compile :results output silent
+  ./vrunn -x --vexport-para --nprocs 10 diskss.hdf5
 #+end_src
 
 
