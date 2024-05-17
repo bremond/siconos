@@ -14,7 +14,7 @@ case $1 in
     . $pwd/.siconos-guix-profile/etc/profile
 
     export PYTHONPATH=$GUIX_PYTHONPATH
-    exec $0 --env-ok $@
+    exec $0 --env-ok "$@"
     ;;
   *)
     MYDIR=`dirname $0`
@@ -63,8 +63,16 @@ EOF
 esac
 set -e
 time=`which time`
+timer=""
+timer_args=""
 while [ $# -gt 0 ]; do
   case $1 in
+    --time)
+      shift
+      timer="$time"
+      timer_args="$1"
+      shift
+      ;;
     --help)
       cat README.md
       exit 0
@@ -152,7 +160,11 @@ while [ $# -gt 0 ]; do
       fi
       . venv/bin/activate
       export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
-      $xex $interp $script $args
+      if [ ! -z "$timer" ]; then
+        $xex $timer -f "$timer_args" $interp $script $args
+      else
+        $xex $interp $script $args
+      fi
       ;;
   esac
 done
