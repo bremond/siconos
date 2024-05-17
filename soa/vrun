@@ -2,23 +2,28 @@
 #OAR --project siconos
 #OAR -l /nodes=1/cpu=2/core=16,walltime=1:00:00
 ################################################################################
+set -e
+case $1 in -x) shift; set -x;; esac
 case $1 in
   --env-ok)
     shift;;
   --fast)
     shift
     pwd=`pwd`
-    . $pwd/.siconos-guix-profile/etc/profile && $0 --env-ok $@
+    unset GUIX_PROFILE
+    . $pwd/.siconos-guix-profile/etc/profile
+
+    export PYTHONPATH=$GUIX_PYTHONPATH
+    exec $0 --env-ok $@
     ;;
   *)
-    case $1 in -x) shift; set -x;; esac
     MYDIR=`dirname $0`
 
     cat>.siconos-disks-manifest.scm<<EOF
 (specifications->manifest
  '( "siconos" "benchmark" "clang-toolchain"  "valgrind"
     "suitesparse" "eigen" "boost" "fmt" "range-v3"
-    "cmake" "ninja" "bash" "coreutils" "which" "python" "python-pip" "python-numpy" 
+    "cmake" "ninja" "make" "bash" "coreutils" "which" "python" "python-pip" "python-numpy"
     "pybind11" "strace" "jupyter" "python-ipykernel" "procps" "gdb" "git" "emacs-next"
     "time" "parallel" "findutils"))
 EOF
@@ -56,8 +61,9 @@ EOF
          -m .siconos-disks-manifest.scm -- $0 --env-ok $@
     ;;
 esac
+set -e
 time=`which time`
-while [ $# -gt 0 ]; do 
+while [ $# -gt 0 ]; do
   case $1 in
     --help)
       cat README.md
@@ -68,7 +74,7 @@ while [ $# -gt 0 ]; do
       rm -rf venv
       python3 -m venv --system-site-packages venv
       . venv/bin/activate
-      
+
       pip install --upgrade pip
       venv/bin/pip3 --version
       venv/bin/pip3 install .
@@ -78,6 +84,7 @@ while [ $# -gt 0 ]; do
       ln -sf ../../../../../src/siconos/py/nonos/bridge.py .
       ln -sf ../../../../../src/siconos/py/nonos/mechanics_run.py .
       ln -sf ../../../../../src/siconos/py/nonos/mechanics_hdf5.py .
+      cd -
       ;;
     --repl)
       shift
@@ -93,9 +100,11 @@ while [ $# -gt 0 ]; do
       ;;
     --vview)
       shift
+      args=$@
+      set --
       . venv/bin/activate
       export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
-      python3 ./src/siconos/py/nonos/vview.py $@
+      exec python3 ./src/siconos/py/nonos/vview.py $args
       ;;
     --vexport)
       shift
@@ -109,12 +118,41 @@ while [ $# -gt 0 ]; do
       chmod +x vrun-pprocess
       $time -f '%E %M' ./vrun-pprocess
       ;;
-    *)
+    --perf)
+      shift
       script=$1
       shift
+      args=""
+      while [[ $# -gt 0 && "$1" != "--" ]]; do
+        args="$args $1"
+        shift
+      done
+      if [[ $# -gt 0 && "$1" == "--" ]]; then
+        shift
+      fi
       . venv/bin/activate
       export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
-      $time -f '[Time:%E Memory:%M]' python3 $script > `basename $script`.log 2>&1
+      perf record -g --call-graph dwarf python3 $script $args
+      ;;
+    *)
+      script=$1
+      suffix="${script##*.}"
+      case $suffix in py) interp=python3;; *) interp="";; esac
+      shift
+      args=""
+      while [[ $# -gt 0 && "$1" != "--" ]]; do
+        args="$args $1"
+        shift
+      done
+      if [[ $# -gt 0 && "$1" == "--" ]]; then
+        shift
+        xex=""
+      else
+        xex="exec"
+      fi
+      . venv/bin/activate
+      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
+      $xex $interp $script $args
       ;;
   esac
 done

@@ -1060,12 +1060,13 @@ class IOReader(VTKPythonAlgorithmBase):
                             self.ids_at_time[mu] = None
 
             else:
-                for mu in self._mu_coefs:
-                    self.cpa_at_time[mu] = [[nan, nan, nan]]
-                    self.cpb_at_time[mu] = [[nan, nan, nan]]
-                    self.cn_at_time[mu] =  [[nan, nan, nan]]
-                    self.cf_at_time[mu] =  [[nan, nan, nan]]
-                    self.ids_at_time[mu] = None
+                if self._with_contact_forces:
+                    for mu in self._mu_coefs:
+                        self.cpa_at_time[mu] = [[nan, nan, nan]]
+                        self.cpb_at_time[mu] = [[nan, nan, nan]]
+                        self.cn_at_time[mu] =  [[nan, nan, nan]]
+                        self.cf_at_time[mu] =  [[nan, nan, nan]]
+                        self.ids_at_time[mu] = None
             if self._with_contact_forces:
                 for mu in self._mu_coefs:
                     self.cpa[mu] = numpy_support.numpy_to_vtk(

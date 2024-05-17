@@ -6,7 +6,7 @@ from __future__ import print_function
 import os
 import sys
 
-from math import cos, sin, asin, atan2, acos
+from math import cos, sin, asin, atan2, acos, atan, pi
 from scipy import constants
 
 import numpy as np
@@ -25,7 +25,7 @@ import json
 
 import tempfile
 from contextlib import contextmanager
-
+from math import sqrt
 # Siconos imports
 
 import nonos.mechanics_hdf5 as mechanics_hdf5
@@ -496,6 +496,7 @@ class ShapeCollection():
                                'Cone': SiconosCone,
                                'Plane': SiconosPlane,
                                'Disk': SiconosDisk,
+                               'Segment': NativeSegmentShape,
                                'Box2d': SiconosBox2d}
 
     def shape(self, shape_name):
@@ -1256,11 +1257,35 @@ class MechanicsHdf5Runner(mechanics_hdf5.MechanicsHdf5):
                 csetpos = (translation + orientation)
                 for c in contactors:
                     shp = self._shape.get(c.shape_name)
-                    pos = list(c.translation) + list(c.orientation)
-                    cset.append(SiconosContactor(shp, pos, c.group))
+                    if type(shp) == NativeSegmentShape:
+                        # segment -> box2d
+                        # to ==> in mechanics_hdf5 at the declaration level
+                        x1 = shp.params[0]
+                        y1 = shp.params[1]
+                        x2 = shp.params[2]
+                        y2 = shp.params[3]
+                        d = sqrt((x1-x2)**2 + (y1-y2)**2)
+                        shp = SiconosBox2d([d, 0.])
+                        shp.setInsideMargin(0.0)
+                        shp.setOutsideMargin(0.01)
+                        trans = [(x1+x2)/2, (y1+y2)/2, 0.]
+                        c.translation = trans
+                        if x2 != x1:
+                            orien = atan((y2-y1)/(x2-x1))
+                        else:
+                            orien = pi/2
+                        c.orientation = [cos(orien/2), 0, 0, sin(orien/2)]
+                        pos = list(c.translation) + list(c.orientation)
+
+                        cset.append(SiconosContactor(shp, pos, c.group))
+                    else:
+                        pos = list(c.translation) + list(c.orientation)
+                        cset.append(SiconosContactor(shp, pos, c.group))
                     self.print_verbose('              Adding shape %s to static contactor'%c.shape_name, 'at relative position', pos)
 
+                    
                 staticBody = self._interman.addStaticBody(cset, csetpos, number)
+
                 self._static[name] = {
                     'number': number,
                     'origin': translation,

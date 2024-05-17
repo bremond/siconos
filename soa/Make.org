@@ -143,7 +143,8 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+header: :dir build-clang-release
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
-       shell --container -N --emulate-fhs --share=${src_dir} siconos benchmark clang-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 time -- \
+       shell --container -N --emulate-fhs --share=${src_dir} \
+       -m ../siconos-disks-manifest.scm -- \
        dash -c "cmake ${src_dir} -DSICONOS_INSTALL_DIR=\${GUIX_ENVIRONMENT} -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=1" 
 #+end_src
 
@@ -486,17 +487,62 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 
 ** DebugSiconos
 
+#+name: mybenchmarks-build-h5hut-clang-debug-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug-siconos
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --pure --expose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} \
+       -m ../h5hut.scm -m ../siconos-disks-manifest.scm -- \
+       dash -c "echo ok"
+#+end_src
+
+
+
 #+name: mybenchmarks-cmake-clang-debug-siconos
 #+header: :var src_dir=src-dir
 #+header: :dir build-clang-debug-siconos
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
-       shell --pure --expose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} fclib  strace benchmark clang-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
+       shell --pure --expose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} \
+       -m ../h5hut.scm -m ../siconos-disks-manifest.scm -- \
        dash -c "cmake ${src_dir} -DGUIX_ENVIRONMENT=\${GUIX_ENVIRONMENT} \
        -DCMAKE_CXX_STANDARD_LIBRARIES=-L/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib64 \
        -DCMAKE_CXX_FLAGS=-I/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/include \
        -DSICONOS_INSTALL_DIR=/scratch/maurice/install/maurice/siconos/mymaster/Debug/siconos/lib/cmake/siconos-4.5.0 \
        -DCMAKE_BUILD_TYPE=Debug" 
+#+end_src
+
+#+name: mybenchmarks-make-help-clang-debug-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug-siconos
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --pure --expose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} \
+       -m ../h5hut.scm -m ../siconos-disks-manifest.scm -- \
+       dash -c "make help"
+#+end_src
+
+
+#+name: mybenchmarks-make-to-h5part-clang-debug-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug-siconos
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --pure --expose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} \
+       -m ../h5hut.scm -m ../siconos-disks-manifest.scm -- \
+       dash -c "make to-h5part"
+#+end_src
+
+
+#+name: mybenchmarks-try-to-h5part-clang-debug-siconos
+#+header: :var src_dir=src-dir
+#+header: :dir build-clang-debug-siconos/src/siconos/utils/to-h5part
+#+begin_src sh :compile :results output silent
+  guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
+       shell --pure --expose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} \
+       -m ${src_dir}/h5hut.scm -m ${src_dir}/siconos-disks-manifest.scm -- \
+       dash -c "./to-h5part"
 #+end_src
 
 
@@ -506,7 +552,7 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
        shell --container -N --expose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} \
-       -m ../.siconos-disks-manifest.scm -- \
+       -m ../h5hut.scm -m ../.siconos-disks-manifest.scm -- \
        make -j1 _nonos
 #+end_src
 
@@ -516,8 +562,9 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+header: :dir build-clang-debug-siconos
 #+begin_src sh :compile :results output silent
   guix time-machine -C ${src_dir}/siconos-2023-11-08.scm -- \
-       shell --pure --expose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir} fclib  strace benchmark clang-toolchain suitesparse eigen boost fmt range-v3 cmake make dash python pybind11 -- \
-       make -j1 bouncing_disk && { cd ./src/siconos/tests; ./bouncing_disk ;}
+       shell --pure --expose=/scratch/maurice/install/maurice/siconos/mymaster/ --share=${src_dir}  \
+       -m ${src_dir}/h5hut.scm -m ${src_dir}/siconos-disks-manifest.scm -- \
+       make VERBOSE=1 -j1 bouncing_disk && { cd ./src/siconos/tests; LLVM_PROFILE_FILE=bouncing_disk.profraw ./bouncing_disk ;}
 #+end_src
 
 #+name: mybenchmarks-bouncing-disk-clang-debug-siconos
@@ -574,16 +621,50 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
     cp disks.hdf5 ../disks-o.hdf5"
 #+end_src
 
-#+name: vrunn-disks.py
+#+name: try-particles
+#+begin_src sh :compile :results output silent
+  ./vrun --script src/siconos/py/nonos/particles.py
+#+end_src
+
+#+name: bench-vrun-diskss.py
 #+header: :dir .
 #+begin_src sh :compile :results output silent
-  ./vrunn src/siconos/tests/diskss.py 
+  ./bench > bench.log
+#+end_src
+
+
+
+#+name: perf-vrun-disks.py
+#+header: :dir .
+#+begin_src sh :compile :results output silent
+  guix shell perf -- perf record -g --call-graph dwarf ./vrun --fast src/siconos/tests/diskss.py 50 > diskss.log
+#+end_src
+
+
+#+name: vrun-vview-bouncing-disk
+#+header: :dir .
+#+begin_src sh :compile :results output silent
+  ./vrun --fast --vview --no-cf bouncing_disk.hdf5
+#+end_src
+
+
+#+name: vrunn-bouncing-disk.py
+#+header: :dir .
+#+begin_src sh :compile :results output silent
+  ./vrun --fast src/siconos/tests/bouncing_disk.py bullet > bouncing_disk.logy
+#+end_src
+
+
+#+name: vrunn-bench.sh
+#+header: :dir .
+#+begin_src sh :compile :results output silent
+  ./vrun --fast src/siconos/benchmarks/bench.sh 2 1 2
 #+end_src
 
 #+name: vrunn-vview-disks
 #+header: :dir .
 #+begin_src sh :compile :results output silent
-  ./vrunn --vview --global-filter diskss.hdf5
+  ./vrun --fast --vview diskss.hdf5 
 #+end_src
 
 #+name: vrunn-vvexport-disks
@@ -991,7 +1072,7 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 #+name: vrun-install
 #+header: :dir .
 #+begin_src sh :compile :results none
-  ./vrunn --install
+  ./vrun --install
 #+end_src
 
 
@@ -1251,3 +1332,4 @@ resultfile every ::2 u 1:3 t "Ball2 position" w l,\
 # buffer-file-coding-system: utf-8-unix
 # eval: (progn (org-babel-goto-named-src-block "startup") (org-babel-execute-src-block) (outline-hide-sublevels 1))
 # End:
+

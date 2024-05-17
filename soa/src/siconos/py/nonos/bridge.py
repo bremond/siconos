@@ -1,6 +1,6 @@
 import nonos as vkernel
 import numpy as np
-
+from math import sqrt
 
 def array(l):
     return np.array(l, dtype=np.float64)
@@ -34,7 +34,10 @@ class SpaceFilter(Stored):
         segment = vkernel.disks.add_segment_shape(self.data())
         segment.set_p1(array([x1, y1, 0]))
         segment.set_p2(array([x2, y2, 0]))
-        segment.set_maxpoints(3) # fix / size of smallest disk
+
+        mp = int(max(3, sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)) / self._options.min_radius))
+
+        segment.set_maxpoints(mp) # fix / size of smallest disk
         segment.initialize()
 
         disksegment = vkernel.disks.add_disksegment_r(self.data())
@@ -61,6 +64,7 @@ class SpaceFilter(Stored):
     def insertDisk(self, radius):
         disk_shape = vkernel.disks.add_disk_shape(self.data())
         disk_shape.set_radius(radius)
+        self._min_radius = min(self._min_radius, radius)
 
     def insertNonSmoothLaw(self, nslaw, gid1, gid2):
         self._interman.insert_nonsmooth_law(nslaw.handle(), gid1, gid2)
@@ -281,3 +285,4 @@ class MechanicsIO(Stored):
 class SpaceFilterOptions():
 
     neighborhood_radius = 2.5
+    min_radius = 0.5

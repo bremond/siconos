@@ -175,9 +175,9 @@ struct space_filter : item<> {
           auto all_segments = storage::handles<item_t>(data);
           for (auto segment : all_segments) {
             for (auto point_coord : segment.points_coords()) {
-              print("segment point for {},{},{},{} : {},{}\n", segment.x1(),
-                    segment.x2(), segment.y1(), segment.y2(), point_coord(0),
-                    point_coord(1));
+//              print("segment point for {},{},{},{} : {},{}\n", segment.x1(),
+//                    segment.x2(), segment.y1(), segment.y2(), point_coord(0),
+//                    point_coord(1));
               auto new_point = storage::add<Point>(data);
               new_point.item() = segment;
               new_point.coord() = point_coord;
@@ -412,10 +412,10 @@ struct space_filter : item<> {
                 });
           });
 
-      print("BEFORE REMOVAL: size of indexset0: {}\n", activations.size());
+//      print("BEFORE REMOVAL: size of indexset0: {}\n", activations.size());
       for (auto [activation, inter] : view::zip(activations, interactions)) {
         if (!activation) {
-          print("START REMOVE interaction {}\n", inter.get());
+//          print("START REMOVE interaction {}\n", inter.get());
 
           if (storage::prop<"ds1">(inter) != storage::prop<"ds2">(inter)) {
             auto finter = ds_ds_prox.find(make_ipair(
@@ -424,9 +424,9 @@ struct space_filter : item<> {
             assert(inter.get() == std::get<1>(*finter).get());
 
             ds_ds_prox.erase(finter);
-            print("  REMOVE ds ds interaction between {} {}\n",
-                  storage::prop<"ds1">(inter).get(),
-                  storage::prop<"ds2">(inter).get());
+//            print("  REMOVE ds ds interaction between {} {}\n",
+//                  storage::prop<"ds1">(inter).get(),
+//                  storage::prop<"ds2">(inter).get());
           }
           else {
             auto segmentcoefs = siconos::variant::visit(
@@ -446,9 +446,9 @@ struct space_filter : item<> {
                       //               "should not
                       //               happen");
                     }));
-            print("  REMOVE ds segment interaction between {} {},{},{})\n",
-                  storage::prop<"ds1">(inter).get(), segmentcoefs[0],
-                  segmentcoefs[1], segmentcoefs[2], segmentcoefs[3]);
+//            print("  REMOVE ds segment interaction between {} {},{},{})\n",
+//                  storage::prop<"ds1">(inter).get(), segmentcoefs[0],
+//                  segmentcoefs[1], segmentcoefs[2], segmentcoefs[3]);
 
             auto finter = ds_segment_prox.find(ground::make_pair(
                 storage::prop<"ds1">(inter).get(), segmentcoefs));
@@ -459,17 +459,17 @@ struct space_filter : item<> {
 
       auto fact = std::ranges::find(activations, false);
 
-      print("  START REMOVE interactions\n");
+//      print("  START REMOVE interactions\n");
 
       while (fact != activations.end()) {
         auto fact_index = fact - activations.begin();
-        print("  activation of {} is false\n", fact_index);
+//        print("  activation of {} is false\n", fact_index);
         auto inter = storage::handle(
             data, storage::index<interaction, indice>(fact_index));
 
         // with move_back : order is modified
 
-        print("  remove interaction {}\n", inter.get());
+//        print("  remove interaction {}\n", inter.get());
         storage::remove(data, inter);
 
         // XXX remove from ds_ds_prox or ds_segment_prox
@@ -478,13 +478,13 @@ struct space_filter : item<> {
         // at current position
         fact = std::ranges::find(activations, false);
 
-        print("  find new false at : {}\n", fact - activations.begin());
+//        print("  find new false at : {}\n", fact - activations.begin());
       }
 
-      print("AFTER REMOVAL: size of indexset0: {}\n", activations.size());
-      print("END of interactions removal\n");
-      print("size of ds ds map: {}\n", ds_ds_prox.size());
-      print("size of ds segment map: {}\n", ds_segment_prox.size());
+//      print("AFTER REMOVAL: size of indexset0: {}\n", activations.size());
+//      print("END of interactions removal\n");
+//      print("size of ds ds map: {}\n", ds_ds_prox.size());
+//      print("size of ds segment map: {}\n", ds_segment_prox.size());
     }
 
     auto methods()
