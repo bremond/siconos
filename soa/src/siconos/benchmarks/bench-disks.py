@@ -20,7 +20,9 @@ N = int(sys.argv[2])
 
 disk_radius = 1
 
-with MechanicsHdf5Runner() as io:
+io_filename = 'bench-disks-{}-{}.hdf5'.format(backend,N)
+
+with MechanicsHdf5Runner(io_filename=io_filename) as io:
 
     io.add_primitive_shape('DiskR', 'Disk', [disk_radius],
                            insideMargin=1, outsideMargin=0.)
@@ -86,7 +88,7 @@ options.dparam[sn.SICONOS_DPARAM_TOL] = 1e-3
 def noforces(body):
     pass
 
-with MechanicsHdf5Runner(mode='r+') as io:
+with MechanicsHdf5Runner(io_filename=io_filename, mode='r+') as io:
 
         io.run(with_timer=False,
                gravity_scale=1/N,
