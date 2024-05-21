@@ -4,6 +4,9 @@ project(
   VERSION ${SKBUILD_PROJECT_VERSION}
   LANGUAGES CXX C)
 
+set(CMAKE_CUDA_FLAGS "-ccbin=${CMAKE_CXX_COMPILER} -allow-unsupported-compiler")
+
+#set(WITH_GPU 1)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(CheckCXXCompilerFlag)
@@ -16,19 +19,39 @@ find_package(Python REQUIRED COMPONENTS Interpreter Development.Module)
 find_package(pybind11 CONFIG REQUIRED)
 
 include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(${CMAKE_SOURCE_DIR}/src/CompactNSearch)
+
+if(WITH_GPU)
+  include_directories(${CMAKE_SOURCE_DIR}/src/cuNSearch)
+else()
+  include_directories(${CMAKE_SOURCE_DIR}/src/CompactNSearch)
+endif()
+
 link_directories(${CMAKE_BUILD_DIR})
 
-set(flags "-Wall --std=c++20")
+if(WITH_GPU)
+  set(flags "-DWITH_GPU -DCUNSEARCH_USE_DOUBLE_PRECISION")
+endif()
+
+set(flags "${flags} -Wall --std=c++20")
 set(fconcepts_diagnostics)
-check_cxx_compiler_flag("-fconcepts-diagnostics-depth=0" fconcepts_diagnostics)
-check_cxx_compiler_flag("-ftemplate-backtrace-limit=0" ftemplate_backtrace_limit)
+check_cxx_compiler_flag("-fconcepts-diagnostics-depth=1" fconcepts_diagnostics)
+check_cxx_compiler_flag("-ftemplate-backtrace-limit=1" ftemplate_backtrace_limit)
 if(fconcepts_diagnostics)
   set(flags "${flags} -fconcepts-diagnostics-depth=1")
 endif()
 if(ftemplate_backtrace_limit)
-  set(flags "${flags} -ftemplate-backtrace-limit=0")
+  set(flags "${flags} -ftemplate-backtrace-limit=1")
 endif()
+
+# check_cxx_compiler_flag("-fprofile-instr-generate" fprofile_instr_generate)
+# check_cxx_compiler_flag("-fcoverage-mapping" fcoverage_mapping)
+
+# if(fprofile_instr_generate)
+#   set(flags "${flags} -fprofile-instr-generate -g")
+# endif()
+# if(fcoverage_mapping)
+#   set(flags "${flags} -fcoverage-mapping")
+# endif()
 
 # python_add_library(_nothing MODULE ./src/siconos/pybind/nothing.cpp WITH_SOABI)
 # set_target_properties(_nothing PROPERTIES COMPILE_FLAGS "${flags}")
@@ -48,7 +71,14 @@ python_add_library(_nonos MODULE
   WITH_SOABI)
 
 set_target_properties(_nonos PROPERTIES COMPILE_FLAGS "${flags}")
-target_link_libraries(_nonos PRIVATE Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch pybind11::headers)
+
+if(WITH_GPU)
+  target_link_libraries(_nonos PRIVATE Eigen3::Eigen Siconos::numerics benchmark pthread fmt cuNSearch pybind11::headers)
+else()
+  target_link_libraries(_nonos PRIVATE Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch pybind11::headers)
+endif()
+
+
 target_compile_definitions(_nonos PRIVATE VERSION_INFO=${PROJECT_VERSION})
 
 install(TARGETS _nonos DESTINATION nonos)
@@ -70,5 +100,10 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 
 OPTION(BUILD_AS_SHARED_LIBS "Build all the libraries as shared" ON)
-add_subdirectory(extern/CompactNSearch)
+
+if(WITH_GPU)
+  add_subdirectory(extern/cuNSearch)
+else()
+  add_subdirectory(extern/CompactNSearch)
+endif()
 

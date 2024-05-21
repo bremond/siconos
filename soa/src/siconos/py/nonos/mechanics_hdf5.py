@@ -1060,7 +1060,7 @@ class MechanicsHdf5(object):
 
         use_volume_centroid_as_initial_translation: boolean.
             if True and if a Volume is given is the list of shape,
-            the position of
+            the positions of
             the volume centroid is used as initial translation.
         """
         # print(arguments())

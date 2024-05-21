@@ -999,16 +999,16 @@ class MechanicsHdf5Runner(mechanics_hdf5.MechanicsHdf5):
                     print('[io.mechanics]|-->end {0:44s} ...'.
                           format(fun.__name__), end='', flush=True)
                 print('..... {0:6.2e} s'.format(endt))
-                siconos.io.mechanics_hdf5.group(self.log_data(), fun.__name__)
-                siconos.io.mechanics_hdf5.add_line(
-                    siconos.io.mechanics_hdf5.data(self.log_data()
+                mechanics_hdf5.group(self.log_data(), fun.__name__)
+                mechanics_hdf5.add_line(
+                    mechanics_hdf5.data(self.log_data()
                                                    [fun.__name__],
                                                    'timing', 1), endt)
                 if (isinstance(output, numbers.Number)):
-                    siconos.io.mechanics_hdf5.add_line(
-                        siconos.io.mechanics_hdf5.data(self.log_data()
-                                                       [fun.__name__],
-                                                       'value', 1),
+                    mechanics_hdf5.add_line(
+                        mechanics_hdf5.data(self.log_data()
+                                            [fun.__name__],
+                                            'value', 1),
                         float(output))
                 return output
             return logged

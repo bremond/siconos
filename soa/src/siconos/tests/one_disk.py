@@ -24,7 +24,7 @@ with MechanicsHdf5Runner() as io:
 
     io.add_object('disk0', [Contactor('DiskR')],
                       translation=[0, 3*disk_radius],
-                      orientation=[0], velocity=[0, 0, 0], mass=1)
+                      orientation=[0], velocity=[0, 0, 0], mass=1, inertia=0.5)
 
     io.add_object('ground', [Contactor('Ground')],
                   translation=[0, 0])

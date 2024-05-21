@@ -14,7 +14,13 @@
 #include "siconos/utils/variant.hpp"
 
 #define USE_DOUBLE
+
+#ifdef WITH_GPU
+#include "cuNSearch/cuNSearch.h"
+namespace CompactNSearch = cuNSearch;
+#else
 #include "CompactNSearch/CompactNSearch.h"
+#endif
 
 namespace siconos::collision {
 

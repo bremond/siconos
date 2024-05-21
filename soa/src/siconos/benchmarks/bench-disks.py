@@ -9,7 +9,7 @@ import sys
 from siconos.mechanics.collision.tools import Contactor
 from siconos.mechanics.collision.bullet import SiconosBulletOptions
 
-from nonos.mechanics_run import MechanicsHdf5Runner
+from nonos.mechanics_run import MechanicsHdf5Runner, MechanicsHdf5Runner_run_options
 import nonos
 
 backend = str(sys.argv[1])
@@ -85,23 +85,41 @@ options = sk.solver_options_create(sn.SICONOS_FRICTION_2D_NSGS)
 options.iparam[sn.SICONOS_IPARAM_MAX_ITER] = 50
 options.dparam[sn.SICONOS_DPARAM_TOL] = 1e-3
 
-def noforces(body):
-    pass
+
+
+run_options=MechanicsHdf5Runner_run_options()
+run_options['t0']=0
+run_options['T']=10
+run_options['h']=0.005
+run_options['gravity_scale'] = 1/N
+
+
+run_options['bullet_options']=bullet_options
+run_options['solver_options']=options
+
+run_options['constraint_activation_threshold']=1e-05
+run_options['Newton_options']=sk.SICONOS_TS_LINEAR
+
+run_options['skip_last_update_output']=True
+run_options['skip_reset_lambdas']=True
+run_options['osns_assembly_type']= sk.REDUCED_DIRECT
+
+#run_options['osns_assembly_type']= sk.GLOBAL_REDUCED
+#run_options['osi']= sk.MoreauJeanGOSI
+#run_options['skip_last_update_input']=True
+#if performance_verbose:
+#    run_options['verbose']=True
+#    run_options['with_timer']=True
+#    run_options['explode_Newton_solve']=True
+#    run_options['explode_computeOneStep']=True
+
+run_options['violation_verbose'] = True
+run_options['output_frequency']= 1
+
+run_options['time_stepping']=None
+
 
 with MechanicsHdf5Runner(io_filename=io_filename, mode='r+') as io:
 
-        io.run(with_timer=False,
-               gravity_scale=1/N,
-               t0=0,
-               T=10,
-               h=0.005,
-               theta=0.50001,
-               Newton_max_iter=2,
-               set_external_forces=None,
-               solver_options=options,
-               bullet_options=bullet_options,
-               numerics_verbose=True,
-               numerics_verbose_level=1,
-               output_contact_forces=True,
-               output_frequency=None)
+        io.run(run_options)
 

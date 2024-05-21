@@ -58,7 +58,7 @@ EOF
     guix_cmd="guix time-machine -C ./.siconos-vrun-channels.scm --"
     exec $guix_cmd shell $guix_isolation_args \
          --root=.siconos-guix-profile \
-         -m .siconos-disks-manifest.scm -- $0 --env-ok $@
+         -m .siconos-disks-manifest.scm -- $0 --env-ok "$@"
     ;;
 esac
 set -e
@@ -82,6 +82,12 @@ while [ $# -gt 0 ]; do
       rm -rf venv
       python3 -m venv --system-site-packages venv
       . venv/bin/activate
+
+      [ -f /applis/environments/cuda_env.sh ] && . /applis/environments/cuda_env.sh 12.1
+
+      # export CPATH=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/include:$CPATH
+      # export LD_LIBRARY_PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/lib:$LD_LIBRARY_PATH
+      # export PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/bin:$PATH
 
       pip install --upgrade pip
       venv/bin/pip3 --version

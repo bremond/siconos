@@ -91,7 +91,7 @@ class NewtonImpactFrictionNSL(Stored):
 class Osi(Stored):
 
     def __init__(self, theta):
-        self._handle = vkernel.disks.add_osi(data())
+        self._handle = vkernel.disks.add_osi(self.data())
         self._handle.set_theta(theta)
 
     def setConstraintActivationThreshold(self, cat):
@@ -226,8 +226,8 @@ class OSNSPB(Stored):
 
         self._so = vkernel.disks.add_solver_options(self.data())
         self._so.create(400)
-        self._so.set_iparam(0, 50)
-        self._so.set_dparam(0, 1e-3)
+        self._so.set_iparam(0, 5)
+        self._so.set_dparam(0, 1e-2)
         self._fc2d = vkernel.disks.add_fc2d(self.data())
         self._handle = vkernel.disks.add_osnspb(self.data())
         self._handle.set_options(self._so)
@@ -248,6 +248,9 @@ class OSNSPB(Stored):
 
     def setKeepLambdaAndYState(self, kly):
         self._keepLambdaAndYState = kly
+
+    def setAssemblyType(self, at):
+        pass
 
     def getSizeOutput(self):
         return 0 # unimplemented
@@ -281,8 +284,8 @@ class MechanicsIO(Stored):
 
     def contactPoints(self, nsds, output_contact_index_set):
         return self.handle().contact_points(0)
-    
+
 class SpaceFilterOptions():
 
-    neighborhood_radius = 2.5
+    neighborhood_radius = 2.1
     min_radius = 0.5
