@@ -44,7 +44,7 @@ class SpaceFilter(Stored):
         disksegment = vkernel.disks.add_disksegment_r(self.data())
         disksegment.set_segment(segment)
 
-        self.handle().insert_segment(disksegment)
+        self.handle().insert_disksegment_r(disksegment)
 
     def insertLine(self, a, b , c):
         line = vkernel.disks.add_line_shape(self.data())
@@ -80,7 +80,7 @@ class SpaceFilter(Stored):
         diskfdisk = vkernel.disks.add_diskfdisk_r(self.data())
         diskfdisk.set_translated_disk_shape(translated_disk_shape)
 
-        self.handle().insert_translated_disk_shape(diskfdisk)
+        self.handle().insert_diskfdisk_r(diskfdisk)
 
     def insertNonSmoothLaw(self, nslaw, gid1, gid2):
         self._interman.insert_nonsmooth_law(nslaw.handle(), gid1, gid2)

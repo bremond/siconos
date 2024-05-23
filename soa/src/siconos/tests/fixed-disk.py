@@ -28,7 +28,9 @@ with MechanicsHdf5Runner() as io:
                           translation=[0.2*i, 3*disk_radius+0.2*j],
                           orientation=[0], velocity=[0, 0, 0], mass=1, inertia=0.5)
 
-    io.add_object('fixed-disk', [Contactor('DiskR1')], translation=[0, 0])                                 
+    io.add_object('fixed-disk1', [Contactor('DiskR1')], translation=[0, 0])
+
+    io.add_object('fixed-disk2', [Contactor('DiskR1')], translation=[2, -5])                                 
 
 options = sk.solver_options_create(sn.SICONOS_FRICTION_2D_LEMKE)
 options.iparam[sn.SICONOS_IPARAM_MAX_ITER] = 100000

@@ -154,7 +154,7 @@ struct space_filter : item<> {
       return storage::attr<"diskfdisks">(*self());
     }
 
-    void insert_segment(auto dl)
+    void insert_disksegment_r(auto dl)
     {
       auto hdl = storage::handle(self()->data(), dl);
       storage::attr<"disksegments">(
@@ -168,7 +168,7 @@ struct space_filter : item<> {
       // }
     }
 
-    void insert_translated_disk_shape(auto tds)
+    void insert_diskfdisk_r(auto tds)
     {
       auto htds =
           storage::handle(self()->data(), tds).translated_disk_shape();
@@ -615,10 +615,10 @@ struct space_filter : item<> {
           method("make_points", &interface<Handle>::make_points),
           method("update_index_set0",
                  &interface<Handle>::update_index_set0<indice>),
-          method("insert_segment",
-                 &interface<Handle>::insert_segment<disksegment_r_t>),
-          method("insert_translated_disk_shape",
-                 &interface<Handle>::insert_translated_disk_shape<
+          method("insert_disksegment_r",
+                 &interface<Handle>::insert_disksegment_r<disksegment_r_t>),
+          method("insert_diskfdisk_r",
+                 &interface<Handle>::insert_diskfdisk_r<
                      diskfdisk_r_t>));
     }
   };
