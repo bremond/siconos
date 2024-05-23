@@ -27,7 +27,7 @@ using topo = simul::topology<disk, interaction>;
 using pointd = collision::point<disk>;
 using pointl = collision::point<collision::shape::segment>;
 using pointtds = collision::point<translated_disk_shape>;
-using neighborhood = collision::neighborhood<pointd, pointl>;
+using neighborhood = collision::neighborhood<pointd, pointl, pointtds>;
 using space_filter = collision::space_filter<topo, neighborhood>;
 using interaction_manager = simul::interaction_manager<space_filter>;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
@@ -45,12 +45,13 @@ int main(int argc, char* argv[])
   auto data = storage::make<
       standard_environment<config::params>, config::simulation,
       config::interaction_manager, config::neighborhood, config::space_filter,
-      config::io, config::disk, config::diskdisk_r, config::disksegment_r,
-      config::pointl, config::pointd, config::pointtds, config::interaction,
-      config::segment_shape, config::disk_shape,
+      config::io, config::disk, config::diskdisk_r, config::diskfdisk_r,
+      config::disksegment_r, config::pointl, config::pointd, config::pointtds,
+      config::interaction, config::segment_shape, config::disk_shape,
       storage::with_properties<
           storage::wrapped<config::disk, some::unbounded_collection>,
           storage::wrapped<config::diskdisk_r, some::unbounded_collection>,
+          storage::wrapped<config::diskfdisk_r, some::unbounded_collection>,
           storage::wrapped<config::disksegment_r, some::unbounded_collection>,
           storage::wrapped<config::pointl, some::unbounded_collection>,
           storage::wrapped<config::pointd, some::unbounded_collection>,
@@ -80,7 +81,7 @@ int main(int argc, char* argv[])
   double m = 1.;               // Disk mass
   double g = 9.81;             // Gravity
 
-  unsigned int ndisks = 3;
+  unsigned int ndisks = 1;
 
   print("====> Model loading ...\n");
 
@@ -110,7 +111,7 @@ int main(int argc, char* argv[])
   }
 
   for (auto disk : storage::handles<config::disk>(data, 0)) {
-    print("disk:{} , disk.q()={}\n", disk.get(), disk.q()[0]);
+    print("disk:{} , disk.q()={}\n", disk.get(), disk.q());
   }
 
   // ------------------
@@ -153,22 +154,18 @@ int main(int argc, char* argv[])
 
   ngbh.create(0.6);  // radius
 
-  auto segment = storage::add<config::segment_shape>(data);
   auto diskdisk_r = storage::add<config::diskdisk_r>(data);
-  auto ground_r = storage::add<config::disksegment_r>(data);
-  storage::handle(data, ground_r.segment()) = segment;
-  segment.x1() = -10.;
-  segment.y1() = 0.;
-  segment.x2() = 10.;
-  segment.y2() = 0.;
-  segment.initialize();
-  segment.maxpoints() = 10;
+  auto ground_r = storage::add<config::diskfdisk_r>(data);
+  auto tds = storage::add<config::translated_disk_shape>(data);
+  tds.item() = disk_shape;
+  tds.translation() = {0., 0., 0.};
+  ground_r.translated_disk_shape() = tds;
 
   auto spacef = storage::add<config::space_filter>(data);
   spacef.neighborhood() = ngbh;
   spacef.diskdisk_r() = diskdisk_r;
   spacef.nslaw() = nslaw;
-  spacef.insert_segment(ground_r);
+  spacef.insert_translated_disk_shape(ground_r);
   spacef.make_points();
   ngbh.add_point_sets(0);
   // =========================== End of model definition

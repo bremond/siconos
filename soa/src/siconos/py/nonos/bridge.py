@@ -61,10 +61,16 @@ class SpaceFilter(Stored):
 
         self.handle().insert_line(diskline)
 
-    def insertDisk(self, radius):
-        disk_shape = vkernel.disks.add_disk_shape(self.data())
-        disk_shape.set_radius(radius)
-        self._min_radius = min(self._min_radius, radius)
+    def insertTranslatedDisk(self, radius, translation):
+        translated_disk_shape = \
+            vkernel.disks.add_translated_disk_shape(self.data())
+        translated_disk_shape.item().set_radius(radius)
+        translated_disk_shape.set_translation(array([translation[0],translation[1],0]))
+
+        diskfdisk = vkernel.disks.add_diskfdisk_r(self.data())
+        diskfdisk.set_translated_disk_shape(translated_disk_shape)
+
+        self.handle().insert_translated_disk_shape(diskfdisk)
 
     def insertNonSmoothLaw(self, nslaw, gid1, gid2):
         self._interman.insert_nonsmooth_law(nslaw.handle(), gid1, gid2)

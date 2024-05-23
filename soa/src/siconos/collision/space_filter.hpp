@@ -4,6 +4,7 @@
 
 #include "siconos/collision/collision_head.hpp"
 #include "siconos/collision/diskdisk_r.hpp"
+#include "siconos/collision/diskfdisk_r.hpp"
 #include "siconos/collision/disksegment_r.hpp"
 #include "siconos/collision/point.hpp"
 #include "siconos/collision/shape/disk.hpp"
@@ -117,7 +118,10 @@ struct space_filter : item<> {
       attribute<"diskdisk_r", some::item_ref<diskdisk_r>>,
       attribute<"disksegments",
                 some::map<some::array<some::scalar, some::indice_value<4>>,
-                          some::item_ref<disksegment_r>>>>;
+                          some::item_ref<disksegment_r>>>,
+      attribute<"diskfdisks",
+                some::map<some::array<some::scalar, some::indice_value<2>>,
+                          some::item_ref<diskfdisk_r>>>>;
 
   template <typename Handle>
   struct interface : default_interface<Handle> {
@@ -145,12 +149,31 @@ struct space_filter : item<> {
       return storage::attr<"disksegments">(*self());
     }
 
+    decltype(auto) diskfdisks()
+    {
+      return storage::attr<"diskfdisks">(*self());
+    }
+
     void insert_segment(auto dl)
     {
       auto hdl = storage::handle(self()->data(), dl);
       storage::attr<"disksegments">(
           *self())[{hdl.segment().x1(), hdl.segment().x2(),
                     hdl.segment().y1(), hdl.segment().y2()}] = dl;
+
+      // for (auto hds : storage::handles<dynamical_system>(self()->data())) {
+      //   auto inter = self()->topology().link(hds);
+      //   inter.relation() = dl;
+      //   inter.nslaw() = nslaw();
+      // }
+    }
+
+    void insert_translated_disk_shape(auto tds)
+    {
+      auto htds =
+          storage::handle(self()->data(), tds).translated_disk_shape();
+      storage::attr<"diskfdisks">(
+          *self())[{htds.translation()[0], htds.translation()[1]}] = tds;
 
       // for (auto hds : storage::handles<dynamical_system>(self()->data())) {
       //   auto inter = self()->topology().link(hds);
@@ -181,15 +204,26 @@ struct space_filter : item<> {
           auto all_segments = storage::handles<item_t>(data);
           for (auto segment : all_segments) {
             for (auto point_coord : segment.points_coords()) {
-//              print("segment point for {},{},{},{} : {},{}\n", segment.x1(),
-//                    segment.x2(), segment.y1(), segment.y2(), point_coord(0),
-//                    point_coord(1));
+              //              print("segment point for {},{},{},{} : {},{}\n",
+              //              segment.x1(),
+              //                    segment.x2(), segment.y1(), segment.y2(),
+              //                    point_coord(0), point_coord(1));
               auto new_point = storage::add<Point>(data);
               new_point.item() = segment;
               new_point.coord() = point_coord;
             }
           }
         }
+        else if constexpr (std::derived_from<item_t,
+                                             collision::translated<
+                                                 collision::shape::disk>>) {
+          auto all_fdisks = storage::handles<item_t>(data);
+          for (auto fdisk : all_fdisks) {
+            auto new_point = storage::add<Point>(data);
+            new_point.item() = fdisk;
+            new_point.coord() = fdisk.translation();
+          }
+        };
       });
     }
 
@@ -215,6 +249,7 @@ struct space_filter : item<> {
       auto nslaw = self()->nslaw();
       auto diskdisk_r = self()->diskdisk_r();
       auto disksegments = self()->disksegments();
+      auto diskfdisks = self()->diskfdisks();
 
       auto ngbh = storage::handle(data, self()->neighborhood());
       using ngbh_t = typename std::decay_t<decltype(ngbh)>::type;
@@ -227,6 +262,10 @@ struct space_filter : item<> {
           std::map<ground::pair<indice, std::array<scalar, 4>>,
                    storage::index<interaction, indice>>();
 
+      auto ds_fdisk_prox =
+          std::map<ground::pair<indice, std::array<scalar, 2>>,
+                   storage::index<interaction, indice>>();
+
       auto& ds1s = storage::prop_values<interaction, "ds1">(data, step);
       auto& ds2s = storage::prop_values<interaction, "ds2">(data, step);
       auto interactions = storage::handles<interaction>(data, step);
@@ -237,25 +276,36 @@ struct space_filter : item<> {
           ds_ds_prox[make_ipair(ds1, ds2)] = inter;
         }
         else {
-          auto segmentcoefs = siconos::variant::visit(
+          siconos::variant::visit(
               data, inter.relation(),
               ground::overload(
-                  [&]<match::handle<disksegment_r> DiskSegmentR>(
+                  // https://stackoverflow.com/questions/46114214/lambda-implicit-capture-fails-with-variable-declared-from-structured-binding
+                  // capture by value ok with handles
+                  [&, ds1 = ds1,
+                   inter = inter]<match::handle<disksegment_r> DiskSegmentR>(
                       DiskSegmentR rel) {
-                    auto segment = storage::handle(data, rel.segment());
-                    return std::array{segment.x1(), segment.x2(),
-                                      segment.y1(), segment.y2()};
+                    auto segment = rel.segment();
+                    auto coefs = std::array{segment.x1(), segment.x2(),
+                                            segment.y1(), segment.y2()};
+                    ds_segment_prox[ground::make_pair(ds1.get(), coefs)] =
+                        inter;
+                  },
+                  [&, ds1 = ds1,
+                   inter = inter]<match::handle<diskfdisk_r> DiskFdiskR>(
+                      DiskFdiskR rel) {
+                    auto fdisk = rel.translated_disk_shape();
+                    auto& translat = fdisk.translation();
+                    auto coefs = std::array{translat[0], translat[1]};
+                    ds_fdisk_prox[ground::make_pair(ds1.get(), coefs)] =
+                        inter;
                   },
                   []<bool flag = false>(auto) {
                     assert(flag);
                     // should send an exception here
-                    return std::array{0., 0., 0., 0.};
                     // static_assert(flag,
                     //               "should not
                     //               happen");
                   }));
-
-          ds_segment_prox[ground::make_pair(ds1.get(), segmentcoefs)] = inter;
         }
       }
 
@@ -350,78 +400,124 @@ struct space_filter : item<> {
                           if constexpr (std::derived_from<
                                             system1_t,
                                             model::lagrangian_ds>) {
-                            // body2 is a static segment
-                            // for all self edges find the one with the
-                            // corresponding segment
+                            if constexpr (std::derived_from<
+                                              system2_t,
+                                              collision::shape::segment>) {
+                              // body2 is a static segment
+                              // for all self edges find the one with the
+                              // corresponding segment
 
-                            auto segment = storage::handle(data, body2);
-                            auto x1 = segment.x1();
-                            auto x2 = segment.x2();
-                            auto y1 = segment.y1();
-                            auto y2 = segment.y2();
+                              auto segment = storage::handle(data, body2);
+                              auto x1 = segment.x1();
+                              auto x2 = segment.x2();
+                              auto y1 = segment.y1();
+                              auto y2 = segment.y2();
 
-                            // print("PROXIMITY with {},{},{}\n", x1, x2, y1,
-                            // y2);
+                              // print("PROXIMITY with {},{},{}\n", x1, x2,
+                              // y1, y2);
 
-                            auto& ds1 = body1;
+                              auto& ds1 = body1;
 
-                            auto find_inter =
-                                ds_segment_prox.find(ground::make_pair(
-                                    ds1.get(), std::array{x1, x2, y1, y2}));
+                              auto find_inter =
+                                  ds_segment_prox.find(ground::make_pair(
+                                      ds1.get(), std::array{x1, x2, y1, y2}));
 
-                            if (find_inter != ds_segment_prox.end()) {
-                              auto inter = storage::handle(
-                                  data, std::get<1>(*find_inter));
-                              // keep this interaction
-                              storage::prop<"activation">(inter) = true;
+                              if (find_inter != ds_segment_prox.end()) {
+                                auto inter = storage::handle(
+                                    data, std::get<1>(*find_inter));
+                                // keep this interaction
+                                storage::prop<"activation">(inter) = true;
 
-                              // print("interaction FOUND for {},{},{}\n", a,
-                              // b,
-                              //       c);
-                            }
-                            else {
-                              // print("interaction NOT FOUND for {},{},{}\n",
-                              // a,
-                              //       b, c);
-                              // create the edge
-                              auto inter = topo.link(body1);
-                              inter.nslaw() =
-                                  nslaw;  // one nslaw for the moment
-
-                              if (auto search =
-                                      disksegments.find({x1, x2, y1, y2});
-                                  search != disksegments.end()) {
-                                inter.relation() = search->second;
+                                // print("interaction FOUND for {},{},{}\n",
+                                // a, b,
+                                //       c);
                               }
                               else {
-                                auto dl = storage::add<disksegment_r>(data);
-                                auto segment =
-                                    storage::handle(data, dl.segment());
-                                segment.x1() = x1;
-                                segment.x2() = x2;
-                                segment.y1() = y1;
-                                segment.y2() = y2;
+                                // print("interaction NOT FOUND for
+                                // {},{},{}\n", a,
+                                //       b, c);
+                                // create the edge
+                                auto inter = topo.link(body1);
+                                inter.nslaw() =
+                                    nslaw;  // one nslaw for the moment
 
-                                inter.relation() = dl;
-                                disksegments[{x1, x2, y1, y2}] = dl;
+                                if (auto search =
+                                        disksegments.find({x1, x2, y1, y2});
+                                    search != disksegments.end()) {
+                                  inter.relation() = search->second;
+                                }
+                                else {
+                                  auto dl = storage::add<disksegment_r>(data);
+                                  auto segment =
+                                      storage::handle(data, dl.segment());
+                                  segment.x1() = x1;
+                                  segment.x2() = x2;
+                                  segment.y1() = y1;
+                                  segment.y2() = y2;
+
+                                  inter.relation() = dl;
+                                  disksegments[{x1, x2, y1, y2}] = dl;
+                                }
+                                storage::prop<"activation">(inter) = true;
+                                ds_segment_prox[ground::make_pair(
+                                    ds1.get(), std::array{x1, x2, y1, y2})] =
+                                    inter;
                               }
-                              storage::prop<"activation">(inter) = true;
-                              ds_segment_prox[ground::make_pair(
-                                  ds1.get(), std::array{x1, x2, y1, y2})] =
-                                  inter;
+                            }
+                            else if constexpr (
+                                std::derived_from<
+                                    system2_t, collision::translated<
+                                                   collision::shape::disk>>) {
+                              auto fdisk = storage::handle(data, body2);
+                              auto& translat = fdisk.translation();
+                              auto coefs =
+                                  std::array{translat[0], translat[1]};
+
+                              auto& ds1 = body1;
+
+                              auto find_inter = ds_fdisk_prox.find(
+                                  ground::make_pair(ds1.get(), coefs));
+
+                              if (find_inter != ds_fdisk_prox.end()) {
+                                auto inter = storage::handle(
+                                    data, std::get<1>(*find_inter));
+                                storage::prop<"activation">(inter) = true;
+                              }
+                              else {
+                                auto inter = topo.link(body1);
+                                inter.nslaw() = nslaw;
+
+                                if (auto search = diskfdisks.find(coefs);
+                                    search != diskfdisks.end()) {
+                                  inter.relation() = search->second;
+                                }
+                                else {
+                                  auto dfd = storage::add<diskfdisk_r>(data);
+                                  auto tds = storage::handle(
+                                      data, dfd.translated_disk_shape());
+                                  tds.translation() = translat;
+
+                                  inter.relation() = dfd;
+                                  diskfdisks[coefs] = dfd;
+                                }
+                                storage::prop<"activation">(inter) = true;
+                                ds_fdisk_prox[ground::make_pair(
+                                    ds1.get(), coefs)] = inter;
+                              }
                             }
                           }
                         }
                       }
                     }
-                  }
+                  };
                 });
           });
 
-//      print("BEFORE REMOVAL: size of indexset0: {}\n", activations.size());
+      //      print("BEFORE REMOVAL: size of indexset0: {}\n",
+      //      activations.size());
       for (auto [activation, inter] : view::zip(activations, interactions)) {
         if (!activation) {
-//          print("START REMOVE interaction {}\n", inter.get());
+          //          print("START REMOVE interaction {}\n", inter.get());
 
           if (storage::prop<"ds1">(inter) != storage::prop<"ds2">(inter)) {
             auto finter = ds_ds_prox.find(make_ipair(
@@ -430,67 +526,81 @@ struct space_filter : item<> {
             assert(inter.get() == std::get<1>(*finter).get());
 
             ds_ds_prox.erase(finter);
-//            print("  REMOVE ds ds interaction between {} {}\n",
-//                  storage::prop<"ds1">(inter).get(),
-//                  storage::prop<"ds2">(inter).get());
+            //            print("  REMOVE ds ds interaction between {}
+            //            {}\n",
+            //                  storage::prop<"ds1">(inter).get(),
+            //                  storage::prop<"ds2">(inter).get());
           }
           else {
-            auto segmentcoefs = siconos::variant::visit(
+            siconos::variant::visit(
                 data, inter.relation(),
                 ground::overload(
-                    [&]<match::handle<disksegment_r> DiskSegmentR>(
+                    [&, inter =
+                            inter]<match::handle<disksegment_r> DiskSegmentR>(
                         DiskSegmentR rel) {
-                      auto segment = storage::handle(data, rel.segment());
-                      return std::array{segment.x1(), segment.x2(),
-                                        segment.y1(), segment.y2()};
+                      auto segment = rel.segment();
+                      auto coefs = std::array{segment.x1(), segment.x2(),
+                                              segment.y1(), segment.y2()};
+                      auto finter = ds_segment_prox.find(ground::make_pair(
+                          storage::prop<"ds1">(inter).get(), coefs));
+                      ds_segment_prox.erase(finter);
+                    },
+                    [&, inter = inter]<match::handle<diskfdisk_r> DiskFdiskR>(
+                        DiskFdiskR rel) {
+                      auto& translat =
+                          rel.translated_disk_shape().translation();
+                      auto coefs = std::array{translat[0], translat[1]};
+                      auto finter = ds_fdisk_prox.find(ground::make_pair(
+                          storage::prop<"ds1">(inter).get(), coefs));
+                      ds_fdisk_prox.erase(finter);
                     },
                     []<bool flag = false>(auto) {
                       assert(flag);
                       // should send an exception here
-                      return std::array{0., 0., 0., 0.};
                       // static_assert(flag,
                       //               "should not
                       //               happen");
                     }));
-//            print("  REMOVE ds segment interaction between {} {},{},{})\n",
-//                  storage::prop<"ds1">(inter).get(), segmentcoefs[0],
-//                  segmentcoefs[1], segmentcoefs[2], segmentcoefs[3]);
+            //            print("  REMOVE ds segment interaction between {}
+            //            {},{},{})\n",
+            //                  storage::prop<"ds1">(inter).get(),
+            //                  segmentcoefs[0], segmentcoefs[1],
+            //                  segmentcoefs[2], segmentcoefs[3]);
 
-            auto finter = ds_segment_prox.find(ground::make_pair(
-                storage::prop<"ds1">(inter).get(), segmentcoefs));
-            ds_segment_prox.erase(finter);
+            ;
           }
         }
       }
 
       auto fact = std::ranges::find(activations, false);
 
-//      print("  START REMOVE interactions\n");
+      //      print("  START REMOVE interactions\n");
 
       while (fact != activations.end()) {
         auto fact_index = fact - activations.begin();
-//        print("  activation of {} is false\n", fact_index);
+        //        print("  activation of {} is false\n", fact_index);
         auto inter = storage::handle(
             data, storage::index<interaction, indice>(fact_index));
 
         // with move_back : order is modified
 
-//        print("  remove interaction {}\n", inter.get());
+        //        print("  remove interaction {}\n", inter.get());
         storage::remove(data, inter);
 
         // XXX remove from ds_ds_prox or ds_segment_prox
 
-        // activations has been modified, search first false element starting
-        // at current position
+        // activations has been modified, search first false element
+        // starting at current position
         fact = std::ranges::find(activations, false);
 
-//        print("  find new false at : {}\n", fact - activations.begin());
+        //        print("  find new false at : {}\n", fact -
+        //        activations.begin());
       }
 
-//      print("AFTER REMOVAL: size of indexset0: {}\n", activations.size());
-//      print("END of interactions removal\n");
-//      print("size of ds ds map: {}\n", ds_ds_prox.size());
-//      print("size of ds segment map: {}\n", ds_segment_prox.size());
+      //      print("AFTER REMOVAL: size of indexset0: {}\n",
+      //      activations.size()); print("END of interactions removal\n");
+      //      print("size of ds ds map: {}\n", ds_ds_prox.size());
+      //      print("size of ds segment map: {}\n", ds_segment_prox.size());
     }
 
     auto methods()
@@ -499,13 +609,17 @@ struct space_filter : item<> {
       using indice = typename env_t::indice;
       // using scalar = typename env_t::scalar;
       using disksegment_r_t = storage::index<disksegment_r, indice>;
+      using diskfdisk_r_t = storage::index<diskfdisk_r, indice>;
 
       return collect(
           method("make_points", &interface<Handle>::make_points),
           method("update_index_set0",
                  &interface<Handle>::update_index_set0<indice>),
           method("insert_segment",
-                 &interface<Handle>::insert_segment<disksegment_r_t>));
+                 &interface<Handle>::insert_segment<disksegment_r_t>),
+          method("insert_translated_disk_shape",
+                 &interface<Handle>::insert_translated_disk_shape<
+                     diskfdisk_r_t>));
     }
   };
 };

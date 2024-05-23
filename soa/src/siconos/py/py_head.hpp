@@ -8,6 +8,7 @@
 #include <typeinfo>
 
 #include "siconos/collision/diskdisk_r.hpp"
+#include "siconos/collision/diskfdisk_r.hpp"
 #include "siconos/collision/disksegment_r.hpp"
 #include "siconos/collision/point.hpp"
 #include "siconos/collision/shape/disk.hpp"
@@ -24,25 +25,29 @@ namespace siconos::config::disks {
 using disk = model::lagrangian_ds;
 using nslaw = model::newton_impact_friction;
 using diskdisk_r = collision::diskdisk_r;
+using diskfdisk_r = collision::diskfdisk_r;
 using disksegment_r = collision::disksegment_r;
 using segment_shape = collision::shape::segment;
 using disk_shape = collision::shape::disk;
+using translated_disk_shape = collision::translated<disk_shape>;
 
 using fc2d = simul::nonsmooth_problem<FrictionContactProblem>;
 using osnspb = simul::one_step_nonsmooth_problem<fc2d>;
 using solver_options = simul::solver_options;
-using interaction = simul::interaction<nslaw, diskdisk_r, disksegment_r>;
+using interaction =
+    simul::interaction<nslaw, diskdisk_r, diskfdisk_r, disksegment_r>;
 using osi = simul::one_step_integrator<disk, interaction>::moreau_jean;
 using td = simul::time_discretization<>;
 using topo = simul::topology<disk, interaction>;
 using pointd = collision::point<disk>;
 using pointl = collision::point<collision::shape::segment>;
-using neighborhood = collision::neighborhood<pointd, pointl>;
+using pointtds = collision::point<translated_disk_shape>;
+using neighborhood = collision::neighborhood<pointd, pointl, pointtds>;
 using space_filter = collision::space_filter<topo, neighborhood>;
 using interaction_manager = simul::interaction_manager<space_filter>;
 using simulation = simul::time_stepping<td, osi, osnspb, topo>;
 
-  using io = io::io<osi>;
+using io = io::io<osi>;
 using params = map<iparam<"dof", 3>, iparam<"ncgroups", 1>>;
 }  // namespace siconos::config::disks
 
@@ -61,17 +66,21 @@ static auto imake_storage()
       standard_environment<config::params>, config::simulation,
       config::interaction_manager, config::neighborhood, config::space_filter,
       config::io, config::disk, config::diskdisk_r, config::disksegment_r,
-      config::pointl, config::pointd, config::interaction,
-      config::segment_shape, config::disk_shape,
+      config::diskfdisk_r, config::pointl, config::pointd, config::pointtds,
+      config::interaction, config::segment_shape, config::disk_shape,
       storage::with_properties<
           storage::wrapped<config::disk, some::unbounded_collection>,
           storage::wrapped<config::diskdisk_r, some::unbounded_collection>,
           storage::wrapped<config::disksegment_r, some::unbounded_collection>,
+          storage::wrapped<config::diskfdisk_r, some::unbounded_collection>,
           storage::wrapped<config::pointl, some::unbounded_collection>,
           storage::wrapped<config::pointd, some::unbounded_collection>,
+          storage::wrapped<config::pointtds, some::unbounded_collection>,
           storage::wrapped<config::interaction, some::unbounded_collection>,
           storage::wrapped<config::segment_shape, some::unbounded_collection>,
           storage::wrapped<config::disk_shape, some::unbounded_collection>,
+          storage::wrapped<config::translated_disk_shape,
+                           some::unbounded_collection>,
           storage::attached<config::disk, storage::pattern::symbol<"shape">,
                             storage::some::item_ref<config::disk_shape>>,
           storage::time_invariant<
@@ -83,11 +92,14 @@ static auto imake_storage()
           storage::bind<config::disk, "disk">,
           storage::bind<config::nslaw, "nslaw">,
           storage::bind<config::diskdisk_r, "diskdisk_r">,
+          storage::bind<config::diskfdisk_r, "diskfdisk_r">,
           storage::bind<config::disksegment_r, "disksegment_r">,
           storage::bind<config::neighborhood, "neighborhood">,
           storage::bind<config::space_filter, "space_filter">,
           storage::bind<config::segment_shape, "segment_shape">,
           storage::bind<config::disk_shape, "disk_shape">,
+          storage::bind<config::translated_disk_shape,
+                        "translated_disk_shape">,
           storage::bind<config::interaction_manager, "interaction_manager">,
           storage::bind<config::interaction, "interaction">,
           storage::bind<config::osnspb, "osnspb">,

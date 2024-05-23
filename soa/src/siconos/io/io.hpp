@@ -9,6 +9,7 @@
 #include "siconos/storage/some/some.hpp"
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/variant.hpp"
+#include "siconos/algebra/numerics.hpp"
 
 namespace siconos::io {
 using namespace storage;

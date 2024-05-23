@@ -1095,6 +1095,9 @@ class MechanicsHdf5Runner(mechanics_hdf5.MechanicsHdf5):
                 y2 = self._shape._io.shapes()[ctor.shape_name][:][0][3]
 
                 self._interman.insertSegment(x1, y1, x2, y2)
+            elif self._shape.attributes(ctor.shape_name)['primitive'] == 'Disk':
+                r = self._shape._io.shapes()[ctor.shape_name][:][0][0]
+                self._interman.insertTranslatedDisk(r, translation)
             else:
                 self.print_verbose(
                     'unknown primitive:{}'.format(
