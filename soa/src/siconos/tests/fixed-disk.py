@@ -13,17 +13,20 @@ from math import sqrt
 nonos.mechanics_run.set_backend('vnative')
 
 disk_radius = 1
+N = 10
 
 with MechanicsHdf5Runner() as io:
 
     io.add_primitive_shape('DiskR1', 'Disk', [disk_radius])
-    io.add_primitive_shape('DiskR2', 'Disk', [disk_radius])
+    io.add_primitive_shape('DiskR2', 'Disk', [0.1*disk_radius])
 
     io.add_Newton_impact_friction_nsl('contact', mu=0.3, e=0)
 
-    io.add_object('disk0', [Contactor('DiskR2')],
-                      translation=[0.1, 3*disk_radius],
-                      orientation=[0], velocity=[0, 0, 0], mass=1, inertia=0.5)
+    for i in range(N):
+        for j in range(N):
+            io.add_object('disk-{}-{}'.format(i,j), [Contactor('DiskR2')],
+                          translation=[0.2*i, 3*disk_radius+0.2*j],
+                          orientation=[0], velocity=[0, 0, 0], mass=1, inertia=0.5)
 
     io.add_object('fixed-disk', [Contactor('DiskR1')], translation=[0, 0])                                 
 

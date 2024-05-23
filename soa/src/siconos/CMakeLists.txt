@@ -2,4 +2,4 @@ add_subdirectory(storage)
 add_subdirectory(tests)
 add_subdirectory(benchmarks)
 add_subdirectory(py)
-
+add_subdirectory(utils/to-h5part)

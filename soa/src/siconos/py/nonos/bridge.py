@@ -29,6 +29,7 @@ class SpaceFilter(Stored):
         self._handle = vkernel.disks.add_space_filter(self.data())
         self._handle.set_neighborhood(self._ngbh)
         self._handle.set_diskdisk_r(vkernel.disks.add_diskdisk_r(self.data()))
+        self._fdisks = {}
 
     def insertSegment(self, x1, y1, x2, y2):
         segment = vkernel.disks.add_segment_shape(self.data())
@@ -62,9 +63,18 @@ class SpaceFilter(Stored):
         self.handle().insert_line(diskline)
 
     def insertTranslatedDisk(self, radius, translation):
+
+        disk_shape = None
+        if radius in self._fdisks:
+            disk_shape = self._fdisks[radius]
+        else:
+            disk_shape = vkernel.disks.add_disk_shape(self.data())
+            disk_shape.set_radius(radius)
+            self._fdisks[radius] = disk_shape
+
         translated_disk_shape = \
             vkernel.disks.add_translated_disk_shape(self.data())
-        translated_disk_shape.item().set_radius(radius)
+        translated_disk_shape.set_item(disk_shape)
         translated_disk_shape.set_translation(array([translation[0],translation[1],0]))
 
         diskfdisk = vkernel.disks.add_diskfdisk_r(self.data())
@@ -202,6 +212,7 @@ class Simulation(Stored):
 class Body(Stored):
 
     _ident = 1
+    _disk_shapes = {}
 
     def __init__(self, radius, mass, position, velocity):
 
@@ -213,9 +224,16 @@ class Body(Stored):
         body.set_q(array(position))
         body.set_velocity(array(velocity))
         body.set_mass_matrix(array([mass, mass, mass*radius*radius/2]))
-        disk_shape = vkernel.disks.add_disk_shape(self.data())
+
+        disk_shape = None
+        if radius in self._disk_shapes:
+            disk_shape = self._disk_shapes[radius]
+        else:
+            disk_shape = vkernel.disks.add_disk_shape(self.data())
+            disk_shape.set_radius(radius)
+            self._disk_shapes[radius] = disk_shape
+
         body.set_shape(disk_shape)
-        body.shape().set_radius(radius)
         body.set_fext(array([0,0,0])) # default
 
     def scalarMass(self):
