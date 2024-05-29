@@ -1,6 +1,7 @@
 import nonos as vkernel
 import numpy as np
 from math import sqrt
+import siconos.numerics as sn
 
 def array(l):
     return np.array(l, dtype=np.float64)
@@ -46,6 +47,8 @@ class SpaceFilter(Stored):
 
         self.handle().insert_disksegment_r(disksegment)
 
+        return segment
+
     def insertLine(self, a, b , c):
         line = vkernel.disks.add_line_shape(self.data())
         line.set_a(a)
@@ -61,6 +64,8 @@ class SpaceFilter(Stored):
         diskline.set_line(line)
 
         self.handle().insert_line(diskline)
+
+        return line
 
     def insertTranslatedDisk(self, radius, translation):
 
@@ -82,6 +87,8 @@ class SpaceFilter(Stored):
 
         self.handle().insert_diskfdisk_r(diskfdisk)
 
+        return translated_disk_shape
+
     def insertNonSmoothLaw(self, nslaw, gid1, gid2):
         self._interman.insert_nonsmooth_law(nslaw.handle(), gid1, gid2)
         self._handle.set_nslaw(self._interman.get_nonsmooth_law(gid1, gid2)) # one nslaw!!
@@ -95,6 +102,18 @@ class SpaceFilter(Stored):
         self._ngbh.update(0)
         self._ngbh.search()
         self._handle.update_index_set0(0);
+
+    def removeStaticBody(self, body):
+        # only segments are removable
+        if type(body) == type([]):
+            # box2d
+            self.handle().remove_static_segment(0, body[0])
+            self.handle().remove_static_segment(0, body[1])
+            self.handle().remove_static_segment(0, body[2])
+            self.handle().remove_static_segment(0, body[3])
+        else:
+            self.handle().remove_static_segment(0, body)
+
 
 class NewtonImpactFrictionNSL(Stored):
 
@@ -211,12 +230,13 @@ class Simulation(Stored):
 
 class Body(Stored):
 
-    _ident = 1
-    _disk_shapes = {}
+    __count = 0
+    __disk_shapes = {}
 
     def __init__(self, radius, mass, position, velocity):
 
-        self._ident = self._ident + 1
+        Body.__count += 1
+        self._ident = Body.__count
 
         body = vkernel.disks.add_disk(self.data())
         self._handle = body
@@ -226,12 +246,12 @@ class Body(Stored):
         body.set_mass_matrix(array([mass, mass, mass*radius*radius/2]))
 
         disk_shape = None
-        if radius in self._disk_shapes:
-            disk_shape = self._disk_shapes[radius]
+        if radius in Body.__disk_shapes:
+            disk_shape = Body.__disk_shapes[radius]
         else:
             disk_shape = vkernel.disks.add_disk_shape(self.data())
             disk_shape.set_radius(radius)
-            self._disk_shapes[radius] = disk_shape
+            Body.__disk_shapes[radius] = disk_shape
 
         body.set_shape(disk_shape)
         body.set_fext(array([0,0,0])) # default
@@ -250,8 +270,9 @@ class OSNSPB(Stored):
 
         self._so = vkernel.disks.add_solver_options(self.data())
         self._so.create(400)
-        self._so.set_iparam(0, 5)
-        self._so.set_dparam(0, 1e-2)
+        self._so.set_iparam(sn.SICONOS_IPARAM_MAX_ITER, 100)
+        self._so.set_dparam(sn.SICONOS_DPARAM_TOL, 1e-3)
+        self._so.set_dparam(sn.SICONOS_FRICTION_3D_NSGS_FREEZING_CONTACT, 10)
         self._fc2d = vkernel.disks.add_fc2d(self.data())
         self._handle = vkernel.disks.add_osnspb(self.data())
         self._handle.set_options(self._so)
@@ -313,3 +334,6 @@ class SpaceFilterOptions():
 
     neighborhood_radius = 2.1
     min_radius = 0.5
+
+    def toJson(self):
+        return json.dumps(self, default=lambda o: o.__dict__)

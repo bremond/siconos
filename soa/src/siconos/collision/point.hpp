@@ -12,6 +12,7 @@ struct point : item<> {
   using item_t = Item;
   using attributes = gather<
       // 3D coordinates, 2D => last value = 0.
+      attribute<"flag", some::boolean>,
       attribute<"coord", some::vector<some::scalar, some::indice_value<3>>>,
       attribute<"item", some::item_ref<item_t>>>;  // reverse link
 
@@ -19,6 +20,7 @@ struct point : item<> {
   struct interface : default_interface<Handle> {
     using default_interface<Handle>::self;
 
+    decltype(auto) flags() { return storage::attr<"flag">(*self()); };
     decltype(auto) coord() { return storage::attr<"coord">(*self()); };
     decltype(auto) item() { return storage::attr<"item">(*self()); };
 

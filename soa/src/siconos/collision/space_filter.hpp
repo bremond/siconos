@@ -57,9 +57,10 @@ struct neighborhood
 
     void add_point_sets(auto step)
     {
-      auto& data = self()->data();
+      using env_t = decltype(self()->env());
+      using indice = typename env_t::indice;
 
-      using indice = typename decltype(self()->env())::indice;
+      auto& data = self()->data();
 
       indice i = 0;
 
@@ -136,7 +137,8 @@ struct space_filter : item<> {
 
     decltype(auto) neighborhood()
     {
-      return storage::attr<"neighborhood">(*self());
+      return storage::handle(self()->data(),
+                             storage::attr<"neighborhood">(*self()));
     }
 
     decltype(auto) diskdisk_r()
@@ -152,6 +154,58 @@ struct space_filter : item<> {
     decltype(auto) diskfdisks()
     {
       return storage::attr<"diskfdisks">(*self());
+    }
+
+    void remove_static_item(auto step, auto item_handle)
+    {
+      using env_t = decltype(self()->env());
+      using indice = typename env_t::indice;
+      using item_t = typename std::decay_t<decltype(item_handle)>::type;
+      using point_t = collision::point<item_t>;
+      using points_t = typename neighborhood::points_t;
+
+      auto& data = self()->data();
+
+      auto& points_flags = storage::attr_values<point_t, "flag">(data, step);
+      auto& points_items = storage::attr_values<point_t, "item">(data, step);
+      auto& points_coords =
+          storage::attr_values<point_t, "coord">(data, step);
+
+      auto ps_indx = ground::index_of<point_t>(ground::std_tuple(points_t{}));
+
+        // ground::index_if(
+        //   points_t{},
+        //   ground::equal.to(collision::point<item_t>));
+
+      // first remove item
+      storage::remove(data, item_handle);
+
+      // find all associated points
+      for (auto [flag] : view::zip(points_flags)) {
+        flag = false;
+      }
+
+      for (auto [flag, pitem] : view::zip(points_flags, points_items)) {
+        if (item_handle.get() == pitem.get()) {
+          flag = true;
+        };
+      }
+
+      // remove points
+      auto ff = std::ranges::find(points_flags, true);
+
+      while (ff != points_flags.end()) {
+        auto ff_index = ff - points_flags.begin();
+        auto point =
+            storage::handle(data, storage::index<point_t, indice>(ff_index));
+        storage::remove(data, point);
+
+        ff = std::ranges::find(points_flags, true);
+      };
+
+      neighborhood().instance()->resize_point_set(ps_indx,
+                                                  points_coords.front().data(),
+                                                  points_coords.size());
     }
 
     void insert_disksegment_r(auto dl)
@@ -605,11 +659,15 @@ struct space_filter : item<> {
 
     auto methods()
     {
+      auto& data = self()->data();
       using env_t = decltype(self()->env());
       using indice = typename env_t::indice;
       // using scalar = typename env_t::scalar;
-      using disksegment_r_t = storage::index<disksegment_r, indice>;
-      using diskfdisk_r_t = storage::index<diskfdisk_r, indice>;
+      using disksegment_r_t =
+          storage::index<collision::disksegment_r, indice>;
+      using diskfdisk_r_t = storage::index<collision::diskfdisk_r, indice>;
+      using segment_handle_t = std::decay_t<decltype(storage::handle(
+          data, storage::index<collision::shape::segment, indice>{}))>;
 
       return collect(
           method("make_points", &interface<Handle>::make_points),
@@ -618,8 +676,10 @@ struct space_filter : item<> {
           method("insert_disksegment_r",
                  &interface<Handle>::insert_disksegment_r<disksegment_r_t>),
           method("insert_diskfdisk_r",
-                 &interface<Handle>::insert_diskfdisk_r<
-                     diskfdisk_r_t>));
+                 &interface<Handle>::insert_diskfdisk_r<diskfdisk_r_t>),
+          method("remove_static_segment",
+                 &interface<Handle>::template remove_static_item<
+                     indice, segment_handle_t>));
     }
   };
 };

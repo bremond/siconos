@@ -132,6 +132,8 @@ struct index {
 
   index() : _value{} {};
 
+  constexpr auto item_type() { return type{}; };
+
   friend auto operator<=>(const index<T, R>&, const index<T, R>&) = default;
 };
 

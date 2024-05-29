@@ -2,6 +2,7 @@
 
 #include <stdexcept>
 
+#include "siconos/algebra/numerics.hpp"
 #include "siconos/collision/collision.hpp"
 #include "siconos/collision/disksegment_r.hpp"
 #include "siconos/storage/pattern/base.hpp"
@@ -9,7 +10,6 @@
 #include "siconos/storage/some/some.hpp"
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/variant.hpp"
-#include "siconos/algebra/numerics.hpp"
 
 namespace siconos::io {
 using namespace storage;
@@ -114,10 +114,11 @@ struct io : item<> {
                                                           orientation 1 */
 
         if (activation) {
-          auto p0 = algebra::get_vector(p0_v, ds1.get()); /* in 2D, 2 components */
+          auto p0 =
+              algebra::get_vector(p0_v, ds1.get()); /* in 2D, 2 components */
 
-          vect c1 = { hds1.q()[0], hds1.q()[1], 0. };
-          vect c2 = { hds2.q()[0], hds2.q()[2], 0. };
+          vect c1 = {hds1.q()[0], hds1.q()[1], 0.};
+          vect c2 = {hds2.q()[0], hds2.q()[1], 0.};
 
           vect cn;
 
@@ -140,10 +141,10 @@ struct io : item<> {
                     cn;
           }
           else {
-            /* disk / segment */
             variant::visit(
                 data, relation,
                 ground::overload(
+                    /* disk / segment */
                     [&](storage::index<collision::disksegment_r, indice>
                             rrel) {
                       auto hrel = storage::handle(data, rrel);
@@ -162,9 +163,26 @@ struct io : item<> {
                                          data, storage::prop<"shape">(hds1))
                                          .radius();
                     },
+                    /* disk / fixed disk */
+                    [&](storage::index<collision::diskfdisk_r, indice> rrel) {
+                      auto hrel = storage::handle(data, rrel);
+                      auto tds = hrel.translated_disk_shape();
+
+                      c2 = tds.translation();
+                      scalar radius2 = tds.item().radius();
+
+                      scalar dc2c1 = collision::distance(c2, c1);
+
+                      cn = (c2 - c1) / dc2c1;
+                      ca = c1 +
+                           storage::handle(data, storage::prop<"shape">(hds1))
+                                   .radius() *
+                               cn;
+                      cb = c2 - radius2 * cn;
+                    },
                     [&](auto) {
                       throw(std::runtime_error(
-                          "Error: not a disk-segment relation"));
+                          "Error: not a disk-segment or disk-disk relation"));
                     }));
           };
 

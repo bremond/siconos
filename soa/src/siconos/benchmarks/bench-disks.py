@@ -82,10 +82,9 @@ bullet_options.perturbationIterations = 1
 bullet_options.minimumPointsPerturbationThreshold = 1
 
 options = sk.solver_options_create(sn.SICONOS_FRICTION_2D_NSGS)
-options.iparam[sn.SICONOS_IPARAM_MAX_ITER] = 50
-options.dparam[sn.SICONOS_DPARAM_TOL] = 1e-3
-
-
+options.iparam[sn.SICONOS_IPARAM_MAX_ITER] = 100
+options.dparam[sn.SICONOS_DPARAM_TOL] = 1e-2
+options.iparam[sn.SICONOS_FRICTION_3D_NSGS_FREEZING_CONTACT] = 10
 
 run_options=MechanicsHdf5Runner_run_options()
 run_options['t0']=0

@@ -92,6 +92,10 @@ class NativeSegmentShape(NativeShape):
     def __init__(self, x1, y1, x2, y2):
         self.params = [x1, y1, x2, y2]
 
+class NativeBox2dShape(NativeShape):
+    def __init__(self, a, b):
+        self.params = [a, b]
+
 
 # It is necessary to select a back-end, although currently only Bullet
 # is supported for general objects.
@@ -199,6 +203,13 @@ def arguments():
     posargs = args.pop(posname, [])
     args.update(args.pop(kwname, []))
     return args, posargs
+
+# rotation around the origin
+def rotate_point(x, y, alpha):
+    x_new = x * cos(alpha) - y * sin(alpha)
+    y_new = x * sin(alpha) + y * cos(alpha)
+    return x_new, y_new
+
 
 
 @contextmanager
@@ -487,7 +498,8 @@ class ShapeCollection():
             self._primitive = {'Disk': NativeDiskShape,
                                'Circle': NativeCircleShape,
                                'Line': NativeLineShape,
-                               'Segment': NativeSegmentShape}
+                               'Segment': NativeSegmentShape,
+                               'Box2d': NativeBox2dShape}
         else:
             self._primitive = {'Sphere': SiconosSphere,
                                'Box': SiconosBox,
@@ -848,7 +860,7 @@ class MechanicsHdf5Runner_run_options(dict):
         d['osns_assembly_type']= None
         d['output_contact_forces']=True,
         d['output_contact_info']=True,
-
+        d['vnative_options']=None
 
         super(self.__class__, self).__init__(d)
 
@@ -1081,29 +1093,63 @@ class MechanicsHdf5Runner(mechanics_hdf5.MechanicsHdf5):
             ctor = contactors[0]
             shape = self._shape.get(ctor.shape_name, new_instance=True)
 
+            bdy = None
             # only one contactor
             if self._shape.attributes(ctor.shape_name)['primitive'] == 'Line':
                 a = self._shape._io.shapes()[ctor.shape_name][:][0][0]
                 b = self._shape._io.shapes()[ctor.shape_name][:][0][1]
                 c = self._shape._io.shapes()[ctor.shape_name][:][0][2]
 
-                self._interman.insertLine(a, b, c)
+                bdy = self._interman.insertLine(a, b, c)
             elif self._shape.attributes(ctor.shape_name)['primitive'] == 'Segment':
                 x1 = self._shape._io.shapes()[ctor.shape_name][:][0][0]
                 y1 = self._shape._io.shapes()[ctor.shape_name][:][0][1]
                 x2 = self._shape._io.shapes()[ctor.shape_name][:][0][2]
                 y2 = self._shape._io.shapes()[ctor.shape_name][:][0][3]
 
-                self._interman.insertSegment(x1, y1, x2, y2)
+                bdy = self._interman.insertSegment(x1, y1, x2, y2)
+            elif self._shape.attributes(ctor.shape_name)['primitive'] == 'Box2d':
+                thickness = self._shape._io.shapes()[ctor.shape_name][:][0][0]
+                size = self._shape._io.shapes()[ctor.shape_name][:][0][1]
+
+                # insert 4 segments
+                ya0 = -thickness/2
+                yb0 = thickness/2
+                xa0 = -size/2
+                xb0 = size/2
+
+                alpha = orientation[0] # 2D
+                xa, ya = rotate_point(xa0, ya0, alpha)
+                xb, yb = rotate_point(xb0, yb0, alpha)
+
+                tx = translation[0]
+                ty = translation[1]
+
+                x1 = xa + tx
+                y1 = ya + ty
+                x2 = xa + tx
+                y2 = yb + ty
+                x3 = xb + tx
+                y3 = yb + ty
+                x4 = xb + tx
+                y4 = ya + ty
+
+                s1 = self._interman.insertSegment(x1, y1, x2, y2)
+                s2 = self._interman.insertSegment(x2, y2, x3, y3)
+                s3 = self._interman.insertSegment(x3, y3, x4, y4)
+                s4 = self._interman.insertSegment(x4, y4, x1, y1)
+
+                bdy = [s1, s2, s3, s4]
+
             elif self._shape.attributes(ctor.shape_name)['primitive'] == 'Disk':
                 r = self._shape._io.shapes()[ctor.shape_name][:][0][0]
-                self._interman.insertTranslatedDisk(r, translation)
+                bdy = self._interman.insertTranslatedDisk(r, translation)
             else:
                 self.print_verbose(
                     'unknown primitive:{}'.format(
                         self._shape.attributes(ctor.shape_name)['primitive']))
                 raise RuntimeError('unknown primitive')
-            body = None
+            body = bdy
             flag = 'static'
         else:
             # a dynamic object
@@ -1286,7 +1332,7 @@ class MechanicsHdf5Runner(mechanics_hdf5.MechanicsHdf5):
                         cset.append(SiconosContactor(shp, pos, c.group))
                     self.print_verbose('              Adding shape %s to static contactor'%c.shape_name, 'at relative position', pos)
 
-                    
+
                 staticBody = self._interman.addStaticBody(cset, csetpos, number)
 
                 self._static[name] = {
@@ -2359,8 +2405,8 @@ class MechanicsHdf5Runner(mechanics_hdf5.MechanicsHdf5):
             except :
                 d['controller']= 'not serialized'
 
-        dict_json=json.dumps(d)
-        self._run_options_data.attrs['options'] = dict_json
+        #dict_json=json.dumps(d)
+        #self._run_options_data.attrs['options'] = dict_json
 
     def print_solver_infos(self):
         """

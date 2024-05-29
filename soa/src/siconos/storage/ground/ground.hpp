@@ -75,20 +75,21 @@ template <typename T>
 using inner_type = typename std::remove_reference<T>::type;
 
 using hana::append;
+using hana::equal;
 using hana::eval;
 using hana::flatten;
+using hana::index_if;
 using hana::integral_constant;
 using hana::is_valid;
 using hana::make_lazy;
 using hana::pair;
+using hana::set;
 using hana::size;
 using hana::size_c;
+using hana::to_set;
 using hana::tuple;
 using hana::unique;
 using hana::unpack;
-
-using hana::set;
-using hana::to_set;
 
 static constexpr auto typeid_ = hana::typeid_;
 
@@ -409,4 +410,14 @@ auto std_tuple(const hana::tuple<Ts...> &htpl)
     return std::make_tuple(Elems{}...);
   });
 }
+
+// https://stackoverflow.com/questions/18063451/get-index-of-a-tuple-elements-type
+template<class T, class... Ts>
+constexpr std::size_t index_of(const std::tuple<Ts...>&)
+{
+    int found{}, count{};
+    ((!found ? (++count, found = std::is_same_v<T, Ts>) : 0), ...);
+    return found ? count - 1 : count;
+}
+
 }  // namespace siconos::storage::ground
