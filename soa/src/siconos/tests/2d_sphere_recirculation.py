@@ -46,7 +46,7 @@ inclination = 30      #30°
 en = 0.5
 mu = 0.5
 angle = inclination* math.pi/180.
-n_row=10
+n_row= 250
 T=3.0
 
 test = False
@@ -89,7 +89,7 @@ if test:
     wall_x_position_number=700
     restart=False
 else:
-    n_col = 10
+    n_col = 100
     N = n_row*n_col
     hstep = 1e-4
     output_period = 0.01

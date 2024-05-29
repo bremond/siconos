@@ -269,17 +269,29 @@ class OSNSPB(Stored):
     def __init__(self, dim, solvopts):
 
         self._so = vkernel.disks.add_solver_options(self.data())
-        self._so.create(400)
-        self._so.set_iparam(sn.SICONOS_IPARAM_MAX_ITER, 100)
-        self._so.set_dparam(sn.SICONOS_DPARAM_TOL, 1e-3)
-        self._so.set_dparam(sn.SICONOS_FRICTION_3D_NSGS_FREEZING_CONTACT, 10)
+
+        if solvopts is not None:
+            self._so.create(solvopts.solverId)
+            for i,v in enumerate(solvopts.iparam):
+                self._so.set_iparam(i, v)
+
+            for i,v in enumerate(solvopts.dparam):
+                self._so.set_dparam(i, v)
+
+        else:
+            # default
+            self._so.create(sn.SICONOS_FRICTION_2D_NSGS)
+            self._so.set_iparam(sn.SICONOS_IPARAM_MAX_ITER, 100)
+            self._so.set_dparam(sn.SICONOS_DPARAM_TOL, 1e-3)
+            self._so.set_dparam(sn.SICONOS_FRICTION_3D_NSGS_FREEZING_CONTACT, 10)
+
         self._fc2d = vkernel.disks.add_fc2d(self.data())
         self._handle = vkernel.disks.add_osnspb(self.data())
         self._handle.set_options(self._so)
-        self._fc2d.create(400)
+        self._fc2d.create(self._so.solver_id())
         self.handle().set_problem(self._fc2d)
         self.handle().set_mu(0.5)
-        self.handle().set_verbose(True)
+        self.handle().set_verbose(False)
 #        self._fc2d.instance().dimension = 2
 
     def setMaxSize(self, maxs):

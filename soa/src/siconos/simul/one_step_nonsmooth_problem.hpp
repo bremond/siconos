@@ -32,14 +32,29 @@ struct solver_options : storage::data_holder<SolverOptions> {
                                });
     }
 
+    decltype(auto) iparam(auto index)
+    {
+      return self()->instance()->iparam[index];
+    }
     void set_iparam(auto index, auto value)
     {
       self()->instance()->iparam[index] = value;
     }
 
+    decltype(auto) dparam(auto index)
+    {
+      return self()->instance()->dparam[index];
+    }
     void set_dparam(auto index, auto value)
     {
       self()->instance()->dparam[index] = value;
+    }
+
+    decltype(auto) solver_id() { return self()->instance()->solverId; }
+
+    void set_solver_id(auto value)
+    {
+      self()->instance()->solverId = value;
     }
 
     auto methods()
@@ -48,11 +63,16 @@ struct solver_options : storage::data_holder<SolverOptions> {
       using indice = typename env_t::indice;
       using scalar = typename env_t::scalar;
 
-      return collect(method("create", &interface<Handle>::create),
-                     method("set_iparam",
-                            &interface<Handle>::set_iparam<indice, indice>),
-                     method("set_dparam",
-                            &interface<Handle>::set_dparam<indice, scalar>));
+      return collect(
+          method("create", &interface<Handle>::create),
+          method("iparam", &interface<Handle>::iparam<indice>),
+          method("dparam", &interface<Handle>::dparam<indice>),
+          method("solver_id", &interface<Handle>::solver_id),
+          method("set_iparam",
+                 &interface<Handle>::set_iparam<indice, indice>),
+          method("set_dparam",
+                 &interface<Handle>::set_dparam<indice, scalar>),
+          method("set_solver_id", &interface<Handle>::set_solver_id<indice>));
     }
   };
 };
