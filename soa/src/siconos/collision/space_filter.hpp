@@ -93,6 +93,27 @@ struct neighborhood
 
     void search() { self()->instance()->find_neighbors(); };
 
+    void sort()
+    {
+      using env_t = decltype(self()->env());
+      using indice = typename env_t::indice;
+
+      auto& data = self()->data();
+      auto& instance = self()->instance();
+
+      instance->z_sort();
+
+      indice i = 0;
+      ground::for_each(
+          points_t{}, [&instance, &data, &i]<typename Point>(Point p) {
+            auto ps = instance->point_set(i++);
+            storage::apply_fun(
+                data, p,
+                ground::overload(
+                  [&ps]<typename Array>(Array& a) { ps.sort_field(a.data()); },
+                    [](void) {}));
+          });
+    }
     auto methods()
     {
       using env_t = decltype(self()->env());
@@ -108,7 +129,8 @@ struct neighborhood
           method("update", &interface<Handle>::update<indice>),
           method("set_active",
                  &interface<Handle>::set_active<indice, indice, bool>),
-          method("search", &interface<Handle>::search));
+          method("search", &interface<Handle>::search),
+          method("sort", &interface<Handle>::sort));
     }
   };
 };

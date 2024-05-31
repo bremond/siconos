@@ -165,8 +165,7 @@ while [ $# -gt 0 ]; do
         xex="exec"
       fi
       . venv/bin/activate
-      env
-      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/gnu/store/ln6hxqjvz6m9gdd9s97pivlqck7hzs99-glibc-2.35/lib/:`pwd`/venv/lib/python3.10/site-packages/nonos/
+      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/venv/lib/python3.10/site-packages/nonos/
       if [ ! -z "$timer" ]; then
         $xex $timer -f "$timer_args" $interp $script $args
       else

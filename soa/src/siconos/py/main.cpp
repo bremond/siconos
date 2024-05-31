@@ -67,7 +67,7 @@ PYBIND11_MODULE(_nonos, m)
 
     ground::fold_left(
         decltype(storage::attached_storages(
-            handle_t{}, handle_t{}.data())){},  // all attached storages
+            item_t{}, handle_t{}.data())){},  // all attached storages
         std::ref(pyhandle[1_c]),                // initial state
         []<match::attached_storage<item_t> S>(py::class_<handle_t> dc, S s) {
           constexpr auto astor_name = storage::attached_storage_name(s);

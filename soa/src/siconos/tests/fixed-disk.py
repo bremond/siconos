@@ -22,6 +22,7 @@ with MechanicsHdf5Runner() as io:
 
     io.add_Newton_impact_friction_nsl('contact', mu=0.3, e=0)
 
+    io.add_primitive_shape('Ground', 'Segment', [-10,-10,10,-10])
     for i in range(N):
         for j in range(N):
             io.add_object('disk-{}-{}'.format(i,j), [Contactor('DiskR2')],
@@ -31,6 +32,8 @@ with MechanicsHdf5Runner() as io:
     io.add_object('fixed-disk1', [Contactor('DiskR1')], translation=[0, 0])
 
     io.add_object('fixed-disk2', [Contactor('DiskR1')], translation=[2, -5])                                 
+
+    io.add_object('ground' , [Contactor('Ground')], translation=[0, 0])
 
 options = sk.solver_options_create(sn.SICONOS_FRICTION_2D_NSGS)
 options.iparam[sn.SICONOS_IPARAM_MAX_ITER] = 10

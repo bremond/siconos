@@ -469,10 +469,10 @@ struct item_storage {
   using type = with_info_t<iinfo, map_t>;
 };
 
-static auto attached_storages =
-    []<typename Handle>(Handle h, auto& data) constexpr -> decltype(auto) {
+template<typename Item>
+constexpr decltype(auto) attached_storages(Item, auto& data) {
   using info_t = std::decay_t<decltype(ground::get<info>(data))>;
-  using item_t = typename Handle::type;
+  using item_t = Item;
 
   return ground::filter(typename info_t::all_properties_t{},
                         ground::is_a_model<[]<typename T>() {
@@ -480,9 +480,17 @@ static auto attached_storages =
                         }>);
 };
 
+template <typename Item>
+constexpr decltype(auto) all_storages(Item, auto&data) {
+  using item_t = Item;
+  return ground::tuple_unique(
+    concat(attributes(item_t{}), attached_storages(item_t{}, data)));
+}
+
+
 template <typename Handle, typename Data>
 using attached_storages_t =
-    std::decay_t<decltype(attached_storages(Handle{}, Data{}))>;
+  std::decay_t<decltype(attached_storages(Handle{}.item_type(), Data{}))>;
 
 template <typename T>
 auto make_full_handle(auto& data, const auto& indx)
@@ -672,7 +680,7 @@ static auto remove = [](auto& data, auto& h) {
   using indice = typename info_t::env::indice;
 
   auto attrs = ground::tuple_unique(
-      concat(attributes(item_t{}), attached_storages(h, data)));
+    concat(attributes(item_t{}), attached_storages(h.item_type(), data)));
 
   if constexpr (ground::size(attrs) > ground::size_c<0>) {
     ground::for_each(attrs, [&data, &h]<match::attribute A>(A) {
@@ -685,6 +693,30 @@ static auto remove = [](auto& data, auto& h) {
   }
 };
 
+static auto apply_fun = []<typename Item, typename SomeFun>(auto& data, Item,
+                                                       SomeFun&& some_fun) {
+  using item_t = Item;
+  using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+  using all_keeps_t = decltype(all_properties_as<property::keep>(data));
+
+  using indice = typename info_t::env::indice;
+
+  auto attrs = ground::tuple_unique(
+    concat(attributes(item_t{}), attached_storages(item_t{}, data)));
+
+  if constexpr (ground::size(attrs) > ground::size_c<0>) {
+    ground::for_each(attrs, [&data,&some_fun]<match::attribute A>(A) {
+      return ground::for_each(
+          ground::range<memory_size<A, all_keeps_t>()>,
+          [&data,&some_fun](indice step) {
+            static_cast<SomeFun&&>(some_fun)(
+                memory(step, ground::get<A>(data)));
+          });
+    });
+  }
+};
+
+// use storage::attached_storages(...) instead
 template <typename Item>
 static constexpr auto is_attached_storage =
     ground::is_a_model<[]<typename T>() constexpr {

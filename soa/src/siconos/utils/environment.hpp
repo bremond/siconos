@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>  // std::size_t
+#include <cstdint>
 #include <tuple>
 #include <variant>
 #include <vector>
@@ -19,7 +20,7 @@ template <typename Params>
 struct standard_environment {
   using params = Params;
 
-  using boolean = bool;
+  using boolean = uint8_t; // not bool => cf CompactNSearch sort.
   using scalar = double;
   using indice = std::size_t;
 

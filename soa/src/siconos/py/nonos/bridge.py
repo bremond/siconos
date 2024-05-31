@@ -112,6 +112,7 @@ class SpaceFilter(Stored):
         self._ngbh.update(0)
         self._ngbh.search()
         self._handle.update_index_set0(0);
+        self._ngbh.sort()
 
     def removeStaticBody(self, body):
         # only segments are removable
