@@ -21,7 +21,7 @@ case $1 in
 
     cat>.siconos-disks-manifest.scm<<EOF
 (specifications->manifest
- '( "siconos" "benchmark" "clang-toolchain"  "valgrind"
+ '( "siconos" "benchmark" "clang-toolchain" "valgrind"
     "suitesparse" "eigen" "boost" "fmt" "range-v3"
     "cmake" "ninja" "make" "bash" "coreutils" "which" "python" "python-pip" "python-numpy"
     "pybind11" "strace" "jupyter" "python-ipykernel" "procps" "gdb" "git" "emacs-next"
@@ -34,18 +34,18 @@ EOF
         (url "https://git.savannah.gnu.org/git/guix.git")
         (branch "master")
         (commit
-          "461577f0fce1b69a88a752857eeee2e9e1116d6c")
+          "6f72ad465c1e2df965e8d73b209497b4ef456527")
         (introduction
           (make-channel-introduction
             "9edb3f66fd807b096b48283debdcddccfea34bad"
             (openpgp-fingerprint
               "BBB0 2DDF 2CEA F6A8 0D1D  E643 A2A0 6DF2 A33A 54FA"))))
       (channel
-        (name 'guix-hpc)
-        (url "https://gitlab.inria.fr/bremond/guix-hpc.git")
-        (branch "add-siconos")
-        (commit
-         "f6d6373f6a4542585397178c2ec3e58c4990f0da")))
+       (name 'guix-hpc)
+       (url "https://gitlab.inria.fr/bremond/guix-hpc.git")
+       (branch "add-siconosx")
+       (commit
+        "9725ff524d5dbb0ea448fba2f3d3653352fe5cd5")))
 EOF
     # guix environment setup
     # export PATH=/var/guix/profiles/per-user/root/current-guix/bin:$PATH
@@ -93,7 +93,7 @@ while [ $# -gt 0 ]; do
       venv/bin/pip3 --version
       venv/bin/pip3 install .
 
-      cd venv/lib/python3.9/site-packages/nonos
+      cd venv/lib/python3.10/site-packages/nonos
       ln -sf ../../../../../src/siconos/py/nonos/__init__.py .
       ln -sf ../../../../../src/siconos/py/nonos/bridge.py .
       ln -sf ../../../../../src/siconos/py/nonos/mechanics_run.py .
@@ -103,13 +103,13 @@ while [ $# -gt 0 ]; do
     --repl)
       shift
       . venv/bin/activate
-      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
+      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.10/site-packages/nonos/:$LD_LIBRARY_PATH
       python3
       ;;
     --shell)
       shift
       . venv/bin/activate
-      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
+      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.10/site-packages/nonos/:$LD_LIBRARY_PATH
       bash -i
       ;;
     --vview)
@@ -117,7 +117,7 @@ while [ $# -gt 0 ]; do
       args=$@
       set --
       . venv/bin/activate
-      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
+      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.10/site-packages/nonos/:$LD_LIBRARY_PATH
       exec python3 ./src/siconos/py/nonos/vview.py $args
       ;;
     --vexport)
@@ -145,7 +145,7 @@ while [ $# -gt 0 ]; do
         shift
       fi
       . venv/bin/activate
-      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
+      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.10/site-packages/nonos/:$LD_LIBRARY_PATH
       perf record -g --call-graph dwarf python3 $script $args
       ;;
     *)
@@ -165,7 +165,8 @@ while [ $# -gt 0 ]; do
         xex="exec"
       fi
       . venv/bin/activate
-      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.9/site-packages/nonos/:$LD_LIBRARY_PATH
+      env
+      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/gnu/store/ln6hxqjvz6m9gdd9s97pivlqck7hzs99-glibc-2.35/lib/:`pwd`/venv/lib/python3.10/site-packages/nonos/
       if [ ! -z "$timer" ]; then
         $xex $timer -f "$timer_args" $interp $script $args
       else

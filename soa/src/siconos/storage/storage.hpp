@@ -685,6 +685,12 @@ static auto remove = [](auto& data, auto& h) {
   }
 };
 
+template <typename Item>
+static constexpr auto is_attached_storage =
+    ground::is_a_model<[]<typename T>() constexpr {
+      return match::attached_storage<T, Item>;
+    }>;
+
 template <match::item Item>
 static auto add = [](auto&& data) constexpr -> decltype(auto) {
   using data_t = std::decay_t<decltype(data)>;
@@ -692,11 +698,8 @@ static auto add = [](auto&& data) constexpr -> decltype(auto) {
   using all_keeps_t = decltype(all_properties_as<property::keep>(data));
 
   using indice = typename info_t::env::indice;
-  constexpr auto attached_storage =
-      ground::filter(typename info_t::all_properties_t{},
-                     ground::is_a_model<[]<typename T>() constexpr {
-                       return match::attached_storage<T, Item>;
-                     }>);
+  constexpr auto attached_storage = ground::filter(
+      typename info_t::all_properties_t{}, is_attached_storage<Item>);
 
   constexpr auto attrs =
       ground::tuple_unique(concat(attributes(Item{}), attached_storage));
@@ -794,16 +797,20 @@ static constexpr decltype(auto) attr_memory(auto& data)
   return ground::get<attr_t<I, S>>(data);
 };
 
+template <string_literal S>
+static constexpr auto is_identified_by =
+    ground::is_a_model<[]<typename T>() constexpr {
+      return match::tag<T, symbol<S>>;
+    }>;
+
 template <match::item I, string_literal S>
 static auto prop_memory = [](auto& data) constexpr -> decltype(auto) {
   using info_t = std::decay_t<decltype(ground::get<storage::info>(data))>;
   using item_t = I;
   constexpr auto tpl =
-      ground::filter(typename info_t::all_properties_t{},
-                     ground::is_a_model<[]<typename T>() consteval {
-                       return (match::attached_storage<T, item_t> &&
-                               match::tag<T, symbol<S>>);
-                     }>);
+      ground::filter(ground::filter(typename info_t::all_properties_t{},
+                                    is_attached_storage<I>),
+                     is_identified_by<S>);
 
   //  constexpr auto tpl = filter<hold<decltype([]<typename X>(X) {
   //      return (match::attached_storage<X, item_t> && (match::tag<X,

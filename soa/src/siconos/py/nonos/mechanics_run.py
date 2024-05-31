@@ -3221,6 +3221,8 @@ class MechanicsHdf5Runner(mechanics_hdf5.MechanicsHdf5):
                           ' has no exploded version')
                     self.log(self._simulation.computeOneStep, with_timer)()
             else:
+                if backend == 'vnative':
+                    self.log(self._simulation.updateInteractions, with_timer)()
                 self.log(self._simulation.computeOneStep, with_timer)()
 
             cond = self._output_frequency and (self._k % self._output_frequency == 0)

@@ -69,13 +69,5 @@ struct standard_environment {
   template <typename T>
   using default_storage = std::array<T, 1>;
 
-  static constexpr auto white_color = boost::white_color;
-
-  static constexpr auto gray_color = boost::gray_color;
-
-  static constexpr auto black_color = boost::black_color;
-
-  template <typename T>
-  using vdescriptor = typename T::VDescriptor;
 };
 }  // namespace siconos

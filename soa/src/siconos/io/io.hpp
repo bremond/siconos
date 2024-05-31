@@ -5,6 +5,7 @@
 #include "siconos/algebra/numerics.hpp"
 #include "siconos/collision/collision.hpp"
 #include "siconos/collision/disksegment_r.hpp"
+#include "siconos/collision/diskfdisk_r.hpp"
 #include "siconos/storage/pattern/base.hpp"
 #include "siconos/storage/pattern/pattern.hpp"
 #include "siconos/storage/some/some.hpp"
@@ -46,7 +47,7 @@ struct io : item<> {
       attr<"pos_info">(*self()).clear();
 
       for (auto [id, q] : view::zip(ids, qs)) {
-        attr<"pos_info">(*self()).push_back({id, q[0], q[1], q[2]});
+        attr<"pos_info">(*self()).push_back({(scalar) id, q[0], q[1], q[2]});
       }
 
       return algebra::matrix_view<algebra::unbounded_col_matrix<scalar, 4>>(

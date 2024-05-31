@@ -97,6 +97,16 @@ class SpaceFilter(Stored):
         if not self._initialized:
             self._handle.make_points()
             self._ngbh.add_point_sets(0)
+            self._ngbh.set_active(0, 0, True)
+            self._ngbh.set_active(0, 1, True)
+            self._ngbh.set_active(0, 2, True)
+            self._ngbh.set_active(1, 1, False)
+            self._ngbh.set_active(2, 2, False)
+            self._ngbh.set_active(1, 0, False)
+            self._ngbh.set_active(2, 0, False)
+            self._ngbh.set_active(1, 2, False)
+            self._ngbh.set_active(2, 1, False)
+
             self._initialized = True
 
         self._ngbh.update(0)
@@ -217,6 +227,9 @@ class Simulation(Stored):
 
     def hasNextEvent(self):
         return self.handle().has_next_event()
+
+    def updateInteractions(self):
+        self._interman.updateInteractions()
 
     def computeOneStep(self):
         self._interman.updateInteractions()

@@ -75,6 +75,12 @@ struct neighborhood
       });
     }
 
+    void set_active(auto ps1_id, auto ps2_id, auto value)
+    {
+      self()->instance()->set_active((unsigned int)ps1_id,
+                                     (unsigned int)ps2_id, value);
+    }
+
     void update(auto step)
     {
       auto& data = self()->data();
@@ -90,15 +96,19 @@ struct neighborhood
     auto methods()
     {
       using env_t = decltype(self()->env());
+
       using indice = typename env_t::indice;
       using scalar = typename env_t::scalar;
 
-      return collect(method("point_set_id", &interface<Handle>::point_set_id),
-                     method("create", &interface<Handle>::create<scalar>),
-                     method("add_point_sets",
-                            &interface<Handle>::add_point_sets<indice>),
-                     method("update", &interface<Handle>::update<indice>),
-                     method("search", &interface<Handle>::search));
+      return collect(
+          method("point_set_id", &interface<Handle>::point_set_id),
+          method("create", &interface<Handle>::create<scalar>),
+          method("add_point_sets",
+                 &interface<Handle>::add_point_sets<indice>),
+          method("update", &interface<Handle>::update<indice>),
+          method("set_active",
+                 &interface<Handle>::set_active<indice, indice, bool>),
+          method("search", &interface<Handle>::search));
     }
   };
 };
@@ -173,9 +183,9 @@ struct space_filter : item<> {
 
       auto ps_indx = ground::index_of<point_t>(ground::std_tuple(points_t{}));
 
-        // ground::index_if(
-        //   points_t{},
-        //   ground::equal.to(collision::point<item_t>));
+      // ground::index_if(
+      //   points_t{},
+      //   ground::equal.to(collision::point<item_t>));
 
       // first remove item
       storage::remove(data, item_handle);
@@ -200,12 +210,15 @@ struct space_filter : item<> {
             storage::handle(data, storage::index<point_t, indice>(ff_index));
         storage::remove(data, point);
 
-        ff = std::ranges::find(points_flags, true);
+        auto remaining_points_flags =
+            std::ranges::subrange(ff, points_flags.end());
+        auto rff = std::ranges::find(remaining_points_flags, true);
+
+        ff = ff + (rff - remaining_points_flags.begin());
       };
 
-      neighborhood().instance()->resize_point_set(ps_indx,
-                                                  points_coords.front().data(),
-                                                  points_coords.size());
+      neighborhood().instance()->resize_point_set(
+          ps_indx, points_coords.front().data(), points_coords.size());
     }
 
     void insert_disksegment_r(auto dl)
@@ -645,7 +658,13 @@ struct space_filter : item<> {
 
         // activations has been modified, search first false element
         // starting at current position
-        fact = std::ranges::find(activations, false);
+        auto remaining_activations =
+            std::ranges::subrange(fact, activations.end());
+
+        auto ifact = std::ranges::find(remaining_activations, false);
+
+        fact = fact + (ifact - remaining_activations.begin());
+        // fact = std::ranges::find(activations, false);
 
         //        print("  find new false at : {}\n", fact -
         //        activations.begin());
