@@ -107,11 +107,12 @@ struct neighborhood
       ground::for_each(
           points_t{}, [&instance, &data, &i]<typename Point>(Point p) {
             auto ps = instance->point_set(i++);
-            storage::apply_fun(
-                data, p,
-                ground::overload(
-                  [&ps]<typename Array>(Array& a) { ps.sort_field(a.data()); },
-                    [](void) {}));
+            // apply function only if some points exist
+            if (ps.n_points() > 0) {
+              storage::apply_fun(data, p, [&ps]<typename Array>(Array& a) {
+                  ps.sort_field(a.data());
+                });
+            }
           });
     }
     auto methods()

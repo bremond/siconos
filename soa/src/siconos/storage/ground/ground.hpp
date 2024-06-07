@@ -412,12 +412,12 @@ auto std_tuple(const hana::tuple<Ts...> &htpl)
 }
 
 // https://stackoverflow.com/questions/18063451/get-index-of-a-tuple-elements-type
-template<class T, class... Ts>
-constexpr std::size_t index_of(const std::tuple<Ts...>&)
+template <class T, class... Ts>
+constexpr std::size_t index_of(const std::tuple<Ts...> &)
 {
-    int found{}, count{};
-    ((!found ? (++count, found = std::is_same_v<T, Ts>) : 0), ...);
-    return found ? count - 1 : count;
+  int found{}, count{};
+  ((!found ? (++count, found = std::is_same_v<T, Ts>) : 0), ...);
+  return found ? count - 1 : count;
 }
 
 }  // namespace siconos::storage::ground

@@ -115,6 +115,8 @@ class SpaceFilter(Stored):
         self._ngbh.sort()
 
     def removeStaticBody(self, body):
+        self._ngbh.search() # needed after sort
+
         # only segments are removable
         if type(body) == type([]):
             # box2d
