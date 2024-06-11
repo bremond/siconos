@@ -50,7 +50,7 @@ n_row= 250
 T=3.0
 
 test = False
-test_performance = False
+test_performance = True
 performance_verbose= True
 
 if (len(sys.argv) > 2):
@@ -567,7 +567,7 @@ run_options['time_stepping']=None
 run_options['set_external_forces']=apply_gravity
 
 vnative_options = SpaceFilterOptions()
-vnative_options.neighborhood_radius = grain_size * 3
+vnative_options.neighborhood_radius = grain_size * 1.01
 vnative_options.min_radius = grain_size / 2
 
 run_options['vnative_options'] = vnative_options

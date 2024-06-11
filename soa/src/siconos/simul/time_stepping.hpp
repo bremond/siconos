@@ -67,11 +67,6 @@ struct time_stepping : item<> {
       // compute active interactions
       auto [ninter, nds] = osi.compute_active_interactions(step, time_step());
 
-      print(
-          "[compute_one_step] number of involved ds :{}, number of "
-          "interactions: {}\n",
-          nds, ninter);
-
       if (nds > 0) {
         // a least one activated interaction
 

@@ -494,6 +494,17 @@ struct one_step_integrator {
             //             ydot);
           }
         }
+
+
+        print(
+          "  [compute_active_interactions] total number of ds: {}, total number of "
+          "interactions: {}\n",
+          std::size(involveds), std::size(activations));
+
+        print(
+          "  [compute_active_interactions] number of involved ds:{}, number of "
+          "activated interactions: {}\n",
+          ds_counter, inter_counter);
         return std::pair{inter_counter, ds_counter};
       }
 
