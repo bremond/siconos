@@ -81,6 +81,11 @@ struct neighborhood
                                      (unsigned int)ps2_id, value);
     }
 
+    bool is_active(auto i, auto j)
+    {
+      return self()->instance()->is_active(i, j);
+    }
+
     void update(auto step)
     {
       auto& data = self()->data();
@@ -110,8 +115,8 @@ struct neighborhood
             // apply function only if some points exist
             if (ps.n_points() > 0) {
               storage::apply_fun(data, p, [&ps]<typename Array>(Array& a) {
-                  ps.sort_field(a.data());
-                });
+                ps.sort_field(a.data());
+              });
             }
           });
     }
@@ -130,6 +135,7 @@ struct neighborhood
           method("update", &interface<Handle>::update<indice>),
           method("set_active",
                  &interface<Handle>::set_active<indice, indice, bool>),
+          method("is_active", &interface<Handle>::is_active<indice, indice>),
           method("search", &interface<Handle>::search),
           method("sort", &interface<Handle>::sort));
     }
@@ -328,6 +334,7 @@ struct space_filter : item<> {
         return ground::make_pair(i2, i1);
       }
     }
+
     void update_index_set0(auto step)
     {
       using env = decltype(self()->env());
@@ -426,180 +433,190 @@ struct space_filter : item<> {
                   //              auto& ps2 =
                   //              ngbh.instance()->point_set(psid2);
 
-                  for (size_t i = 0; i < ps1.n_points(); ++i) {
-                    auto pid1 = i;
-                    auto index_point1 = storage::index<p1_t, size_t>(pid1);
-                    auto handle_point1 = storage::handle(data, index_point1);
-                    auto body1 = storage::handle(data, handle_point1.item());
+                  if (ngbh.is_active(ip1, ip2)) {
+                    for (size_t i = 0; i < ps1.n_points(); ++i) {
+                      auto pid1 = i;
+                      auto index_point1 = storage::index<p1_t, size_t>(pid1);
+                      auto handle_point1 =
+                          storage::handle(data, index_point1);
+                      auto body1 =
+                          storage::handle(data, handle_point1.item());
 
-                    for (size_t j = 0; j < ps1.n_neighbors(psid2, i); ++j) {
-                      const unsigned int pid2 = ps1.neighbor(psid2, i, j);
+                      for (size_t j = 0; j < ps1.n_neighbors(psid2, i); ++j) {
+                        const unsigned int pid2 = ps1.neighbor(psid2, i, j);
 
-                      // print("pid2 : {}\n", pid2);
-                      auto index_point2 = storage::index<p2_t, size_t>(pid2);
-                      auto handle_point2 =
-                          storage::handle(data, index_point2);
-                      auto body2 =
-                          storage::handle(data, handle_point2.item());
-                      using system1_t = typename p1_t::item_t;
-                      using system2_t = typename p2_t::item_t;
+                        // print("pid2 : {}\n", pid2);
+                        auto index_point2 =
+                            storage::index<p2_t, size_t>(pid2);
+                        auto handle_point2 =
+                            storage::handle(data, index_point2);
+                        auto body2 =
+                            storage::handle(data, handle_point2.item());
+                        using system1_t = typename p1_t::item_t;
+                        using system2_t = typename p2_t::item_t;
 
-                      // print("point1 {},{},{}\n",
-                      //       ground::type_name<system1_t>().c_str(),
-                      //       handle_point1.coord()(0),
-                      //       handle_point1.coord()(1));
-                      // print("point2 {},{},{}\n",
-                      //       ground::type_name<system2_t>().c_str(),
-                      //       handle_point2.coord()(0),
-                      //       handle_point2.coord()(1));
-
-                      if constexpr (std::derived_from<system1_t,
-                                                      model::lagrangian_ds>) {
-                        // proximity with another disk, only disks are
-                        // dynamics check if interaction already exists
+                        // print("point1 {},{},{}\n",
+                        //       ground::type_name<system1_t>().c_str(),
+                        //       handle_point1.coord()(0),
+                        //       handle_point1.coord()(1));
+                        // print("point2 {},{},{}\n",
+                        //       ground::type_name<system2_t>().c_str(),
+                        //       handle_point2.coord()(0),
+                        //       handle_point2.coord()(1));
 
                         if constexpr (std::derived_from<
-                                          system2_t, model::lagrangian_ds>) {
-                          auto& ds1 = body1;
-                          auto& ds2 = body2;
+                                          system1_t, model::lagrangian_ds>) {
+                          // proximity with another disk, only disks are
+                          // dynamics check if interaction already exists
 
-                          // at most one edge between 2 ds !!
-                          auto find_inter =
-                              ds_ds_prox.find(make_ipair(ds1, ds2));
-                          if (find_inter != ds_ds_prox.end()) {
-                            // keep this edge
-                            auto inter = storage::handle(
-                                data, std::get<1>(*find_inter));
-                            storage::prop<"activation">(inter) = true;
+                          if constexpr (std::derived_from<
+                                            system2_t,
+                                            model::lagrangian_ds>) {
+                            auto& ds1 = body1;
+                            auto& ds2 = body2;
+
+                            // at most one edge between 2 ds !!
+                            auto find_inter =
+                                ds_ds_prox.find(make_ipair(ds1, ds2));
+                            if (find_inter != ds_ds_prox.end()) {
+                              // keep this edge
+                              auto inter = storage::handle(
+                                  data, std::get<1>(*find_inter));
+                              storage::prop<"activation">(inter) = true;
+                            }
+                            else {
+                              // create the edge
+                              auto inter = topo.link(body1, body2);
+                              inter.nslaw() =
+                                  nslaw;  // one nslaw for the moment
+
+                              storage::prop<"activation">(inter) = true;
+
+                              inter.relation() =
+                                  diskdisk_r;  // the diskdisk_r, need
+                                               // only one relation!
+                              ds_ds_prox[make_ipair(ds1, ds2)] = inter;
+                            }
                           }
                           else {
-                            // create the edge
-                            auto inter = topo.link(body1, body2);
-                            inter.nslaw() =
-                                nslaw;  // one nslaw for the moment
-
-                            storage::prop<"activation">(inter) = true;
-
-                            inter.relation() =
-                                diskdisk_r;  // the diskdisk_r, need
-                                             // only one relation!
-                            ds_ds_prox[make_ipair(ds1, ds2)] = inter;
-                          }
-                        }
-                        else {
-                          if constexpr (std::derived_from<
-                                            system1_t,
-                                            model::lagrangian_ds>) {
                             if constexpr (std::derived_from<
-                                              system2_t,
-                                              collision::shape::segment>) {
-                              // body2 is a static segment
-                              // for all self edges find the one with the
-                              // corresponding segment
+                                              system1_t,
+                                              model::lagrangian_ds>) {
+                              if constexpr (std::derived_from<
+                                                system2_t,
+                                                collision::shape::segment>) {
+                                // body2 is a static segment
+                                // for all self edges find the one with the
+                                // corresponding segment
 
-                              auto segment = storage::handle(data, body2);
-                              auto x1 = segment.x1();
-                              auto x2 = segment.x2();
-                              auto y1 = segment.y1();
-                              auto y2 = segment.y2();
+                                auto segment = storage::handle(data, body2);
+                                auto x1 = segment.x1();
+                                auto x2 = segment.x2();
+                                auto y1 = segment.y1();
+                                auto y2 = segment.y2();
 
-                              // print("PROXIMITY with {},{},{}\n", x1, x2,
-                              // y1, y2);
+                                // print("PROXIMITY with {},{},{}\n", x1,
+                                // x2, y1, y2);
 
-                              auto& ds1 = body1;
+                                auto& ds1 = body1;
 
-                              auto find_inter =
-                                  ds_segment_prox.find(ground::make_pair(
-                                      ds1.get(), std::array{x1, x2, y1, y2}));
+                                auto find_inter =
+                                    ds_segment_prox.find(ground::make_pair(
+                                        ds1.get(),
+                                        std::array{x1, x2, y1, y2}));
 
-                              if (find_inter != ds_segment_prox.end()) {
-                                auto inter = storage::handle(
-                                    data, std::get<1>(*find_inter));
-                                // keep this interaction
-                                storage::prop<"activation">(inter) = true;
+                                if (find_inter != ds_segment_prox.end()) {
+                                  auto inter = storage::handle(
+                                      data, std::get<1>(*find_inter));
+                                  // keep this interaction
+                                  storage::prop<"activation">(inter) = true;
 
-                                // print("interaction FOUND for {},{},{}\n",
-                                // a, b,
-                                //       c);
-                              }
-                              else {
-                                // print("interaction NOT FOUND for
-                                // {},{},{}\n", a,
-                                //       b, c);
-                                // create the edge
-                                auto inter = topo.link(body1);
-                                inter.nslaw() =
-                                    nslaw;  // one nslaw for the moment
-
-                                if (auto search =
-                                        disksegments.find({x1, x2, y1, y2});
-                                    search != disksegments.end()) {
-                                  inter.relation() = search->second;
+                                  // print("interaction FOUND for
+                                  // {},{},{}\n", a, b,
+                                  //       c);
                                 }
                                 else {
-                                  auto dl = storage::add<disksegment_r>(data);
-                                  auto segment =
-                                      storage::handle(data, dl.segment());
-                                  segment.x1() = x1;
-                                  segment.x2() = x2;
-                                  segment.y1() = y1;
-                                  segment.y2() = y2;
+                                  // print("interaction NOT FOUND for
+                                  // {},{},{}\n", a,
+                                  //       b, c);
+                                  // create the edge
+                                  auto inter = topo.link(body1);
+                                  inter.nslaw() =
+                                      nslaw;  // one nslaw for the moment
 
-                                  inter.relation() = dl;
-                                  disksegments[{x1, x2, y1, y2}] = dl;
+                                  if (auto search =
+                                          disksegments.find({x1, x2, y1, y2});
+                                      search != disksegments.end()) {
+                                    inter.relation() = search->second;
+                                  }
+                                  else {
+                                    auto dl =
+                                        storage::add<disksegment_r>(data);
+                                    auto segment =
+                                        storage::handle(data, dl.segment());
+                                    segment.x1() = x1;
+                                    segment.x2() = x2;
+                                    segment.y1() = y1;
+                                    segment.y2() = y2;
+
+                                    inter.relation() = dl;
+                                    disksegments[{x1, x2, y1, y2}] = dl;
+                                  }
+                                  storage::prop<"activation">(inter) = true;
+                                  ds_segment_prox[ground::make_pair(
+                                      ds1.get(),
+                                      std::array{x1, x2, y1, y2})] = inter;
                                 }
-                                storage::prop<"activation">(inter) = true;
-                                ds_segment_prox[ground::make_pair(
-                                    ds1.get(), std::array{x1, x2, y1, y2})] =
-                                    inter;
                               }
-                            }
-                            else if constexpr (
-                                std::derived_from<
-                                    system2_t, collision::translated<
-                                                   collision::shape::disk>>) {
-                              auto fdisk = storage::handle(data, body2);
-                              auto& translat = fdisk.translation();
-                              auto coefs =
-                                  std::array{translat[0], translat[1]};
+                              else if constexpr (std::derived_from<
+                                                     system2_t,
+                                                     collision::translated<
+                                                         collision::shape::
+                                                             disk>>) {
+                                auto fdisk = storage::handle(data, body2);
+                                auto& translat = fdisk.translation();
+                                auto coefs =
+                                    std::array{translat[0], translat[1]};
 
-                              auto& ds1 = body1;
+                                auto& ds1 = body1;
 
-                              auto find_inter = ds_fdisk_prox.find(
-                                  ground::make_pair(ds1.get(), coefs));
+                                auto find_inter = ds_fdisk_prox.find(
+                                    ground::make_pair(ds1.get(), coefs));
 
-                              if (find_inter != ds_fdisk_prox.end()) {
-                                auto inter = storage::handle(
-                                    data, std::get<1>(*find_inter));
-                                storage::prop<"activation">(inter) = true;
-                              }
-                              else {
-                                auto inter = topo.link(body1);
-                                inter.nslaw() = nslaw;
-
-                                if (auto search = diskfdisks.find(coefs);
-                                    search != diskfdisks.end()) {
-                                  inter.relation() = search->second;
+                                if (find_inter != ds_fdisk_prox.end()) {
+                                  auto inter = storage::handle(
+                                      data, std::get<1>(*find_inter));
+                                  storage::prop<"activation">(inter) = true;
                                 }
                                 else {
-                                  auto dfd = storage::add<diskfdisk_r>(data);
-                                  auto tds = storage::handle(
-                                      data, dfd.translated_disk_shape());
-                                  tds.translation() = translat;
+                                  auto inter = topo.link(body1);
+                                  inter.nslaw() = nslaw;
 
-                                  inter.relation() = dfd;
-                                  diskfdisks[coefs] = dfd;
+                                  if (auto search = diskfdisks.find(coefs);
+                                      search != diskfdisks.end()) {
+                                    inter.relation() = search->second;
+                                  }
+                                  else {
+                                    auto dfd =
+                                        storage::add<diskfdisk_r>(data);
+                                    auto tds = storage::handle(
+                                        data, dfd.translated_disk_shape());
+                                    tds.translation() = translat;
+
+                                    inter.relation() = dfd;
+                                    diskfdisks[coefs] = dfd;
+                                  }
+                                  storage::prop<"activation">(inter) = true;
+                                  ds_fdisk_prox[ground::make_pair(
+                                      ds1.get(), coefs)] = inter;
                                 }
-                                storage::prop<"activation">(inter) = true;
-                                ds_fdisk_prox[ground::make_pair(
-                                    ds1.get(), coefs)] = inter;
                               }
                             }
                           }
                         }
                       }
-                    }
-                  };
+                    };
+                  }
                 });
           });
 
