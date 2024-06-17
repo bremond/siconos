@@ -1,0 +1,176 @@
+#!/bin/bash
+#OAR --project siconos
+#OAR -l /nodes=1/cpu=2/core=16,walltime=1:00:00
+################################################################################
+set -e
+case $1 in -x) shift; set -x;; esac
+case $1 in
+  --env-ok)
+    shift;;
+  --fast)
+    shift
+    pwd=`pwd`
+    unset GUIX_PROFILE
+    . $pwd/.siconos-guix-profile/etc/profile
+
+    export PYTHONPATH=$GUIX_PYTHONPATH
+    exec $0 --env-ok "$@"
+    ;;
+  *)
+    MYDIR=`dirname $0`
+
+    cat>.siconos-disks-manifest.scm<<EOF
+(specifications->manifest
+ '( "siconos" "benchmark" "clang-toolchain" "valgrind"
+    "suitesparse" "eigen" "boost" "fmt" "range-v3"
+    "cmake" "ninja" "make" "bash" "coreutils" "which" "python" "python-pip" "python-numpy"
+    "pybind11" "strace" "jupyter" "python-ipykernel" "procps" "gdb" "git" "emacs-next"
+    "time" "parallel" "findutils"))
+EOF
+
+    cat>.siconos-vrun-channels.scm<<EOF
+(list (channel
+        (name 'guix)
+        (url "https://git.savannah.gnu.org/git/guix.git")
+        (branch "master")
+        (commit
+          "6f72ad465c1e2df965e8d73b209497b4ef456527")
+        (introduction
+          (make-channel-introduction
+            "9edb3f66fd807b096b48283debdcddccfea34bad"
+            (openpgp-fingerprint
+              "BBB0 2DDF 2CEA F6A8 0D1D  E643 A2A0 6DF2 A33A 54FA"))))
+      (channel
+       (name 'guix-hpc)
+       (url "https://gitlab.inria.fr/bremond/guix-hpc.git")
+       (branch "add-siconosx")
+       (commit
+        "9725ff524d5dbb0ea448fba2f3d3653352fe5cd5")))
+EOF
+    # guix environment setup
+    # export PATH=/var/guix/profiles/per-user/root/current-guix/bin:$PATH
+    # export GUIX_DAEMON_SOCKET=guix://luke.u-ga.fr
+    [ -f /applis/site/guix-start.sh ] && . /applis/site/guix-start.sh
+    pwd=`pwd`
+    rm -f $pwd/.siconos-guix-profile
+#    guix_isolation_args="--container -N --emulate-fhs --share=/tmp --share=$HOME"
+    guix_isolation_args="--pure --preserve=OMP*"
+    guix_cmd="guix time-machine -C ./.siconos-vrun-channels.scm --"
+    exec $guix_cmd shell $guix_isolation_args \
+         --root=.siconos-guix-profile \
+         -m .siconos-disks-manifest.scm -- $0 --env-ok "$@"
+    ;;
+esac
+set -e
+time=`which time`
+timer=""
+timer_args=""
+while [ $# -gt 0 ]; do
+  case $1 in
+    --time)
+      shift
+      timer="$time"
+      timer_args="$1"
+      shift
+      ;;
+    --help)
+      cat README.md
+      exit 0
+      ;;
+    --install)
+      shift
+      rm -rf venv
+      python3 -m venv --system-site-packages venv
+      . venv/bin/activate
+
+      [ -f /applis/environments/cuda_env.sh ] && . /applis/environments/cuda_env.sh 12.1
+
+      # export CPATH=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/include:$CPATH
+      # export LD_LIBRARY_PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/lib:$LD_LIBRARY_PATH
+      # export PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/bin:$PATH
+
+      pip install --upgrade pip
+      venv/bin/pip3 --version
+      venv/bin/pip3 install .
+
+      cd venv/lib/python3.10/site-packages/nonos
+      ln -sf ../../../../../src/siconos/py/nonos/__init__.py .
+      ln -sf ../../../../../src/siconos/py/nonos/bridge.py .
+      ln -sf ../../../../../src/siconos/py/nonos/mechanics_run.py .
+      ln -sf ../../../../../src/siconos/py/nonos/mechanics_hdf5.py .
+      cd -
+      ;;
+    --repl)
+      shift
+      . venv/bin/activate
+      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.10/site-packages/nonos/:$LD_LIBRARY_PATH
+      python3
+      ;;
+    --shell)
+      shift
+      . venv/bin/activate
+      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.10/site-packages/nonos/:$LD_LIBRARY_PATH
+      bash -i
+      ;;
+    --vview)
+      shift
+      args=$@
+      set --
+      . venv/bin/activate
+      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.10/site-packages/nonos/:$LD_LIBRARY_PATH
+      exec python3 ./src/siconos/py/nonos/vview.py $args
+      ;;
+    --vexport)
+      shift
+      siconos_vexport $@
+      ;;
+    --vexport-para)
+      shift
+      set -x
+      case $1 in --nprocs) shift; nprocs=$1; shift;; *) nprocs=1;; esac
+      python3 ./src/siconos/py/nonos/siconos_vexport.py --global-filter --gen-para-script=$nprocs $1 > vrun-pprocess
+      chmod +x vrun-pprocess
+      $time -f '%E %M' ./vrun-pprocess
+      ;;
+    --perf)
+      shift
+      script=$1
+      shift
+      args=""
+      while [[ $# -gt 0 && "$1" != "--" ]]; do
+        args="$args $1"
+        shift
+      done
+      if [[ $# -gt 0 && "$1" == "--" ]]; then
+        shift
+      fi
+      . venv/bin/activate
+      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.10/site-packages/nonos/:$LD_LIBRARY_PATH
+      perf record -g --call-graph dwarf python3 $script $args
+      ;;
+    *)
+      script=$1
+      suffix="${script##*.}"
+      case $suffix in py) interp=python3;; *) interp="";; esac
+      shift
+      args=""
+      while [[ $# -gt 0 && "$1" != "--" ]]; do
+        args="$args $1"
+        shift
+      done
+      if [[ $# -gt 0 && "$1" == "--" ]]; then
+        shift
+        xex=""
+      else
+        xex="exec"
+      fi
+      . venv/bin/activate
+      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/venv/lib/python3.10/site-packages/nonos/
+      if [ ! -z "$timer" ]; then
+        $xex $timer -f "$timer_args" $interp $script $args
+      else
+        $xex $interp $script $args
+      fi
+      ;;
+  esac
+done
