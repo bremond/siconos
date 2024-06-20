@@ -3,23 +3,43 @@
 #OAR -l /nodes=1/cpu=2/core=16,walltime=1:00:00
 ################################################################################
 set -e
-case $1 in -x) shift; set -x;; esac
-case $1 in
-  --env-ok)
-    shift;;
-  --fast)
-    shift
-    pwd=`pwd`
-    unset GUIX_PROFILE
-    . $pwd/.siconos-guix-profile/etc/profile
+mydir=`dirname $0`
+python_version=`python3 -c 'import sys; print(".".join(map(str, sys.version_info[:2])))'`
+time=`which time`
+timer=""
+timer_args=""
+venv=${VRUN_VENV:-venv}
+case $VRUN_SETX in 1) set -x;; esac
+while [ $# -gt 0 ]; do
+  case $1 in
+    --vview)
+      shift
+      args=$@
+      set --
+      . ${venv}/bin/activate
+      export LD_LIBRARY_PATH=`pwd`/${venv}/lib/python${python_version}/site-packages/nonos/:$LD_LIBRARY_PATH
+      exec python3 ./src/siconos/py/nonos/vview.py $args
+      ;;
 
-    export PYTHONPATH=$GUIX_PYTHONPATH
-    exec $0 --env-ok "$@"
-    ;;
-  *)
-    MYDIR=`dirname $0`
+    -x)
+      shift
+      set -x
+      export VRUN_SETX=1
+      ;;
 
-    cat>.siconos-disks-manifest.scm<<EOF
+    --fast)
+      shift
+      pwd=`pwd`
+      unset GUIX_PROFILE
+      . $pwd/.siconos-guix-profile/etc/profile
+
+      export PYTHONPATH=$GUIX_PYTHONPATH
+      exec $0 --env-ok "$@"
+      ;;
+
+    --guix)
+      shift
+      cat>.siconos-disks-manifest.scm<<EOF
 (specifications->manifest
  '( "siconos" "benchmark" "clang-toolchain" "valgrind"
     "suitesparse" "eigen" "boost" "fmt" "range-v3"
@@ -28,7 +48,7 @@ case $1 in
     "time" "parallel" "findutils"))
 EOF
 
-    cat>.siconos-vrun-channels.scm<<EOF
+      cat>.siconos-vrun-channels.scm<<EOF
 (list (channel
         (name 'guix)
         (url "https://git.savannah.gnu.org/git/guix.git")
@@ -45,43 +65,46 @@ EOF
        (url "https://gitlab.inria.fr/bremond/guix-hpc.git")
        (branch "add-siconosx")
        (commit
-        "9725ff524d5dbb0ea448fba2f3d3653352fe5cd5")))
+        "bcc3b8f1bb514e93e65ff241192ebd7888147ec0")))
 EOF
-    # guix environment setup
-    # export PATH=/var/guix/profiles/per-user/root/current-guix/bin:$PATH
-    # export GUIX_DAEMON_SOCKET=guix://luke.u-ga.fr
-    [ -f /applis/site/guix-start.sh ] && . /applis/site/guix-start.sh
-    pwd=`pwd`
-    rm -f $pwd/.siconos-guix-profile
-#    guix_isolation_args="--container -N --emulate-fhs --share=/tmp --share=$HOME"
-    guix_isolation_args="--pure --preserve=OMP*"
-    guix_cmd="guix time-machine -C ./.siconos-vrun-channels.scm --"
-    exec $guix_cmd shell $guix_isolation_args \
-         --root=.siconos-guix-profile \
-         -m .siconos-disks-manifest.scm -- $0 --env-ok "$@"
-    ;;
-esac
-set -e
-time=`which time`
-timer=""
-timer_args=""
-while [ $# -gt 0 ]; do
-  case $1 in
+      # guix environment setup
+      # export PATH=/var/guix/profiles/per-user/root/current-guix/bin:$PATH
+      # export GUIX_DAEMON_SOCKET=guix://luke.u-ga.fr
+      [ -f /applis/site/guix-start.sh ] && . /applis/site/guix-start.sh
+      pwd=`pwd`
+      rm -f $pwd/.siconos-guix-profile
+      #    guix_isolation_args="--container -N --emulate-fhs --share=/tmp --share=$HOME"
+      guix_isolation_args="--pure --preserve=OMP* --preserve=VRUN*"
+      guix_cmd="guix time-machine -C ./.siconos-vrun-channels.scm --"
+      exec $guix_cmd shell $guix_isolation_args \
+           --root=.siconos-guix-profile \
+           -m .siconos-disks-manifest.scm -- $0  "$@"
+      ;;
+
+    --venv-dir)
+      shift
+      venv=$1
+      export VRUN_VENV=$1
+      shift
+      ;;
+
     --time)
       shift
       timer="$time"
       timer_args="$1"
       shift
       ;;
+
     --help)
-      cat README.md
+      cat ${mydir}/README.md
       exit 0
       ;;
+
     --install)
+      set -x
       shift
-      rm -rf venv
-      python3 -m venv --system-site-packages venv
-      . venv/bin/activate
+      python3 -m venv --system-site-packages --clear ${venv}
+      . ${venv}/bin/activate
 
       [ -f /applis/environments/cuda_env.sh ] && . /applis/environments/cuda_env.sh 12.1
 
@@ -90,40 +113,36 @@ while [ $# -gt 0 ]; do
       # export PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/bin:$PATH
 
       pip install --upgrade pip
-      venv/bin/pip3 --version
-      venv/bin/pip3 install .
+      ${venv}/bin/pip3 --version
+      ${venv}/bin/pip3 install .
 
-      cd venv/lib/python3.10/site-packages/nonos
+      cd ${venv}/lib/python${python_version}/site-packages/nonos
       ln -sf ../../../../../src/siconos/py/nonos/__init__.py .
       ln -sf ../../../../../src/siconos/py/nonos/bridge.py .
       ln -sf ../../../../../src/siconos/py/nonos/mechanics_run.py .
       ln -sf ../../../../../src/siconos/py/nonos/mechanics_hdf5.py .
       cd -
       ;;
+
     --repl)
       shift
-      . venv/bin/activate
-      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.10/site-packages/nonos/:$LD_LIBRARY_PATH
+      . ${venv}/bin/activate
+      export LD_LIBRARY_PATH=`pwd`/${venv}/lib/python${python_version}/site-packages/nonos/:$LD_LIBRARY_PATH
       python3
       ;;
+
     --shell)
       shift
-      . venv/bin/activate
-      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.10/site-packages/nonos/:$LD_LIBRARY_PATH
+      . ${venv}/bin/activate
+      export LD_LIBRARY_PATH=`pwd`/${venv}/lib/python${python_version}/site-packages/nonos/:$LD_LIBRARY_PATH
       bash -i
       ;;
-    --vview)
-      shift
-      args=$@
-      set --
-      . venv/bin/activate
-      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.10/site-packages/nonos/:$LD_LIBRARY_PATH
-      exec python3 ./src/siconos/py/nonos/vview.py $args
-      ;;
+
     --vexport)
       shift
       siconos_vexport $@
       ;;
+
     --vexport-para)
       shift
       set -x
@@ -132,6 +151,7 @@ while [ $# -gt 0 ]; do
       chmod +x vrun-pprocess
       $time -f '%E %M' ./vrun-pprocess
       ;;
+
     --perf)
       shift
       script=$1
@@ -144,10 +164,11 @@ while [ $# -gt 0 ]; do
       if [[ $# -gt 0 && "$1" == "--" ]]; then
         shift
       fi
-      . venv/bin/activate
-      export LD_LIBRARY_PATH=`pwd`/venv/lib/python3.10/site-packages/nonos/:$LD_LIBRARY_PATH
+      . ${venv}/bin/activate
+      export LD_LIBRARY_PATH=`pwd`/${venv}/lib/python${python_version}/site-packages/nonos/:$LD_LIBRARY_PATH
       perf record -g --call-graph dwarf python3 $script $args
       ;;
+
     *)
       script=$1
       suffix="${script##*.}"
@@ -164,8 +185,8 @@ while [ $# -gt 0 ]; do
       else
         xex="exec"
       fi
-      . venv/bin/activate
-      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/venv/lib/python3.10/site-packages/nonos/
+      . ${venv}/bin/activate
+      export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/${venv}/lib/python${python_version}/site-packages/nonos/
       if [ ! -z "$timer" ]; then
         $xex $timer -f "$timer_args" $interp $script $args
       else
