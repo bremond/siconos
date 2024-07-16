@@ -44,6 +44,7 @@ while [ $# -gt 0 ]; do
  '( "siconos" "benchmark" "clang-toolchain" "valgrind"
     "suitesparse" "eigen" "boost" "fmt" "range-v3"
     "cmake" "ninja" "make" "bash" "coreutils" "which" "python" "python-pip" "python-numpy"
+    "python-scikit-build" "python-setuptools"
     "pybind11" "strace" "jupyter" "python-ipykernel" "procps" "gdb" "git" "emacs-next"
     "time" "parallel" "findutils"))
 EOF
@@ -101,7 +102,6 @@ EOF
       ;;
 
     --install)
-      set -x
       shift
       python3 -m venv --system-site-packages --clear ${venv}
       . ${venv}/bin/activate
@@ -112,9 +112,7 @@ EOF
       # export LD_LIBRARY_PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/lib:$LD_LIBRARY_PATH
       # export PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/bin:$PATH
 
-      pip install --upgrade pip
-      ${venv}/bin/pip3 --version
-      ${venv}/bin/pip3 install .
+      CC=clang CXX=clang++ pip install .
 
       cd ${venv}/lib/python${python_version}/site-packages/nonos
       ln -sf ../../../../../src/siconos/py/nonos/__init__.py .
