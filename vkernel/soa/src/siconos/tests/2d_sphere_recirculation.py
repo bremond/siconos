@@ -47,10 +47,10 @@ en = 0.5
 mu = 0.5
 angle = inclination* math.pi/180.
 n_row= 250
-T=3.0
+T=30.0
 
 test = False
-test_performance = True
+test_performance = False
 performance_verbose= True
 
 if (len(sys.argv) > 2):
@@ -89,9 +89,10 @@ if test:
     wall_x_position_number=700
     restart=False
 else:
-    n_col = 100
+    n_col = 10
+    n_row = 10
     N = n_row*n_col
-    hstep = 1e-4
+    hstep = 1e-2
     output_period = 0.01
     output_frequency=int(output_period/ hstep)
     output_sample_period = 0.5
@@ -502,7 +503,7 @@ class recirculation_start_run_iteration_hook():
                 x_loc =  self._initial_grains_locations[self._current_location_idx,0]
                 y_loc =  self._initial_grains_locations[self._current_location_idx,1] + y_shift
 
-                #print('reset initial position ds', n_ds, 'with position', positions[n_ds-1,1], positions[n_ds-1,2], 'at position', x_loc,y_loc)
+                print('reset initial position ds', n_ds, 'with position', positions[n_ds-1,1], positions[n_ds-1,2], 'at position', x_loc,y_loc)
                 ds.setQ0Ptr([x_loc,y_loc,0])
 
                 ds.setVelocity0Ptr([- self._initial_velocity,- self._initial_velocity,0])

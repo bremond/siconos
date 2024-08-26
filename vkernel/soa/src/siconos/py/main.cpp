@@ -16,6 +16,8 @@ PYBIND11_MODULE(_nonos, m)
   using disks_info_t = std::decay_t<decltype(ground::get<storage::info>(
       siconos::python::disks::idata_t{}))>;
 
+  using indice_t = typename disks_info_t::env::indice;
+
   using disks_properties_t = typename disks_info_t::all_properties_t;
 
   using disks_items_t = decltype(ground::transform(
@@ -68,7 +70,7 @@ PYBIND11_MODULE(_nonos, m)
     ground::fold_left(
         decltype(storage::attached_storages(
             item_t{}, handle_t{}.data())){},  // all attached storages
-        std::ref(pyhandle[1_c]),                // initial state
+        std::ref(pyhandle[1_c]),              // initial state
         []<match::attached_storage<item_t> S>(py::class_<handle_t> dc, S s) {
           constexpr auto astor_name = storage::attached_storage_name(s);
           using target_type = std::decay_t<decltype(out_formatter(
@@ -104,12 +106,28 @@ PYBIND11_MODULE(_nonos, m)
               .def(
                   fmt::format("{}", pattern::attribute_name(a)).c_str(),
                   [](handle_t& h) -> attr_value_t {
-                    return out_formatter(h, storage::get<A>(h.data(), h));
+                    return out_formatter(h,
+                                         storage::get<A>(h.data(), h));
                   },
                   py::return_value_policy::reference)
+              .def(
+                  fmt::format("{}_at_step", pattern::attribute_name(a))
+                      .c_str(),
+                  [](handle_t& h, indice_t step) -> attr_value_t {
+                    return out_formatter(h,
+                                         storage::get<A>(h.data(), step, h));
+                  },
+                  py::return_value_policy::reference)
+
               .def(fmt::format("set_{}", pattern::attribute_name(a)).c_str(),
                    [](handle_t& h, attr_value_t v) {
                      in_formatter(h, storage::get<A>(h.data(), h)) =
+                         in_formatter(h, v);
+                   })
+              .def(fmt::format("set_{}_at_step", pattern::attribute_name(a))
+                       .c_str(),
+                   [](handle_t& h, attr_value_t v, indice_t step) {
+                     in_formatter(h, storage::get<A>(h.data(), step, h)) =
                          in_formatter(h, v);
                    });
         });

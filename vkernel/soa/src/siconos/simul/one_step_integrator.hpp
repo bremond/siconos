@@ -12,50 +12,26 @@ namespace siconos::simul {
 
 template <typename DynamicalSystem, typename Interaction>
 struct one_step_integrator {
-  using interaction = Interaction;
-  using nonsmooth_law = typename interaction::nslaw;
-  using system = DynamicalSystem;
-  using dof = typename interaction::dof;
-  using nslaw_size = typename interaction::nslaw_size;
-  using nslaw = typename interaction::nslaw;
-  using y = attr_t<interaction, "y">;
-  using ydot = attr_t<interaction, "ydot">;
-  using lambda = attr_t<interaction, "lambda">;
-  using relation = attr_t<interaction, "relation">;
-  using h_matrix1 = attr_t<interaction, "h_matrix1">;
-  using h_matrix2 = attr_t<interaction, "h_matrix2">;
+  using interaction_i = Interaction;
+  using nonsmooth_law = typename interaction_i::nslaw;
+  using system_i = DynamicalSystem;
+  using dof = typename interaction_i::dof;
+  using nslaw_size = typename interaction_i::nslaw_size;
+  using nslaw = typename interaction_i::nslaw;
+  using y = attr_t<interaction_i, "y">;
+  using ydot = attr_t<interaction_i, "ydot">;
+  using lambda = attr_t<interaction_i, "lambda">;
+  using relation = attr_t<interaction_i, "relation">;
+  using h_matrix1 = attr_t<interaction_i, "h_matrix1">;
+  using h_matrix2 = attr_t<interaction_i, "h_matrix2">;
 
-  using q = attr_t<system, "q">;
-  using velocity = attr_t<system, "velocity">;
-  using fext = attr_t<system, "fext">;
-
-  struct euler : item<> {
-    using properties = gather<storage::keep<attr_t<system, "q">, 2>,
-                              storage::keep<attr_t<system, "velocity">, 2>>;
-
-    using attributes = gather<>;
-
-    template <typename Handle>
-    struct interface : default_interface<Handle> {
-      using default_interface<Handle>::self;
-      void compute_free_state(auto step, auto h){
-          // auto& data = self()->data();
-          // auto& velocities = storage::get_memory<velocity>(data);
-          // auto& mass_matrices = storage::get_memory<mass_matrix>(data);
-          // auto& external_forces = storage::get_memory<fext>(data);
-
-          // auto& Ms =      storage::memory(step, mass_matrices);
-          // auto& vs =      storage::memory(step, velocities);
-          // auto& vs_next = storage::memory(step+1, velocities);
-          // auto& fs =      storage::memory(step, external_forces);
-
-      };
-    };
-  };
+  using q = attr_t<system_i, "q">;
+  using velocity = attr_t<system_i, "velocity">;
+  using fext = attr_t<system_i, "fext">;
 
   struct moreau_jean : item<> {
-    using system = system;
-    using interaction = interaction;
+    using system = DynamicalSystem;
+    using interaction = Interaction;
 
     using attributes = types::attributes<
         attribute<"theta", some::scalar>, attribute<"gamma", some::scalar>,

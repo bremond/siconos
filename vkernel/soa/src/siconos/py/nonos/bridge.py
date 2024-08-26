@@ -151,7 +151,7 @@ class Osi(Stored):
 
 class Topology(Stored):
 
-    def __init_(self):
+    def __init__(self):
         self._handle = vkernel.disks.add_topology(self.data())
 
     def indexSetsSize(self):
@@ -163,12 +163,19 @@ class NonSmoothDynamicalSystem(Stored):
         self._t0 = t0
         self._T = T
         self._topology = Topology()
+        self._mapid = {}
 
     def topology(self):
         return self._topology
 
     def insertDynamicalSystem(self, body):
-        pass # compatibility
+        self._mapid[int(body.number())] = body
+#        self.topology().handle().set_dynamical_system_id(body.handle(), body.number())
+
+    def dynamicalSystem(self, ds_id):
+        return self._mapid[ds_id]
+
+
 
 class TimeDiscretisation(Stored):
 
@@ -280,6 +287,27 @@ class Body(Stored):
 
     def setNumber(self, num):
         self.handle().set_id(num)
+
+    def number(self):
+        return self.handle().id()
+
+    def setQ0Ptr(self, pos):
+
+        # FIX: next step not necessary 1
+        self.handle().set_q_at_step(array(pos), 0)
+        self.handle().set_q_at_step(array(pos), 1)
+
+    def setVelocity0Ptr(self, vel):
+
+        # FIX: next step not necessary 1
+        self.handle().set_velocity_at_step(array(vel), 0)
+        self.handle().set_velocity_at_step(array(vel), 1)
+
+    def resetToInitialState(self):
+        pass # compatibility
+
+    def swapInMemory(self):
+        pass # compatibility
 
 class OSNSPB(Stored):
     def __init__(self, dim, solvopts):

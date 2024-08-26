@@ -6,14 +6,13 @@ namespace siconos::model {
 
 struct lagrangian_ds
     : item<description<"A lagrangian dynamical system [...]">> {
-
   using dof = some::indice_parameter<"dof">;
 
-  using attributes =
-      types::attributes < attribute<"q", some::vector<some::scalar, dof>>,
-        attribute<"velocity", some::vector<some::scalar, dof>>,
-        attribute<"mass_matrix", some::matrix<some::scalar, dof, dof>>,
-        attribute<"fext", some::vector<some::scalar, dof>>>;
+  using attributes = types::attributes<
+      attribute<"q", some::vector<some::scalar, dof>>,
+      attribute<"velocity", some::vector<some::scalar, dof>>,
+      attribute<"mass_matrix", some::matrix<some::scalar, dof, dof>>,
+      attribute<"fext", some::vector<some::scalar, dof>>>;
 
   template <typename Handle>
   struct interface : default_interface<Handle> {

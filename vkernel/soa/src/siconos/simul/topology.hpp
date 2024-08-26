@@ -16,7 +16,9 @@ struct topology : item<> {
   using nslaw = typename interaction::nslaw;
   using nslaw_size = some::indice_value<nslaw::size>;
 
-  using attributes = gather<>;
+  using attributes = gather<
+      attribute<"system_id",
+                some::map<some::indice, some::item_ref<dynamical_system>>>>;
 
   using properties = gather<
       storage::attached<dynamical_system, symbol<"involved">, some::boolean>,
@@ -109,6 +111,31 @@ struct topology : item<> {
 
       return inter;
     };
+
+    void set_dynamical_system_id(auto hds, auto id)
+    {
+      attr<"system_id">(*self())[id] = hds.index_cast();
+    }
+
+    decltype(auto) dynamical_system(auto id)
+    {
+      return storage::handle(self()->data(), attr<"system_id">(*self())[id]);
+    }
+
+    auto methods()
+    {
+      using data_t = std::decay_t<decltype(self()->data())>;
+      using env_t = decltype(self()->env());
+      using indice = typename env_t::indice;
+      using ds_t = DynamicalSystem;
+      using hds_t = storage::handle<ds_t, indice, data_t>;
+
+      return collect(
+          method("set_dynamical_system_id",
+                 &interface<Handle>::set_dynamical_system_id<hds_t, indice>),
+          method("dynamical_system",
+                 &interface<Handle>::dynamical_system<indice>));
+    }
   };
 };
 }  // namespace siconos::simul
