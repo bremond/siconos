@@ -9,6 +9,8 @@ from siconos.mechanics.collision.bullet import SiconosBulletOptions
 from nonos.mechanics_run import MechanicsHdf5Runner
 import nonos
 
+from math import pi
+
 backend = str(sys.argv[1])
 
 nonos.mechanics_run.set_backend(backend)
@@ -20,16 +22,16 @@ with MechanicsHdf5Runner() as io:
     io.add_primitive_shape('DiskR', 'Disk', [disk_radius])
 
 
-    io.add_primitive_shape('Ground-1',
-                           'Segment', (-10, 0,
-                                       10, 3))
+#    io.add_primitive_shape('Ground-1',
+#                           'Segment', (-10, 0,
+#                                       10, 0.))
 
-#    io.add_primitive_shape('Ground-2',
-#                           'Box2d', (20, 1), insideMargin=0., outsideMargin=0.)
+    io.add_primitive_shape('Ground-2',
+                           'Box2d', (20, 1), insideMargin=0., outsideMargin=0.)
 
-    io.add_object('ground-1', [Contactor('Ground-1')], translation=[0,0])
+#    io.add_object('ground-1', [Contactor('Ground-1')], translation=[0,0], orientation=[pi/4])
 
-#    io.add_object('ground-2', [Contactor('Ground-2')], translation=[0,0])
+    io.add_object('ground-2', [Contactor('Ground-2')], translation=[0,0], orientation=[pi/4])
 
     io.add_object('disk-1', [Contactor('DiskR')],
                   translation=[0, 10],

@@ -1102,10 +1102,23 @@ class MechanicsHdf5Runner(mechanics_hdf5.MechanicsHdf5):
 
                 bdy = self._interman.insertLine(a, b, c)
             elif self._shape.attributes(ctor.shape_name)['primitive'] == 'Segment':
-                x1 = self._shape._io.shapes()[ctor.shape_name][:][0][0]
-                y1 = self._shape._io.shapes()[ctor.shape_name][:][0][1]
-                x2 = self._shape._io.shapes()[ctor.shape_name][:][0][2]
-                y2 = self._shape._io.shapes()[ctor.shape_name][:][0][3]
+                x10 = self._shape._io.shapes()[ctor.shape_name][:][0][0]
+                y10 = self._shape._io.shapes()[ctor.shape_name][:][0][1]
+                x20 = self._shape._io.shapes()[ctor.shape_name][:][0][2]
+                y20 = self._shape._io.shapes()[ctor.shape_name][:][0][3]
+
+                alpha = orientation[0] # 2D
+
+                x1a, y1a = rotate_point(x10, y10, alpha)
+                x2a, y2a = rotate_point(x20, y20, alpha)
+
+                tx = translation[0]
+                ty = translation[1]
+
+                x1 = x1a + tx
+                y1 = y1a + ty
+                x2 = x2a + tx
+                y2 = y2a + ty
 
                 bdy = self._interman.insertSegment(x1, y1, x2, y2)
             elif self._shape.attributes(ctor.shape_name)['primitive'] == 'Box2d':
@@ -1113,26 +1126,38 @@ class MechanicsHdf5Runner(mechanics_hdf5.MechanicsHdf5):
                 size = self._shape._io.shapes()[ctor.shape_name][:][0][1]
 
                 # insert 4 segments
-                ya0 = -thickness/2
-                yb0 = thickness/2
-                xa0 = -size/2
-                xb0 = size/2
+                xa0 = -thickness/2
+                xb0 = thickness/2
+                ya0 = -size/2
+                yb0 = size/2
 
                 alpha = orientation[0] # 2D
-                xa, ya = rotate_point(xa0, ya0, alpha)
-                xb, yb = rotate_point(xb0, yb0, alpha)
+
+                x1a = xa0
+                y1a = ya0
+                x2a = xa0
+                y2a = yb0
+                x3a = xb0
+                y3a = yb0
+                x4a = xb0
+                y4a = yb0
+
+                x1r, y1r = rotate_point(x1a, y1a, alpha)
+                x2r, y2r = rotate_point(x2a, y2a, alpha)
+                x3r, y3r = rotate_point(x3a, y3a, alpha)
+                x4r, y4r = rotate_point(x4a, y4a, alpha)
 
                 tx = translation[0]
                 ty = translation[1]
 
-                x1 = xa + tx
-                y1 = ya + ty
-                x2 = xa + tx
-                y2 = yb + ty
-                x3 = xb + tx
-                y3 = yb + ty
-                x4 = xb + tx
-                y4 = ya + ty
+                x1 = x1r + tx
+                y1 = y1r + ty
+                x2 = x2r + tx
+                y2 = y2r + ty
+                x3 = x3r + tx
+                y3 = y3r + ty
+                x4 = x4r + tx
+                y4 = y4r + ty
 
                 s1 = self._interman.insertSegment(x1, y1, x2, y2)
                 s2 = self._interman.insertSegment(x2, y2, x3, y3)
