@@ -42,12 +42,12 @@ bullet_options.minimumPointsPerturbationThreshold = 0.
 inclination = 30      #30°
 #inclination = math.pi*8/45  #32°
 
-#default 
+#default
 en = 0.5
 mu = 0.5
 angle = inclination* math.pi/180.
 n_row= 250
-T=30.0
+T=10.0
 
 test = False
 test_performance = False
@@ -71,7 +71,7 @@ if float(mu) < 0.1 or float(mu) > 2.0:
     sys.exit(1)
 
 
-distribution = ('uniform', 0.15) 
+distribution = ('uniform', 0.15)
 
 
 if test:
@@ -89,15 +89,15 @@ if test:
     wall_x_position_number=700
     restart=False
 else:
-    n_col = 10
-    n_row = 10
+    n_col = 3
+    n_row = 3
     N = n_row*n_col
     hstep = 1e-2
     output_period = 0.01
     output_frequency=int(output_period/ hstep)
     output_sample_period = 0.5
     output_sample_number = 100
-    
+
     with_wall=True
     wall_x_position_number=700
     restart=False
@@ -126,7 +126,7 @@ if with_wall:
     fn = '2d_sphere_flow_wall_{0}_N-{1}-e-{2}-mu-{3}-angle-{4:2.2g}.hdf5'.format(wall_x_position_number,N, en, mu, inclination)
 else:
     fn = '2d_sphere_flow_N-{0}-e-{1}-mu-{2}-angle-{3:2.2g}.hdf5'.format(N, en, mu, inclination)
-    
+
 # mechanical parameters.
 
 density = 2450.0
@@ -210,8 +210,8 @@ if with_wall:
     else:
         wall_size_ratio_value = 15
         print('Warning: wall size ration is set to', wall_size_ratio_value)
-        
-    wall_size = wall_size_ratio_value*grain_size    
+
+    wall_size = wall_size_ratio_value*grain_size
     wall_thickness = 10 * grain_size
 
     wall_x_position = wall_x_position_number*grain_size + tank_front_x_position +tank_thickness/2.0
@@ -270,13 +270,13 @@ def grains_locations(n_row=5, n_col=5, shift_ratio=3.0,
 
     return grains_locations
 
-    
+
 def progressbar(it, prefix="", size=60, file=sys.stdout):
     count = len(it)
     def show(j):
         x = int(size*j/count)
         file.write("%s[%s%s] %i/%i\r" % (prefix, "#"*x, "."*(size-x), j, count))
-        file.flush()        
+        file.flush()
     show(0)
     for i, item in enumerate(it):
         yield item
@@ -411,7 +411,7 @@ else:
     import shutil
     shutil.copy2(fn, 'restart_from_'+ fn )
 
-    
+
 # Run the simulation from the inputs previously defined and add
 # results to the hdf5 file. The visualisation of the output may be done
 # with the vview command.
@@ -429,7 +429,7 @@ class output_end_run_iteration_hook():
         self._output_sample_number = output_sample_number
         self._output_sample_period = output_sample_period
         self._output_sample_step_period = int(self._output_sample_period / hstep)
-        
+
         print('output every',  output_sample_period,' (s) that is every ', self._output_sample_step_period, 'steps with ', self._output_sample_number  , 'samples' )
         pass
 
@@ -482,11 +482,13 @@ class recirculation_start_run_iteration_hook():
             # We search for the ds index that are below a given criteria
 #            ds_idx = numpy.nonzero(y < y_max_ground_line)[0]
             x = positions[:,1]
-            ds_idx  = numpy.nonzero(x > ground_size )[0]
+            ds_idx  = numpy.nonzero(x > ground_size / 20 )[0]
             # when we start to recirculate grains, we compute the actual height
             # of the pile in the tank
             if len(ds_idx) > 0 :
                 self._y_max_actual_recirculation = numpy.max(positions[:,2])
+                print("positions:")
+                print(positions)
                 #print('self._y_max_actual_recirculation', self._y_max_actual_recirculation)
 
             y_shift = - self._initial_grains_locations_min + self._y_max_actual_recirculation + grain_size
@@ -494,11 +496,18 @@ class recirculation_start_run_iteration_hook():
 
             nsds = self._io._nsds
 
+            print('ds_idx = {}'.format(ds_idx))
             for i in ds_idx :
 
+                print('i={}, type(i)={}'.format(i, type(i)))
                 n_ds = int(positions[i,0])
+
+                print('n_ds={}'.format(n_ds))
+
                 ds = nsds.dynamicalSystem(n_ds)
 
+                print('ds.number()={}, n_ds={}'.format(ds.number(), n_ds))
+                assert (ds.number() == n_ds)
                 # we reset the grain location on the shifted initial grid
                 x_loc =  self._initial_grains_locations[self._current_location_idx,0]
                 y_loc =  self._initial_grains_locations[self._current_location_idx,1] + y_shift
@@ -506,7 +515,8 @@ class recirculation_start_run_iteration_hook():
                 print('reset initial position ds', n_ds, 'with position', positions[n_ds-1,1], positions[n_ds-1,2], 'at position', x_loc,y_loc)
                 ds.setQ0Ptr([x_loc,y_loc,0])
 
-                ds.setVelocity0Ptr([- self._initial_velocity,- self._initial_velocity,0])
+                ds.setVelocity0Ptr([0., 0., 0.])
+#                ds.setVelocity0Ptr([- self._initial_velocity,- self._initial_velocity,0])
                 ds.resetToInitialState()
                 ds.swapInMemory()
 
@@ -519,11 +529,11 @@ class recirculation_start_run_iteration_hook():
                 print('Warning: too many bodies are recirculated')
         pass
 
-    
+
     def call(self, step):
         #print('step', step)
         #print('step_period', self._step_period)
-                
+
         if step % self._step_period == 0:
             print('start_run_iteration_hook: recirculation at step :', step)
             self.recirculation(step)

@@ -170,10 +170,9 @@ class NonSmoothDynamicalSystem(Stored):
 
     def insertDynamicalSystem(self, body):
         self._mapid[int(body.number())] = body
-#        self.topology().handle().set_dynamical_system_id(body.handle(), body.number())
 
     def dynamicalSystem(self, ds_id):
-        return self._mapid[ds_id]
+        return self._mapid[int(ds_id)]
 
 
 

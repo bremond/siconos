@@ -1195,14 +1195,14 @@ class MechanicsHdf5Runner(mechanics_hdf5.MechanicsHdf5):
             body = body_class(radius, mass,
                               list(translation)+list(orientation), velocity)
 
+            if number is not None:
+                body.setNumber(int(number))
+
             self._set_external_forces(body)
             self._nsds.insertDynamicalSystem(body)
             if birth and self._verbose:
                 self.print_verbose('birth of body named {0}, translation {1}, orientation {2}'.format(name, translation, orientation))
             flag = 'dynamic'
-
-            if number is not None:
-                body.setNumber(int(number))
 
         return body, flag
 
