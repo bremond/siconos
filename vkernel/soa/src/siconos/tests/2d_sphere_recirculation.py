@@ -474,6 +474,8 @@ class recirculation_start_run_iteration_hook():
 
 
     def recirculation(self,step):
+
+        current_step = self._io._simulation.handle().current_step()
         positions  = self._io._io.positions(self._io._nsds)
 
         if positions is not None:
@@ -515,8 +517,8 @@ class recirculation_start_run_iteration_hook():
                 print('reset initial position ds', n_ds, 'with position', positions[n_ds-1,1], positions[n_ds-1,2], 'at position', x_loc,y_loc)
                 ds.setQ0Ptr([x_loc,y_loc,0])
 
-                ds.setVelocity0Ptr([0., 0., 0.])
-#                ds.setVelocity0Ptr([- self._initial_velocity,- self._initial_velocity,0])
+                ds.setVelocity0Ptr([0.0, 0.01, 0.], current_step)
+#                ds.setVelocity0Ptr([- self._initial_velocity,- self._initial_velocity,0], current_step+1)
                 ds.resetToInitialState()
                 ds.swapInMemory()
 

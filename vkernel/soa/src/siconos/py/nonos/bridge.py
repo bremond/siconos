@@ -290,17 +290,17 @@ class Body(Stored):
     def number(self):
         return self.handle().id()
 
-    def setQ0Ptr(self, pos):
+    def setQ0Ptr(self, pos, step=0):
 
         # FIX: next step not necessary 1
         self.handle().set_q_at_step(array(pos), 0)
         self.handle().set_q_at_step(array(pos), 1)
 
-    def setVelocity0Ptr(self, vel):
+    def setVelocity0Ptr(self, vel, step=0):
 
         # FIX: next step not necessary 1
-        self.handle().set_velocity_at_step(array(vel), 0)
-        self.handle().set_velocity_at_step(array(vel), 1)
+        self.handle().set_velocity_at_step(array(vel), step)
+        self.handle().set_velocity_at_step(array([0., 0., 0.]), step+1)
 
     def resetToInitialState(self):
         pass # compatibility
