@@ -4,6 +4,7 @@
 #define BOOST_HANA_CONFIG_ENABLE_STRING_UDL 1
 #include <algorithm>
 #include <boost/hana.hpp>
+#include <boost/hana/at.hpp>
 #include <boost/hana/equal.hpp>
 #ifdef __clang__
 #include <boost/hana/experimental/type_name.hpp>
@@ -75,6 +76,7 @@ template <typename T>
 using inner_type = typename std::remove_reference<T>::type;
 
 using hana::append;
+using hana::at;
 using hana::equal;
 using hana::eval;
 using hana::flatten;
@@ -83,9 +85,11 @@ using hana::integral_constant;
 using hana::is_valid;
 using hana::make_lazy;
 using hana::pair;
+using hana::prepend;
 using hana::set;
 using hana::size;
 using hana::size_c;
+using hana::to_map;
 using hana::to_set;
 using hana::tuple;
 using hana::unique;
@@ -130,11 +134,9 @@ static auto fold_left = []<typename Array, typename State, typename Fun>(
   else {
     // cf
     // https://stackoverflow.com/questions/38304847/constexpr-if-and-static-assert
-    []<bool flag = false>()
-    {
+    []<bool flag = false>() {
       static_assert(flag, "cannot fold_left with these parameters");
-    }
-    ();
+    }();
   }
 };
 
@@ -161,7 +163,6 @@ static auto reverse = hana::reverse;
 static auto scan_left = hana::scan_left;
 
 using hana::drop_front;
-static auto prepend = hana::prepend;
 static auto concat = hana::concat;
 
 template <typename... Args>
@@ -197,6 +198,9 @@ static auto make_key_value =
 };
 
 using hana::make_pair;
+
+template <typename... Pairs>
+using pre_map = hana::tuple<Pairs...>;
 
 template <typename... Pairs>
 using map = hana::map<Pairs...>;
@@ -270,17 +274,23 @@ static auto map_value_transform =
                            hana::first, hana::second)))));
 };
 
+static auto pre_map_value_transform =
+    []<typename M, typename F>(M &&m, F &&f) constexpr -> decltype(auto) {
+  return transform(std::forward<M>(m),
+                   dup(hana::lockstep(hana::make_pair)(
+                       hana::first, dup(hana::lockstep(std::forward<F>(f))(
+                                        hana::first, hana::second)))));
+};
+
 // compile-time itransform
 static constexpr const auto itransform_ct(const auto &a, auto &&f)
 {
   using array_type = std::decay_t<decltype(a)>;
   using size_type = typename array_type::size_type;
   array_type ta;  // 'a' passed as const ref is not a constant expression
-  return [&f, &a ]<size_type... I>(std::index_sequence<I...>)
-  {
+  return [&f, &a]<size_type... I>(std::index_sequence<I...>) {
     return (array_type{f(I, a[I])...});
-  }
-  (std::make_integer_sequence<size_type, std::size(ta)>{});
+  }(std::make_integer_sequence<size_type, std::size(ta)>{});
 }
 
 static constexpr const auto itransform(const auto &array, auto &&func)
@@ -303,11 +313,9 @@ static constexpr const auto itransform(const auto &array, auto &&func)
   else {
     // cf
     // https://stackoverflow.com/questions/38304847/constexpr-if-and-static-assert
-    []<bool flag = false>()
-    {
+    []<bool flag = false>() {
       static_assert(flag, "cannot transform with these parameters");
-    }
-    ();
+    }();
   }
 }
 template <typename Base>
@@ -336,33 +344,25 @@ template <auto F, typename... Ts>
 static constexpr auto is_a_model =
     compose(trait<on_concept<F, Ts...>::template is_a_model>, typeid_);
 
-static constexpr auto is_integral = is_a_model < []<typename T>() consteval
-{
+static constexpr auto is_integral = is_a_model<[]<typename T>() consteval {
   return std::is_integral<T>::value;
-}
-> ;
+}>;
 
 template <typename B>
-static constexpr auto derive_from = is_a_model < []<typename T>() consteval
-{
+static constexpr auto derive_from = is_a_model<[]<typename T>() consteval {
   return std::derived_from<T, B>;
-}
-> ;
+}>;
 
 template <typename B>
-static constexpr auto is_parent = is_a_model < []<typename T>() consteval
-{
+static constexpr auto is_parent = is_a_model<[]<typename T>() consteval {
   return std::derived_from<B, T>;
-}
-> ;
+}>;
 
 template <typename B>
 static constexpr auto is_inside_type_parent =
-    is_a_model < []<typename T>() consteval
-{
-  return std::derived_from<B, typename T::type>;
-}
-> ;
+    is_a_model<[]<typename T>() consteval {
+      return std::derived_from<B, typename T::type>;
+    }>;
 
 template <typename D>
 static constexpr auto dump_keys(D, auto &&fun)
@@ -391,13 +391,11 @@ template <auto NumOfCases, typename ReturnType, typename F>
 inline constexpr ReturnType call_with_index(auto index, ReturnType &&def_val,
                                             F &&f)
 {
-  constexpr auto fun_tab = []<std::size_t... I>(std::index_sequence<I...>)
-  {
+  constexpr auto fun_tab = []<std::size_t... I>(std::index_sequence<I...>) {
     return std::array{
         siconos::storage::ground::call_with_integral_constant_if_valid<
             I, ReturnType, F>...};
-  }
-  (std::make_index_sequence<NumOfCases>{});
+  }(std::make_index_sequence<NumOfCases>{});
 
   return fun_tab[index](static_cast<ReturnType &&>(def_val),
                         static_cast<F &&>(f));

@@ -276,8 +276,19 @@ static constexpr auto apply_wrapper(Storage storage)
 };
 
 template <match::property K>
-static auto all_properties_as = [](auto& data) constexpr -> auto
-{
+static auto pre_map_all_properties_as =
+    []<typename D>(D& data) constexpr -> auto {
+  //  using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+  using info_t = std::decay_t<decltype(ground::second(
+      ground::at(data, ground::size_c<0>)))>;
+  using all_properties_t = typename info_t::all_properties_t;
+
+  return ground::filter(all_properties_t{}, ground::derive_from<K>);
+};
+
+template <match::property K>
+static auto all_properties_as = []<typename D>(D& data) constexpr -> auto {
+  //  using info_t = std::decay_t<decltype(ground::get<info>(data))>;
   using info_t = std::decay_t<decltype(ground::get<info>(data))>;
   using all_properties_t = typename info_t::all_properties_t;
 
@@ -285,8 +296,7 @@ static auto all_properties_as = [](auto& data) constexpr -> auto
 };
 
 template <match::attribute Attr>
-static auto attribute_properties = [](auto& data) constexpr -> auto
-{
+static auto attribute_properties = [](auto& data) constexpr -> auto {
   using info_t = std::decay_t<decltype(ground::get<info>(data))>;
   using all_properties_t = typename info_t::all_properties_t;
 
@@ -362,9 +372,9 @@ using has_property_t = std::decay_t<decltype(has_property<A, K>(D{}))>;
 static auto refine_attribute = []<match::attribute Attr, typename D>(
                                    const D& data,
                                    Attr) constexpr -> decltype(auto) {
-  using refines =
-      decltype(ground::filter(all_properties_as<property::refine>(data),
-                              ground::is_inside_type_parent<Attr>));
+  using refines = decltype(ground::filter(
+      pre_map_all_properties_as<property::refine>(data),
+      ground::is_inside_type_parent<Attr>));
 
   if constexpr (ground::size(refines{}) > ground::size_c<0_c>) {
     return typename nth_t<0, refines>::template refine<Attr>{};
@@ -417,14 +427,14 @@ template <typename Env, match::attribute... Attributes>
 struct unit_storage {
   using env = Env;
 
-  using type = ground::map<ground::key_value<
+  using type = ground::pre_map<ground::key_value<
       Attributes,
       typename traits::config<env>::template convert<Attributes>::type>...>;
 };
 
 template <typename Info, typename M>
 using with_info_t =
-    decltype(ground::insert(M{}, ground::key_value<info, Info>{}));
+    decltype(ground::prepend(M{}, ground::key_value<info, Info>{}));
 
 template <typename Env, match::item... Items>
 struct item_storage {
@@ -469,8 +479,9 @@ struct item_storage {
   using type = with_info_t<iinfo, map_t>;
 };
 
-template<typename Item>
-constexpr decltype(auto) attached_storages(Item, auto& data) {
+template <typename Item>
+constexpr decltype(auto) attached_storages(Item, auto& data)
+{
   using info_t = std::decay_t<decltype(ground::get<info>(data))>;
   using item_t = Item;
 
@@ -481,16 +492,16 @@ constexpr decltype(auto) attached_storages(Item, auto& data) {
 };
 
 template <typename Item>
-constexpr decltype(auto) all_storages(Item, auto&data) {
+constexpr decltype(auto) all_storages(Item, auto& data)
+{
   using item_t = Item;
   return ground::tuple_unique(
-    concat(attributes(item_t{}), attached_storages(item_t{}, data)));
+      concat(attributes(item_t{}), attached_storages(item_t{}, data)));
 }
-
 
 template <typename Handle, typename Data>
 using attached_storages_t =
-  std::decay_t<decltype(attached_storages(Handle{}.item_type(), Data{}))>;
+    std::decay_t<decltype(attached_storages(Handle{}.item_type(), Data{}))>;
 
 template <typename T>
 auto make_full_handle(auto& data, const auto& indx)
@@ -576,11 +587,12 @@ static auto get = ground::overload(
     // }
 );
 
+template <typename Info>
 static constexpr auto item_storage_transform =
     []<typename D>(D&& d, auto&& f) constexpr -> decltype(auto) {
-  using info_t = std::decay_t<decltype(ground::get<info>(d))>;
+  using info_t = Info;
 
-  return ground::map_transform(d, [&f]<typename P>(P&& key_value) {
+  return ground::transform(d, [&f]<typename P>(P&& key_value) {
     auto&& key = ground::first(key_value);
     auto&& value = ground::second(key_value);
     using key_t = std::decay_t<decltype(key)>;
@@ -599,7 +611,7 @@ static constexpr auto item_storage_transform =
 
 static constexpr auto attribute_storage_transform =
     []<typename D, typename F>(D&& d, F&& f) constexpr -> decltype(auto) {
-  return ground::map_value_transform(
+  return ground::pre_map_value_transform(
       std::forward<D>(d), [&f]<typename K, typename S>(K, S&& s) {
         if constexpr (match::attribute<typename K::type>) {
           return std::forward<F>(f)(typename K::type{}, std::forward<S>(s));
@@ -612,10 +624,11 @@ static constexpr auto attribute_storage_transform =
 
 template <typename Env, match::item... Items>
 static auto make = []() constexpr -> decltype(auto) {
-  auto base_storage = typename item_storage<Env, Items...>::type{};
-  using info_t = std::decay_t<decltype(ground::get<info>(base_storage))>;
-  return attribute_storage_transform(
-      item_storage_transform(
+  using item_storage_t = item_storage<Env, Items...>;
+  using info_t = typename item_storage_t::iinfo;
+  auto base_storage = typename item_storage_t::type{};
+  return ground::to_map(attribute_storage_transform(
+      item_storage_transform<info_t>(
           attribute_storage_transform(
               base_storage,
               // attribute level for base storage specifications
@@ -641,7 +654,7 @@ static auto make = []() constexpr -> decltype(auto) {
             else {
               // look for wrap specified in properties
               using all_wrappers_t =
-                  decltype(all_properties_as<property::wrapped>(
+                  decltype(pre_map_all_properties_as<property::wrapped>(
                       base_storage));
 
               using storage_wrapped =
@@ -667,9 +680,9 @@ static auto make = []() constexpr -> decltype(auto) {
         using storage_t = std::decay_t<decltype(s)>;
 
         using all_keeps_t =
-            decltype(all_properties_as<property::keep>(base_storage));
+            decltype(pre_map_all_properties_as<property::keep>(base_storage));
         return memory_t<storage_t, memory_size<Attribute, all_keeps_t>()>{};
-      });
+      }));
 };
 
 static auto remove = [](auto& data, auto& h) {
@@ -680,7 +693,7 @@ static auto remove = [](auto& data, auto& h) {
   using indice = typename info_t::env::indice;
 
   auto attrs = ground::tuple_unique(
-    concat(attributes(item_t{}), attached_storages(h.item_type(), data)));
+      concat(attributes(item_t{}), attached_storages(h.item_type(), data)));
 
   if constexpr (ground::size(attrs) > ground::size_c<0>) {
     ground::for_each(attrs, [&data, &h]<match::attribute A>(A) {
@@ -693,8 +706,8 @@ static auto remove = [](auto& data, auto& h) {
   }
 };
 
-static auto apply_fun = []<typename Item, typename SomeFun>(auto& data, Item,
-                                                       SomeFun&& some_fun) {
+static auto apply_fun = []<typename Item, typename SomeFun>(
+                            auto& data, Item, SomeFun&& some_fun) {
   using item_t = Item;
   using info_t = std::decay_t<decltype(ground::get<info>(data))>;
   using all_keeps_t = decltype(all_properties_as<property::keep>(data));
@@ -702,16 +715,15 @@ static auto apply_fun = []<typename Item, typename SomeFun>(auto& data, Item,
   using indice = typename info_t::env::indice;
 
   auto attrs = ground::tuple_unique(
-    concat(attributes(item_t{}), attached_storages(item_t{}, data)));
+      concat(attributes(item_t{}), attached_storages(item_t{}, data)));
 
   if constexpr (ground::size(attrs) > ground::size_c<0>) {
-    ground::for_each(attrs, [&data,&some_fun]<match::attribute A>(A) {
-      return ground::for_each(
-          ground::range<memory_size<A, all_keeps_t>()>,
-          [&data,&some_fun](indice step) {
-            static_cast<SomeFun&&>(some_fun)(
-                memory(step, ground::get<A>(data)));
-          });
+    ground::for_each(attrs, [&data, &some_fun]<match::attribute A>(A) {
+      return ground::for_each(ground::range<memory_size<A, all_keeps_t>()>,
+                              [&data, &some_fun](indice step) {
+                                static_cast<SomeFun&&>(some_fun)(
+                                    memory(step, ground::get<A>(data)));
+                              });
     });
   }
 };
@@ -781,16 +793,15 @@ struct access {
          match::handle<decltype(item_attribute<U>(
              typename std::decay_t<decltype(ground::get<info>(
                  Data{}))>::all_items_t{}))>
-             Handle>(Handle h, Data& data)
-          ->decltype(auto) { return siconos::storage::get<U>(h, data); },
-      []<typename U = T, typename FullHandle>(FullHandle h)->decltype(auto) {
-        return siconos::storage::get<U>(h.data(), h);
+             Handle>(Handle h, Data& data) -> decltype(auto) {
+        return siconos::storage::get<U>(h, data);
       },
+      []<typename U = T, typename FullHandle>(FullHandle h)
+          -> decltype(auto) { return siconos::storage::get<U>(h.data(), h); },
       []<typename U = T, typename FullHandle>(
-          FullHandle h, typename FullHandle::indice step)
-          ->decltype(auto) {
-            return siconos::storage::get<U>(h.data(), step, h);
-          });
+          FullHandle h, typename FullHandle::indice step) -> decltype(auto) {
+        return siconos::storage::get<U>(h.data(), step, h);
+      });
 };
 
 // ?
@@ -838,7 +849,6 @@ static constexpr auto is_identified_by =
 template <match::item I, string_literal S>
 static auto prop_memory = [](auto& data) constexpr -> decltype(auto) {
   using info_t = std::decay_t<decltype(ground::get<storage::info>(data))>;
-  using item_t = I;
   constexpr auto tpl =
       ground::filter(ground::filter(typename info_t::all_properties_t{},
                                     is_attached_storage<I>),
@@ -915,12 +925,10 @@ static auto constexpr attached_storage_name(Astor astor)
     return tag{};
   }
   else {
-    []<bool flag = false>()
-    {
+    []<bool flag = false>() {
       ground::type_trace<tag>();
       static_assert(flag, "tag is not a symbol!");
-    }
-    ();
+    }();
   }
 }
 
