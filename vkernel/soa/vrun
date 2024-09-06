@@ -112,7 +112,7 @@ EOF
       # export LD_LIBRARY_PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/lib:$LD_LIBRARY_PATH
       # export PATH=/opt/nvidia/hpc_sdk/Linux_x86_64/24.3/cuda/12.3/bin:$PATH
 
-      CC=clang CXX=clang++ pip install .
+      CC=clang CXX=clang++ /bin/time -f '%E %M %R' pip install .
 
       cd ${venv}/lib/python${python_version}/site-packages/nonos
       ln -sf ../../../../../src/siconos/py/nonos/__init__.py .
