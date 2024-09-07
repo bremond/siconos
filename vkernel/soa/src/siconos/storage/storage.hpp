@@ -59,7 +59,39 @@ struct refine_with_type : A {
   using type = T;
 };
 
+
+// info key
 struct info {};
+
+// pre-map cases
+template <typename... Pairs>
+auto get_info(ground::tuple<Pairs...>&& data)
+{
+  return ground::second(ground::at(
+      static_cast<ground::tuple<Pairs...>&&>(data), ground::size_c<0>));
+}
+
+template <typename... Pairs>
+auto get_info(const ground::tuple<Pairs...>& data)
+{
+  return ground::second(ground::at(data, ground::size_c<0>));
+}
+
+// template <typename... Pairs>
+// auto get_info(ground::tuple<Pairs...>& data)
+// {
+//   return ground::second(ground::at(data, ground::size_c<0>));
+// }
+
+// database case
+template <typename... Pairs>
+auto get_info(ground::database<Pairs...>&& data)
+{
+  return ground::get<info>(static_cast<ground::database<Pairs...>&&>(data));
+}
+
+template <typename D>
+using get_info_t = decltype(get_info(std::decay_t<D>{}));
 
 template <match::property... Parts>
 struct with_properties : item<> {
@@ -148,7 +180,7 @@ struct default_interface {
   auto env()
   {
     auto& data = self()->data();
-    using info_t = std::decay_t<decltype(ground::get<storage::info>(data))>;
+    using info_t = get_info_t<decltype(data)>;
     return typename info_t::env{};
   }
 
@@ -165,7 +197,7 @@ template <match::item T, typename R, typename D>
 struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
   using base_index_t = index<T, R>;
   using full_handle_t = void;
-  using info_t = std::decay_t<decltype(ground::get<info>(D{}))>;
+  using info_t = get_info_t<D>;
   using data_t = D;
   using indice = typename info_t::env::indice;
   using attached_storages_t =
@@ -278,9 +310,7 @@ static constexpr auto apply_wrapper(Storage storage)
 template <match::property K>
 static auto pre_map_all_properties_as =
     []<typename D>(D& data) constexpr -> auto {
-  //  using info_t = std::decay_t<decltype(ground::get<info>(data))>;
-  using info_t = std::decay_t<decltype(ground::second(
-      ground::at(data, ground::size_c<0>)))>;
+  using info_t = get_info_t<D>;
   using all_properties_t = typename info_t::all_properties_t;
 
   return ground::filter(all_properties_t{}, ground::derive_from<K>);
@@ -288,8 +318,7 @@ static auto pre_map_all_properties_as =
 
 template <match::property K>
 static auto all_properties_as = []<typename D>(D& data) constexpr -> auto {
-  //  using info_t = std::decay_t<decltype(ground::get<info>(data))>;
-  using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+  using info_t = get_info_t<D>;
   using all_properties_t = typename info_t::all_properties_t;
 
   return ground::filter(all_properties_t{}, ground::derive_from<K>);
@@ -297,7 +326,7 @@ static auto all_properties_as = []<typename D>(D& data) constexpr -> auto {
 
 template <match::attribute Attr>
 static auto attribute_properties = [](auto& data) constexpr -> auto {
-  using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+  using info_t = get_info_t<decltype(data)>;
   using all_properties_t = typename info_t::all_properties_t;
 
   return filter<hold<decltype([]<typename T>(T) {
@@ -322,8 +351,7 @@ static constexpr auto item_properties_from()
 template <match::item Item, typename Data>
 static constexpr auto item_properties(Data&& data)
 {
-  using info_t =
-      std::decay_t<decltype(ground::get<info>(static_cast<Data&&>(data)))>;
+  using info_t = get_info_t<Data>;
   using all_properties_t = typename info_t::all_properties_t;
 
   return item_properties_from<Item, all_properties_t>();
@@ -482,7 +510,7 @@ struct item_storage {
 template <typename Item>
 constexpr decltype(auto) attached_storages(Item, auto& data)
 {
-  using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+  using info_t = get_info_t<decltype(data)>;
   using item_t = Item;
 
   return ground::filter(typename info_t::all_properties_t{},
@@ -507,7 +535,7 @@ template <typename T>
 auto make_full_handle(auto& data, const auto& indx)
 {
   using data_t = std::decay_t<decltype(data)>;
-  using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+  using info_t = get_info_t<data_t>;
   using indice = typename info_t::env::indice;
 
   indice index = indx;
@@ -627,7 +655,7 @@ static auto make = []() constexpr -> decltype(auto) {
   using item_storage_t = item_storage<Env, Items...>;
   using info_t = typename item_storage_t::iinfo;
   auto base_storage = typename item_storage_t::type{};
-  return ground::to_map(attribute_storage_transform(
+  return ground::to_database(attribute_storage_transform(
       item_storage_transform<info_t>(
           attribute_storage_transform(
               base_storage,
@@ -687,7 +715,7 @@ static auto make = []() constexpr -> decltype(auto) {
 
 static auto remove = [](auto& data, auto& h) {
   using item_t = typename std::decay_t<decltype(h)>::type;
-  using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+  using info_t = get_info_t<decltype(data)>;
   using all_keeps_t = decltype(all_properties_as<property::keep>(data));
 
   using indice = typename info_t::env::indice;
@@ -709,7 +737,7 @@ static auto remove = [](auto& data, auto& h) {
 static auto apply_fun = []<typename Item, typename SomeFun>(
                             auto& data, Item, SomeFun&& some_fun) {
   using item_t = Item;
-  using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+  using info_t = get_info_t<decltype(data)>;
   using all_keeps_t = decltype(all_properties_as<property::keep>(data));
 
   using indice = typename info_t::env::indice;
@@ -738,7 +766,7 @@ static constexpr auto is_attached_storage =
 template <match::item Item>
 static auto add = [](auto&& data) constexpr -> decltype(auto) {
   using data_t = std::decay_t<decltype(data)>;
-  using info_t = std::decay_t<decltype(ground::get<info>(data))>;
+  using info_t = get_info_t<data_t>;
   using all_keeps_t = decltype(all_properties_as<property::keep>(data));
 
   using indice = typename info_t::env::indice;
@@ -791,8 +819,7 @@ struct access {
   static constexpr auto at = ground::overload(
       []<typename Data, typename U = T,
          match::handle<decltype(item_attribute<U>(
-             typename std::decay_t<decltype(ground::get<info>(
-                 Data{}))>::all_items_t{}))>
+             typename get_info_t<Data>::all_items_t{}))>
              Handle>(Handle h, Data& data) -> decltype(auto) {
         return siconos::storage::get<U>(h, data);
       },
@@ -848,7 +875,7 @@ static constexpr auto is_identified_by =
 
 template <match::item I, string_literal S>
 static auto prop_memory = [](auto& data) constexpr -> decltype(auto) {
-  using info_t = std::decay_t<decltype(ground::get<storage::info>(data))>;
+  using info_t = get_info_t<decltype(data)>;
   constexpr auto tpl =
       ground::filter(ground::filter(typename info_t::all_properties_t{},
                                     is_attached_storage<I>),
@@ -887,7 +914,7 @@ static auto prop_values =
 template <match::item I>
 static auto handles =
     [](auto& data, std::size_t step = 0) constexpr -> decltype(auto) {
-  using info_t = std::decay_t<decltype(ground::get<storage::info>(data))>;
+  using info_t = get_info_t<decltype(data)>;
   using env = typename info_t::env;
   using indice = typename env::indice;
 

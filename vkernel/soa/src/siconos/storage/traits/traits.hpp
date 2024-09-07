@@ -39,13 +39,13 @@ static auto translate = rec([]<typename E, typename T>(auto&& translate, E,
     return typename E::indice{};
   }
   else if constexpr (std::derived_from<T, some::undefined_indice_parameter>) {
-    return ground::get<param<T::name>>(typename E::params{});
+    return ground::get_m<param<T::name>>(typename E::params{});
   }
   else if constexpr (std::derived_from<T, some::undefined_indice_value>) {
     return T{};
   }
   else if constexpr (std::derived_from<T, some::undefined_type_parameter>) {
-    return ground::get<param<T::name>>(typename E::params{});
+    return ground::get_m<param<T::name>>(typename E::params{});
   }
 
   else if constexpr (std::derived_from<

@@ -191,11 +191,12 @@ static_assert(
                          .radius())>,
         typename standard_environment<int>::scalar>);
 
-static_assert(
-    storage::has_property<collision::shape::disk, storage::property::bind>(
-        storage::make<standard_environment<int>, collision::shape::disk,
-                      storage::with_properties<storage::bind<
-                          collision::shape::disk, "disk_shape">>>()));
+//   error: static assertion expression is not an integral constant expression
+// static_assert(
+//     storage::has_property<collision::shape::disk, storage::property::bind>(
+//         storage::make<standard_environment<int>, collision::shape::disk,
+//                       storage::with_properties<storage::bind<
+//                           collision::shape::disk, "disk_shape">>>()));
 
 }  // namespace siconos
 

@@ -205,14 +205,71 @@ using pre_map = hana::tuple<Pairs...>;
 template <typename... Pairs>
 using map = hana::map<Pairs...>;
 
+// The Hana map database takes a longer time to compile.
+// template <typename... Pairs>
+// struct database {
+//   database() : store{} {};
+//   database(tuple<Pairs...> &&m) : store(to_map(m)){};
+//   decltype(to_map(tuple<Pairs...>{})) store;
+// };
+
+template <typename... Pairs>
+struct database {
+//  database() : store{} {};
+//  database(tuple<Pairs...> &&m) : store(m){};
+  decltype(tuple<Pairs...>{}) store;
+};
+
+template <typename... Pairs>
+auto to_database(tuple<Pairs...> &&data)
+{
+  return database<Pairs...>{static_cast<tuple<Pairs...> &&>(data)};
+};
+
 using hana::make_map;
 
 template <typename Data, typename Key>
 concept has_key = requires(Data m) { m[hana::type_c<Key>]; };
 
-template <typename T>
-static auto get = []<has_key<T> D>(D &&data) constexpr -> decltype(auto) {
+template <typename T, typename D>
+static constexpr decltype(auto) get_m(D &&data)
+{
   return static_cast<D &&>(data)[hana::type_c<T>];
+};
+
+template <typename T, typename D>
+static constexpr decltype(auto) get_i(D &&data)
+{
+  return static_cast<D &&>(data)[hana::type_c<T>];
+};
+
+template <typename T, typename... Pairs>
+static constexpr auto &get_i(tuple<Pairs...> &&data)
+{
+  auto &&result =
+      find_if(static_cast<tuple<Pairs...> &&>(data),
+              []<typename P>(P) { return first(P{}) == hana::type_c<T>; });
+  return second(result.value());
+};
+
+template <typename T, typename... Pairs>
+static constexpr auto &get_i(tuple<Pairs...> &data)
+{
+  auto &&result = find_if(
+      data, []<typename P>(P) { return first(P{}) == hana::type_c<T>; });
+  return second(result.value());
+};
+
+template <typename T, typename... Pairs>
+decltype(auto) get(ground::database<Pairs...> &&data)
+{
+  return get_i<T>(static_cast<ground::database<Pairs...> &&>(data).store);
+};
+
+template <typename T, typename... Pairs>
+decltype(auto) get(ground::database<Pairs...> &data)
+{
+  return get_i<T>(data.store);
 };
 
 static auto transform = hana::transform;

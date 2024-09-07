@@ -401,8 +401,8 @@ struct one_step_integrator {
       {
         auto &data = self()->data();
 
-        using info_t =
-            std::decay_t<decltype(ground::get<storage::info>(data))>;
+        using info_t = storage::get_info_t<decltype(data)>;
+
         using env = typename info_t::env;
         using indice = typename env::indice;
 
@@ -590,8 +590,8 @@ struct one_step_integrator {
       void compute_w_matrix(auto step)
       {
         auto &data = self()->data();
-        using info_t =
-            std::decay_t<decltype(ground::get<storage::info>(data))>;
+        using info_t = storage::get_info_t<decltype(data)>;
+
         using env = typename info_t::env;
         auto tmp_matrix = typename traits::config<env>::template convert<
             some::unbounded_matrix<some::transposed_matrix<h_matrix1>>>::
