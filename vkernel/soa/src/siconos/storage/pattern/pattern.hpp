@@ -235,9 +235,8 @@ template <typename T, typename K>
 concept property_of = property<T> && property<K> && std::derived_from<T, K>;
 
 template <typename T, typename Ks>
-concept any_of_property = ground::any_of(Ks{}, []<match::property K>(K) {
-  return std::derived_from<T, K>;
-});
+concept any_of_property = ground::any_of(
+    Ks{}, []<match::property K>(K) { return std::derived_from<T, K>; });
 
 }  // namespace match
 
@@ -327,10 +326,8 @@ namespace concepts {
 // T is a tag
 template <typename T, typename Data>
 concept vertex_item_t = requires(T t) {
-                          {
-                            static_cast<typename Data::vertex_items>(t)
-                          };
-                        };
+  { static_cast<typename Data::vertex_items>(t) };
+};
 }  // namespace concepts
 
 // rename to attr_name ? (cf with_name)
@@ -368,7 +365,7 @@ concept contains_similar_attribute =
       }
     })();
 
-}
+}  // namespace must
 
 namespace match {
 template <typename T>
@@ -427,17 +424,13 @@ static auto properties =
   }
 };
 
-static auto is_a_ref = ground::is_a_model < []<typename T>() consteval
-{
+static auto is_a_ref = ground::is_a_model<[]<typename T>() consteval {
   return match::item_ref<T>;
-}
-> ;
+}>;
 
-static auto is_a_poly_ref = ground::is_a_model < []<typename T>() consteval
-{
+static auto is_a_poly_ref = ground::is_a_model<[]<typename T>() consteval {
   return match::polymorphic_type<T>;
-}
-> ;
+}>;
 
 static auto all_items = rec([](auto&& all_items, match::item auto root_item) {
   using type_t = std::decay_t<decltype(root_item)>;
@@ -575,11 +568,9 @@ static auto item_attribute = [](auto items) constexpr {
     }
     else {
       []<typename Attribute = Attr, typename LastItem = item_t,
-         typename Items = items_t, bool flag = false>()
-      {
+         typename Items = items_t, bool flag = false>() {
         static_assert(flag, "item not found");
-      }
-      ();
+      }();
     }
   });
 
@@ -626,6 +617,6 @@ template <typename T>
 concept npy_format = (requires { typename T::value_type; } &&
                       std::is_scalar_v<typename T::value_type>) ||
                      requires { typename T; };
-}
+}  // namespace match
 
 }  // namespace siconos::storage::pattern

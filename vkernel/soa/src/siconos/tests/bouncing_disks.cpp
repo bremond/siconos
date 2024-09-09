@@ -26,7 +26,7 @@ using td = simul::time_discretization<>;
 using topo = simul::topology<disk, interaction>;
 using pointd = collision::point<disk>;
 using pointl = collision::point<collision::shape::segment>;
-using pointtds = collision::point<translated_disk_shape>;
+//using pointtds = collision::point<translated_disk_shape>;
 using neighborhood = collision::neighborhood<pointd, pointl>;
 using space_filter = collision::space_filter<topo, neighborhood>;
 using interaction_manager = simul::interaction_manager<space_filter>;
@@ -44,17 +44,15 @@ int main(int argc, char* argv[])
 
   auto data = storage::make<
       standard_environment<config::params>, config::simulation,
-      config::interaction_manager, config::neighborhood, config::space_filter,
-      config::io, config::disk, config::diskdisk_r, config::disksegment_r,
-      config::pointl, config::pointd, config::pointtds, config::interaction,
-      config::segment_shape, config::disk_shape,
+      config::interaction_manager, config::io, config::segment_shape,
+      config::disk_shape,
       storage::with_properties<
           storage::wrapped<config::disk, some::unbounded_collection>,
           storage::wrapped<config::diskdisk_r, some::unbounded_collection>,
           storage::wrapped<config::disksegment_r, some::unbounded_collection>,
           storage::wrapped<config::pointl, some::unbounded_collection>,
           storage::wrapped<config::pointd, some::unbounded_collection>,
-          storage::wrapped<config::pointtds, some::unbounded_collection>,
+//          storage::wrapped<config::pointtds, some::unbounded_collection>,
           storage::wrapped<config::interaction, some::unbounded_collection>,
           storage::wrapped<config::segment_shape, some::unbounded_collection>,
           storage::wrapped<config::disk_shape, some::unbounded_collection>,

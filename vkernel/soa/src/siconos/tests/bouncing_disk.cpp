@@ -31,9 +31,8 @@ int main(int argc, char* argv[])
   using namespace storage;
 
   auto data = storage::make<
-      standard_environment<config::params>, config::simulation, config::disk,
-      config::disk_shape, config::diskdisk_r, config::disksegment_r,
-      config::interaction,
+      standard_environment<config::params>, config::simulation,
+      config::disk_shape,
       storage::with_properties<
           storage::attached<config::disk, storage::pattern::symbol<"shape">,
                             storage::some::item_ref<config::disk_shape>>,
@@ -150,7 +149,6 @@ int main(int argc, char* argv[])
        << std::flush;
 
   while (simulation.has_next_event()) {
-
     auto ninvds = simulation.compute_one_step();
     //    auto q = storage::attr<"q">(d1, simulation.current_step())(1);
     //    auto v = storage::attr<"velocity">(d1,

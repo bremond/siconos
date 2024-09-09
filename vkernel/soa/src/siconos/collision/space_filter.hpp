@@ -29,6 +29,7 @@ namespace siconos::collision {
 template <typename... Points>
 struct neighborhood
     : storage::data_holder<CompactNSearch::NeighborhoodSearch> {
+  using items = gather<Points...>;
   using points_t = gather<Points...>;
 
   using attributes = storage::pattern::cons_x<
@@ -144,6 +145,7 @@ struct neighborhood
 
 template <typename Topology, typename Neighborhood>
 struct space_filter : item<> {
+  using items = gather<Topology, Neighborhood>;
   using topology = Topology;
   using dynamical_system = typename topology::dynamical_system;
   using interaction = typename topology::interaction;

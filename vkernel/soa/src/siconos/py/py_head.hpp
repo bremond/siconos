@@ -64,10 +64,8 @@ static auto imake_storage()
 {
   return storage::make<
       standard_environment<config::params>, config::simulation,
-      config::interaction_manager, config::neighborhood, config::space_filter,
-      config::io, config::disk, config::diskdisk_r, config::disksegment_r,
-      config::diskfdisk_r, config::pointl, config::pointd, config::pointtds,
-      config::interaction, config::segment_shape, config::disk_shape,
+      config::interaction_manager, config::io, config::segment_shape,
+      config::disk_shape,
       storage::with_properties<
           storage::wrapped<config::disk, some::unbounded_collection>,
           storage::wrapped<config::diskdisk_r, some::unbounded_collection>,

@@ -12,6 +12,7 @@ namespace siconos::simul {
 
 template <typename DynamicalSystem, typename Interaction>
 struct one_step_integrator {
+  using items = gather<DynamicalSystem, Interaction>;
   using interaction_i = Interaction;
   using nonsmooth_law = typename interaction_i::nslaw;
   using system_i = DynamicalSystem;

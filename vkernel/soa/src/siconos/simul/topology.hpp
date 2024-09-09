@@ -8,6 +8,7 @@ namespace siconos::simul {
 
 template <typename DynamicalSystem, typename Interaction>
 struct topology : item<> {
+  using items = gather<DynamicalSystem, Interaction>;
   using dof = some::indice_parameter<"dof">;
 
   using dynamical_system = DynamicalSystem;

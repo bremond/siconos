@@ -21,8 +21,7 @@ int main(int argc, char* argv[])
 {
   using namespace siconos;
   auto data = storage::make<
-      standard_environment<config::params>, config::simulation, config::ball,
-      config::relation, config::interaction,
+      standard_environment<config::params>, config::simulation,
       storage::with_properties<
           storage::time_invariant<storage::attr_t<config::ball, "fext">>,
           storage::diagonal<storage::attr_t<config::ball, "mass_matrix">>,

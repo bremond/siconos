@@ -9,6 +9,8 @@ namespace siconos::collision {
 // a point linked to an item (a dynamical system or a shape)
 template <match::item Item>
 struct point : item<> {
+  using items = gather<Item>;
+
   using item_t = Item;
   using attributes = gather<
       // 3D coordinates, 2D => last value = 0.
