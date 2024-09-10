@@ -5,9 +5,9 @@
 #include "siconos/storage/properties.hpp"
 #include "siconos/storage/handle.hpp"
 #include "siconos/storage/make.hpp"
-#include "siconos/storage/get.hpp"
 #include "siconos/storage/remove.hpp"
 #include "siconos/storage/add.hpp"
+#include "siconos/storage/get.hpp"
 #include "siconos/storage/data_holder.hpp"
 
 namespace siconos::storage {
@@ -46,7 +46,3 @@ using pattern::attr_t;
 using pattern::wrap;
 
 }  // namespace siconos::storage
-
-
-
-
