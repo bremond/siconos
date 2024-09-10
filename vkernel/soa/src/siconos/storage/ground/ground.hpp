@@ -24,7 +24,6 @@
 #include <boost/type_index.hpp>
 #include <numeric>
 #include <type_traits>
-#include <typeinfo>
 
 // #include "boost/hana/ext/boost/ublas.hpp"
 //  cf
