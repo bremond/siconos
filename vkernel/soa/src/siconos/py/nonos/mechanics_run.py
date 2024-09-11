@@ -3162,6 +3162,10 @@ class MechanicsHdf5Runner(mechanics_hdf5.MechanicsHdf5):
 
         self._simulation = simulation
 
+        # time step necessary for output
+        if backend == 'vnative':
+            self._io.setSimulation(self._simulation)
+
         if len(self._plugins) > 0:
             self.print_verbose('import plugins ...')
             self.import_plugins()

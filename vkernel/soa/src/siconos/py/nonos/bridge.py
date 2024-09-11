@@ -375,12 +375,19 @@ class MechanicsIO(Stored):
 
     def __init__(self):
         self._handle = vkernel.disks.add_io(self.data())
+        self._simul = None
+
+    # current step needed for output
+    def setSimulation(self, simul):
+        self._simulation = simul
 
     def positions(self, nsds):
-        return self.handle().positions(0)
+        return self.handle().positions(
+            self._simulation.handle().current_step())
 
     def velocities(self, nsds):
-        return self.handle().velocities(0)
+        return self.handle().velocities(
+            self._simulation.handle().current_step())
 
     def contactPoints(self, nsds, output_contact_index_set):
         return self.handle().contact_points(0)
