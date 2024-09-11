@@ -390,7 +390,8 @@ class MechanicsIO(Stored):
             self._simulation.handle().current_step())
 
     def contactPoints(self, nsds, output_contact_index_set):
-        return self.handle().contact_points(0)
+        return self.handle().contact_points(
+            self._simulation.handle().current_step())
 
 class SpaceFilterOptions():
 
