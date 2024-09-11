@@ -204,20 +204,24 @@ using pre_map = hana::tuple<Pairs...>;
 template <typename... Pairs>
 using map = hana::map<Pairs...>;
 
-// The Hana map database takes a longer time to compile.
-// template <typename... Pairs>
-// struct database {
-//   database() : store{} {};
-//   database(tuple<Pairs...> &&m) : store(to_map(m)){};
-//   decltype(to_map(tuple<Pairs...>{})) store;
-// };
-
+// The Hana map database takes a longer time to compile!
 template <typename... Pairs>
 struct database {
-  //  database() : store{} {};
-  //  database(tuple<Pairs...> &&m) : store(m){};
-  tuple<Pairs...> store;
+  database() : store{} {};
+  database(tuple<Pairs...> &&m) : store(to_map(m)){};
+  decltype(to_map(tuple<Pairs...>{})) store;
 };
+
+// Faster compilation but this error occurs with python bindings:
+//    from ._nonos import __doc__, __version__, disks
+// ImportError: vector::_M_realloc_insert
+//
+// template <typename... Pairs>
+// struct database {
+//   //  database() : store{} {};
+//   //  database(tuple<Pairs...> &&m) : store(m){};
+//   tuple<Pairs...> store;
+// };
 
 template <typename... Pairs>
 auto to_database(tuple<Pairs...> &&data)
