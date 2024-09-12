@@ -13,8 +13,8 @@ PYBIND11_MODULE(_nonos, m)
   auto data_class =
       py::class_<siconos::python::disks::data_t>(disks, "data_t");
 
-  using disks_info_t = std::decay_t<decltype(ground::get<storage::info>(
-      siconos::python::disks::idata_t{}))>;
+  using disks_info_t =
+    siconos::storage::get_info_t<siconos::python::disks::idata_t>;
 
   using indice_t = typename disks_info_t::env::indice;
 

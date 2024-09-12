@@ -2,8 +2,8 @@
 
 void py_add(py::module& mod)
 {
-  using disks_info_t = std::decay_t<decltype(ground::get<storage::info>(
-      siconos::python::disks::idata_t{}))>;
+  using disks_info_t =
+      siconos::storage::get_info_t<siconos::python::disks::idata_t>;
 
   using disks_properties_t = typename disks_info_t::all_properties_t;
 

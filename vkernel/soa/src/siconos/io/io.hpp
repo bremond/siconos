@@ -64,12 +64,12 @@ struct io : item<> {
       using scalar = typename env_t::scalar;
 
       auto& ids = storage::prop_values<system, "id">(data, step);
-      auto& velos = storage::attr_values<system, "velocities">(data, step);
+      auto& velos = storage::attr_values<system, "velocity">(data, step);
 
       attr<"vel_info">(*self()).clear();
 
       for (auto [id, velo] : view::zip(ids, velos)) {
-        attr<"vel_info">(*self()).push_back({id, velo[0], velo[1], velo[2]});
+        attr<"vel_info">(*self()).push_back({(scalar) id, velo[0], velo[1], velo[2]});
       }
 
       return algebra::matrix_view<algebra::unbounded_col_matrix<scalar, 4>>(
@@ -230,7 +230,7 @@ struct io : item<> {
 
       return collect(
           method("positions", &interface<Handle>::positions<indice>),
-          method("velocities", &interface<Handle>::positions<indice>),
+          method("velocities", &interface<Handle>::velocities<indice>),
           method("contact_points",
                  &interface<Handle>::contact_points<indice>));
     }
