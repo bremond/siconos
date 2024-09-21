@@ -4,8 +4,8 @@
 
 #include "siconos/algebra/numerics.hpp"
 #include "siconos/collision/collision.hpp"
-#include "siconos/collision/disksegment_r.hpp"
 #include "siconos/collision/diskfdisk_r.hpp"
+#include "siconos/collision/disksegment_r.hpp"
 #include "siconos/storage/pattern/base.hpp"
 #include "siconos/storage/pattern/pattern.hpp"
 #include "siconos/storage/some/some.hpp"
@@ -47,7 +47,7 @@ struct io : item<> {
       attr<"pos_info">(*self()).clear();
 
       for (auto [id, q] : view::zip(ids, qs)) {
-        attr<"pos_info">(*self()).push_back({(scalar) id, q[0], q[1], q[2]});
+        attr<"pos_info">(*self()).push_back({(scalar)id, q[0], q[1], q[2]});
       }
 
       return algebra::matrix_view<algebra::unbounded_col_matrix<scalar, 4>>(
@@ -69,7 +69,8 @@ struct io : item<> {
       attr<"vel_info">(*self()).clear();
 
       for (auto [id, velo] : view::zip(ids, velos)) {
-        attr<"vel_info">(*self()).push_back({(scalar) id, velo[0], velo[1], velo[2]});
+        attr<"vel_info">(*self()).push_back(
+            {(scalar)id, velo[0], velo[1], velo[2]});
       }
 
       return algebra::matrix_view<algebra::unbounded_col_matrix<scalar, 4>>(
@@ -115,8 +116,12 @@ struct io : item<> {
                                                           orientation 1 */
 
         if (activation) {
+          auto index_ds1 =
+              prop<"index">(hds1); /* cf one_step_intergator.hpp,
+                                    * assemble_h_matrix_for_involved_ds => row
+                                    * of p0_vector_assembled */
           auto p0 =
-              algebra::get_vector(p0_v, ds1.get()); /* in 2D, 2 components */
+              algebra::get_vector(p0_v, index_ds1); /* in 2D, 2 components */
 
           vect c1 = {hds1.q()[0], hds1.q()[1], 0.};
           vect c2 = {hds2.q()[0], hds2.q()[1], 0.};
