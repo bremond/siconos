@@ -933,7 +933,8 @@ class MechanicsHdf5Runner(mechanics_hdf5.MechanicsHdf5):
         super(MechanicsHdf5Runner, self).__init__(io_filename, mode,
                                                   io_filename_backup,
                                                   use_compression,
-                                                  output_domains, verbose)
+                                                  output_domains, verbose,
+                                                  backend)
         self._interman = interaction_manager
         self._nsds = nsds
         self._simulation = simulation
@@ -2349,7 +2350,7 @@ class MechanicsHdf5Runner(mechanics_hdf5.MechanicsHdf5):
         if self._output_contact_forces:
             self.log(self.output_contact_forces, with_timer)()
 
-        if self._output_contact_info and backend == 'bullet':
+        if self._output_contact_info and (backend == 'bullet' or backend == 'vnative'):
             self.log(self.output_contact_info, with_timer)()
         else:
             self.print_verbose('[warning] output_contact_info is only available with bullet backend for the moment')

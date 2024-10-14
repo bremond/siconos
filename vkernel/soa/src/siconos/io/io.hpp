@@ -21,14 +21,17 @@ struct io : item<> {
   using osi = Osi;
   using system = typename osi::system;
   using interaction = typename osi::interaction;
+  using relations_t = typename interaction::relations;
 
-  using attributes = gather<
-      attribute<"pos_info", some::unbounded_collection<some::vector<
-                                some::scalar, some::indice_value<4>>>>,
-      attribute<"vel_info", some::unbounded_collection<some::vector<
-                                some::scalar, some::indice_value<4>>>>,
-      attribute<"cp_info", some::unbounded_collection<some::vector<
-                               some::scalar, some::indice_value<25>>>>>;
+  using attributes =
+      gather<attribute<"pos_info", some::unbounded_collection<some::vector<
+                                       some::scalar, some::indice_value<4>>>>,
+             attribute<"vel_info", some::unbounded_collection<some::vector<
+                                       some::scalar, some::indice_value<4>>>>,
+             attribute<"cp_info", some::unbounded_collection<some::vector<
+                                      some::scalar, some::indice_value<25>>>>,
+             attribute<"co_info", some::unbounded_collection<some::vector<
+                                      some::scalar, some::indice_value<6>>>>>;
 
   template <typename Handle>
   struct interface : default_interface<Handle> {
@@ -120,6 +123,7 @@ struct io : item<> {
               prop<"index">(hds1); /* cf one_step_intergator.hpp,
                                     * assemble_h_matrix_for_involved_ds => row
                                     * of p0_vector_assembled */
+          auto index_ds2 = prop<"index">(hds2);
           auto p0 =
               algebra::get_vector(p0_v, index_ds1); /* in 2D, 2 components */
 
@@ -197,28 +201,28 @@ struct io : item<> {
               {storage::handle(data, nslaw).mu(),
                ca[0],
                ca[1],
-               0., /* 2D */
+               0. /* 2D */,
                cb[0],
                cb[1],
-               0., /* 2D */
+               0. /* 2D */,
                cn[0],
                cn[1],
-               0, /* 2D */
+               0. /* 2D */,
                p0[0],
                p0[1],
-               0, /* 2D */
+               0. /* 2D */,
                y[0],
                y[1],
-               0, /* 2D */
+               0. /* 2D */,
                ydot[0],
                ydot[1],
-               0, /* 2D */
+               0. /* 2D */,
                lambda[0],
                lambda[1],
-               0, /* 2D */
+               0. /* 2D */,
                (scalar)k,
-               (scalar)hds1.get(),
-               (scalar)hds2.get()});
+               (scalar)index_ds1,
+               (scalar)index_ds2});
           k++;
         }
       }
@@ -226,6 +230,70 @@ struct io : item<> {
           attr<"cp_info">(*self()).data()->data(),
           attr<"cp_info">(*self()).size(),
           attr<"cp_info">(*self()).data()->size());
+    }
+
+    decltype(auto) contact_info(auto step)
+    {
+      auto& data = self()->data();
+      using env_t = decltype(self()->env());
+      using indice = typename env_t::indice;
+      using scalar = typename env_t::scalar;
+
+      auto& relations =
+          storage::attr_values<interaction, "relation">(data, step);
+      auto& ds1s = storage::prop_values<interaction, "ds1">(data, step);
+      auto& ds2s = storage::prop_values<interaction, "ds2">(data, step);
+      auto& activations =
+          storage::prop_values<interaction, "activation">(data, step);
+
+      attr<"co_info">(*self()).clear();
+
+      indice k = 0;
+      for (auto [relation, ds1, ds2, activation] :
+           view::zip(relations, ds1s, ds2s, activations)) {
+        if (activation) {
+          auto hds1 = storage::handle(data, ds1);
+          auto hds2 = storage::handle(data, ds2);
+          auto index_ds1 = prop<"index">(hds1);
+          auto index_ds2 = prop<"index">(hds2);
+
+          indice inter_index = k++; /* index of interaction in indexset 1 */
+          // a pair type of shape (unsigned int) + index
+          auto static_shape_info = variant::visit(
+              data, relation,
+              ground::overload(
+                  // disk/segment
+                  [&](storage::index<collision::disksegment_r, indice> rrel) {
+                    auto hrel = storage::handle(data, rrel);
+
+                    // static -> direct indexing
+                    return ground::make_pair(-hrel.segment().get(), 0);
+                  },
+                  // disk/fixed disk
+                  [&](storage::index<collision::diskfdisk_r, indice> rrel) {
+                    auto hrel = storage::handle(data, rrel);
+
+                    // static -> direct indexing
+                    return ground::make_pair(
+                        -hrel.translated_disk_shape().get(), 1);
+                  },
+                  [&](auto) { return ground::make_pair((indice)0, 0); }));
+
+          attr<"co_info">(*self()).push_back({
+            (scalar) inter_index, (scalar)index_ds1, (scalar)index_ds2,
+                (scalar)ground::first(
+                    static_shape_info) /* index of static shape */,
+                (scalar)ground::second(
+                    static_shape_info) /* type of static_shape */,
+                (scalar)hds1.get() /* index of interaction in indexset 0 */
+          });
+        }
+      }
+
+      return algebra::matrix_view<algebra::unbounded_col_matrix<scalar, 6>>(
+          attr<"co_info">(*self()).data()->data(),
+          attr<"co_info">(*self()).size(),
+          attr<"co_info">(*self()).data()->size());
     }
 
     auto methods()
@@ -237,7 +305,8 @@ struct io : item<> {
           method("positions", &interface<Handle>::positions<indice>),
           method("velocities", &interface<Handle>::velocities<indice>),
           method("contact_points",
-                 &interface<Handle>::contact_points<indice>));
+                 &interface<Handle>::contact_points<indice>),
+          method("contact_info", &interface<Handle>::contact_info<indice>));
     }
   };
 };

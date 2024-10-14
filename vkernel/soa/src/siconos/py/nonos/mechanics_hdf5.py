@@ -485,7 +485,8 @@ class MechanicsHdf5(object):
     """
 
     def __init__(self, io_filename=None, mode='w', io_filename_backup=None,
-                 use_compression=False, output_domains=False, verbose=True):
+                 use_compression=False, output_domains=False, verbose=True,
+                 backend=None):
         if io_filename is None:
             self._io_filename = '{0}.hdf5'.format(
                 os.path.splitext(os.path.basename(sys.argv[0]))[0])
@@ -527,6 +528,7 @@ class MechanicsHdf5(object):
         self._use_compression = use_compression
         self._should_output_domains = output_domains
         self._verbose = verbose
+        self._backend = backend
 
     def __enter__(self):
         """Reminder: this function will be called when a 'with'
@@ -584,8 +586,20 @@ class MechanicsHdf5(object):
             self._cf_data.attrs['info'] += 'reaction impulse (local frame) [20:22],  interaction id [23],'
             self._cf_data.attrs['info'] += 'ds 1 number [24],  ds 2 number [25]'
 
-        self._cf_info = data(self._data, 'cf_info', 5,
-                             use_compression=self._use_compression)
+        if self._backend == 'bullet':
+            self._cf_info = data(self._data, 'cf_info', 5,
+                                 use_compression=self._use_compression)
+        else:
+            self._cf_info = data(self._data, 'cf_info', 7,
+                                 use_compression=self._use_compression)
+            if self._mode == 'w':
+                self._cf_info.attrs['info'] =  'inter id in indexset 1,'
+                self._cf_info.attrs['info'] += 'ds1 id,'
+                self._cf_info.attrs['info'] += 'ds2 id,'
+                self._cf_info.attrs['info'] += 'shape id,'
+                self._cf_info.attrs['info'] += 'shape type (integer),'
+                self._cf_info.attrs['info'] += 'inter id in indexset 0'
+
 
         if self._mode == 'w':
             self._cf_info.attrs['info'] = 'time [0],  interaction id [1]'

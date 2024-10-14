@@ -393,6 +393,10 @@ class MechanicsIO(Stored):
         return self.handle().contact_points(
             self._simulation.handle().current_step())
 
+    def contactInfo(self, nsds, output_contact_index_set):
+        return self.handle().contact_info(
+            self._simulation.handle().current_step())
+
 class SpaceFilterOptions():
 
     neighborhood_radius = 2.1
