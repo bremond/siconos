@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 3.2)
+#cmake_minimum_required(VERSION 3.2)
 
-project(CompactNSearch)
+#project(CompactNSearch)
 
 # Visual studio solution directories.
 set_property(GLOBAL PROPERTY USE_FOLDERS on)
