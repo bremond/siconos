@@ -495,7 +495,8 @@ class MechanicsHdf5(object):
     """
 
     def __init__(self, io_filename=None, mode='w', io_filename_backup=None,
-                 use_compression=False, output_domains=False, verbose=True):
+                 use_compression=False, output_domains=False, verbose=True,
+                 backend=None):
         if io_filename is None:
             self._io_filename = '{0}.hdf5'.format(
                 os.path.splitext(os.path.basename(sys.argv[0]))[0])
@@ -539,6 +540,7 @@ class MechanicsHdf5(object):
         self._use_compression = use_compression
         self._should_output_domains = output_domains
         self._verbose = verbose
+        self._backend = backend
 
     def __enter__(self):
         """Reminder: this function will be called when a 'with'
@@ -606,12 +608,25 @@ class MechanicsHdf5(object):
 
 
         try:
-            self._cf_info = data(self._data, 'cf_info', 5,
-                             use_compression=self._use_compression)
-            if self._mode == 'w':
-                self._cf_info.attrs['info'] = '[0] : time [0],\n [1] : interaction id,\n'
-                self._cf_info.attrs['info'] += ' [1] : ds 1 number,\n [3] : ds 2 number,\n'
-                self._cf_info.attrs['info'] += ' [4] : static body number'
+            if self._backend == 'bullet':
+                self._cf_info = data(self._data, 'cf_info', 5,
+                                     use_compression=self._use_compression)
+                if self._mode == 'w':
+                    self._cf_info.attrs['info'] = '[0] : time [0],\n [1] : interaction id,\n'
+                    self._cf_info.attrs['info'] += ' [1] : ds 1 number,\n [3] : ds 2 number,\n'
+                    self._cf_info.attrs['info'] += ' [4] : static body number'
+
+            else:
+                self._cf_info = data(self._data, 'cf_info', 7,
+                                     use_compression=self._use_compression)
+                if self._mode == 'w':
+                    self._cf_info.attrs['info'] =  'inter id in indexset 1,'
+                    self._cf_info.attrs['info'] += 'ds1 id,'
+                    self._cf_info.attrs['info'] += 'ds2 id,'
+                    self._cf_info.attrs['info'] += 'shape id,'
+                    self._cf_info.attrs['info'] += 'shape type (integer),'
+                    self._cf_info.attrs['info'] += 'inter id in indexset 0'
+
         except Exception as e:
             self.print_io_mechanics('Warning -  cf_info in the hdf5 file')
             self.print_io_mechanics('        -  group(self._cf_info, log ) : ', e)

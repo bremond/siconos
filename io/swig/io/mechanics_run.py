@@ -6,7 +6,7 @@ from __future__ import print_function
 import os
 import sys
 
-from math import cos, sin, asin, atan2, acos
+from math import cos, sin, asin, atan2, acos, atan, pi
 from scipy import constants
 
 import numpy as np
@@ -40,7 +40,7 @@ from siconos.kernel import \
 # Siconos Mechanics imports
 from siconos.mechanics.collision.tools import Contactor, Shape
 from siconos.mechanics import joints
-from siconos.io.io_base import MechanicsIO
+import siconos.io.io_base as iob
 from siconos.io.FrictionContactTrace import GlobalFrictionContactTrace as GFCTrace
 from siconos.io.FrictionContactTrace import FrictionContactTrace as FCTrace
 from siconos.io.FrictionContactTrace import GlobalRollingFrictionContactTrace as GRFCTrace
@@ -59,6 +59,13 @@ from siconos.mechanics.collision import SpaceFilter, bodies
 from siconos.mechanics.collision.bodies import Disk,\
     Circle
 from siconos.kernel import SimpleMatrix
+
+# vectorized kernel if available
+try:
+    import nonos as vkernel
+    import nonos.bridge as vbridge
+except Exception:
+    pass
 
 class NativeShape:
 
@@ -82,6 +89,15 @@ class NativeCircleShape(NativeShape):
 class NativeLineShape(NativeShape):
     def __init__(self, a, b, c):
         self.params = [a, b, c]
+
+class NativeSegmentShape(NativeShape):
+    def __init__(self, x1, y1, x2, y2):
+        self.params = [x1, y1, x2, y2]
+
+class NativeBox2dShape(NativeShape):
+    def __init__(self, a, b):
+        self.params = [a, b]
+
 
 # It is necessary to select a back-end, although currently only Bullet
 # is supported for general objects.
@@ -148,6 +164,16 @@ def setup_default_classes():
             sp.setCellsize(6)
             return sp
 
+    elif backend == 'vnative':
+        global sk
+        global iob
+        import nonos.bridge as sk
+        import nonos.bridge as iob
+        use_bullet = False
+        sk.Stored.setStorage(vkernel.disks.make_storage())
+        default_manager_class = vbridge.SpaceFilter
+        default_simulation_class = vbridge.Simulation
+        default_body_class = vbridge.Body
 
 setup_default_classes()
 
@@ -177,6 +203,13 @@ def arguments():
     posargs = args.pop(posname, [])
     args.update(args.pop(kwname, []))
     return args, posargs
+
+# rotation around the origin
+def rotate_point(x, y, alpha):
+    x_new = x * cos(alpha) - y * sin(alpha)
+    y_new = x * sin(alpha) + y * cos(alpha)
+    return x_new, y_new
+
 
 
 @contextmanager
@@ -429,7 +462,7 @@ def load_siconos_mesh(shape_filename, scale=None):
         if scale is not None:
             apoints *= scale
 
-        aindices = np.empty(num_triangles * 3, dtype=int)
+        aindices = np.empty(num_triangles * 3, dtype=np.int)
 
         for i in range(0, num_triangles):
             c = polydata.GetCell(i)
@@ -461,10 +494,12 @@ class ShapeCollection():
         self._shapes = dict()
         self._tri = dict()
 
-        if backend == 'native':
+        if backend == 'native' or backend == 'vnative':
             self._primitive = {'Disk': NativeDiskShape,
                                'Circle': NativeCircleShape,
-                               'Line': NativeLineShape}
+                               'Line': NativeLineShape,
+                               'Segment': NativeSegmentShape,
+                               'Box2d': NativeBox2dShape}
         else:
             self._primitive = {'Sphere': SiconosSphere,
                                'Box': SiconosBox,
@@ -922,7 +957,8 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
         super(MechanicsHdf5Runner, self).__init__(io_filename, mode,
                                                   io_filename_backup,
                                                   use_compression,
-                                                  output_domains, verbose)
+                                                  output_domains, verbose,
+                                                  backend)
         self._interman = interaction_manager
         self._nsds = nsds
         self._simulation = simulation
@@ -931,7 +967,7 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
         self._static = {}
         self._shape = None
         self._occ_contactors = dict()
-        self._io = MechanicsIO()
+        self._io = iob.MechanicsIO()
         self._set_external_forces = set_external_forces
         self._shape_filename = shape_filename
         self._number_of_shapes = 0
@@ -1085,16 +1121,91 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
                 'origin': translation,
                 'orientation': orientation}
 
-            # only one contactor
             ctor = contactors[0]
             shape = self._shape.get(ctor.shape_name, new_instance=True)
-            a = self._shape._io.shapes()[ctor.shape_name][:][0][0]
-            b = self._shape._io.shapes()[ctor.shape_name][:][0][1]
-            c = self._shape._io.shapes()[ctor.shape_name][:][0][2]
 
-            self._interman.insertLine(a, b, c)
+            bdy = None
+            # only one contactor
+            if self._shape.attributes(ctor.shape_name)['primitive'] == 'Line':
+                a = self._shape._io.shapes()[ctor.shape_name][:][0][0]
+                b = self._shape._io.shapes()[ctor.shape_name][:][0][1]
+                c = self._shape._io.shapes()[ctor.shape_name][:][0][2]
 
-            body = None
+                bdy = self._interman.insertLine(a, b, c)
+            elif self._shape.attributes(ctor.shape_name)['primitive'] == 'Segment':
+                x10 = self._shape._io.shapes()[ctor.shape_name][:][0][0]
+                y10 = self._shape._io.shapes()[ctor.shape_name][:][0][1]
+                x20 = self._shape._io.shapes()[ctor.shape_name][:][0][2]
+                y20 = self._shape._io.shapes()[ctor.shape_name][:][0][3]
+
+                alpha = orientation[0] # 2D
+
+                x1a, y1a = rotate_point(x10, y10, alpha)
+                x2a, y2a = rotate_point(x20, y20, alpha)
+
+                tx = translation[0]
+                ty = translation[1]
+
+                x1 = x1a + tx
+                y1 = y1a + ty
+                x2 = x2a + tx
+                y2 = y2a + ty
+
+                bdy = self._interman.insertSegment(x1, y1, x2, y2)
+            elif self._shape.attributes(ctor.shape_name)['primitive'] == 'Box2d':
+                thickness = self._shape._io.shapes()[ctor.shape_name][:][0][0]
+                size = self._shape._io.shapes()[ctor.shape_name][:][0][1]
+
+                # insert 4 segments
+                xa0 = -thickness/2
+                xb0 = thickness/2
+                ya0 = -size/2
+                yb0 = size/2
+
+                alpha = orientation[0] # 2D
+
+                x1a = xa0
+                y1a = ya0
+                x2a = xa0
+                y2a = yb0
+                x3a = xb0
+                y3a = yb0
+                x4a = xb0
+                y4a = yb0
+
+                x1r, y1r = rotate_point(x1a, y1a, alpha)
+                x2r, y2r = rotate_point(x2a, y2a, alpha)
+                x3r, y3r = rotate_point(x3a, y3a, alpha)
+                x4r, y4r = rotate_point(x4a, y4a, alpha)
+
+                tx = translation[0]
+                ty = translation[1]
+
+                x1 = x1r + tx
+                y1 = y1r + ty
+                x2 = x2r + tx
+                y2 = y2r + ty
+                x3 = x3r + tx
+                y3 = y3r + ty
+                x4 = x4r + tx
+                y4 = y4r + ty
+
+                s1 = self._interman.insertSegment(x1, y1, x2, y2)
+                s2 = self._interman.insertSegment(x2, y2, x3, y3)
+                s3 = self._interman.insertSegment(x3, y3, x4, y4)
+                s4 = self._interman.insertSegment(x4, y4, x1, y1)
+
+                bdy = [s1, s2, s3, s4]
+
+            elif self._shape.attributes(ctor.shape_name)['primitive'] == 'Disk':
+                r = self._shape._io.shapes()[ctor.shape_name][:][0][0]
+                bdy = self._interman.insertTranslatedDisk(r, translation)
+            else:
+                self.print_verbose(
+                    'unknown primitive:{}'.format(
+                        self._shape.attributes(ctor.shape_name)['primitive']))
+                raise RuntimeError('unknown primitive')
+            body = bdy
             flag = 'static'
         else:
             # a dynamic object
@@ -1102,23 +1213,27 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
             shape = self._shape.get(ctor.shape_name)
             attrs = self._shape.attributes(ctor.shape_name)
 
-            if self._shape.attributes(ctor.shape_name)['primitive'] == 'Disk':
-                body_class = Disk
-            elif self._shape.attributes(ctor.shape_name)['primitive'] == 'Circle':
-                body_class = Circle
             radius = self._shape._io.shapes()[ctor.shape_name][:][0][0]
+            if backend == 'vnative':
+                body_class = default_body_class
+            else:
+                if self._shape.attributes(ctor.shape_name)['primitive'] == 'Disk':
+                    body_class = Disk
+                elif self._shape.attributes(ctor.shape_name)['primitive'] == 'Circle':
+                    body_class = Circle
+
 
             body = body_class(radius, mass,
                               list(translation)+list(orientation), velocity)
+
+            if number is not None:
+                body.setNumber(int(number))
 
             self._set_external_forces(body)
             self._nsds.insertDynamicalSystem(body)
             if birth and self._verbose:
                 self.print_verbose('birth of body named {0}, translation {1}, orientation {2}'.format(name, translation, orientation))
             flag = 'dynamic'
-
-            if number is not None:
-                body.setNumber(int(number))
 
         return body, flag
 
@@ -1247,11 +1362,35 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
                 csetpos = (translation + orientation)
                 for c in contactors:
                     shp = self._shape.get(c.shape_name)
-                    pos = list(c.translation) + list(c.orientation)
-                    cset.append(SiconosContactor(shp, pos, c.group))
+                    if type(shp) == NativeSegmentShape:
+                        # segment -> box2d
+                        # to ==> in mechanics_hdf5 at the declaration level
+                        x1 = shp.params[0]
+                        y1 = shp.params[1]
+                        x2 = shp.params[2]
+                        y2 = shp.params[3]
+                        d = sqrt((x1-x2)**2 + (y1-y2)**2)
+                        shp = SiconosBox2d([d, 0.])
+                        shp.setInsideMargin(0.0)
+                        shp.setOutsideMargin(0.01)
+                        trans = [(x1+x2)/2, (y1+y2)/2, 0.]
+                        c.translation = trans
+                        if x2 != x1:
+                            orien = atan((y2-y1)/(x2-x1))
+                        else:
+                            orien = pi/2
+                        c.orientation = [cos(orien/2), 0, 0, sin(orien/2)]
+                        pos = list(c.translation) + list(c.orientation)
+
+                        cset.append(SiconosContactor(shp, pos, c.group))
+                    else:
+                        pos = list(c.translation) + list(c.orientation)
+                        cset.append(SiconosContactor(shp, pos, c.group))
                     self.print_verbose('              Adding shape %s to static contactor'%c.shape_name, 'at relative position', pos)
 
+
                 staticBody = self._interman.addStaticBody(cset, csetpos, number)
+
                 self._static[name] = {
                     'number': number,
                     'origin': translation,
@@ -1760,7 +1899,7 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
                 inertia, body_class, shape_class, face_class,
                 edge_class, birth=birth,
                 number=self.instances()[name].attrs['id'])
-        elif backend == 'native':
+        elif backend == 'native' or backend == 'vnative':
             body, flag = self.import_native_object(
                 name, floatv(translation), floatv(orientation),
                 floatv(velocity), contactors, mass,
@@ -2111,7 +2250,7 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
                 times = np.empty((contact_points.shape[0], 1))
                 times.fill(time)
 
-                if self._dimension == 3:
+                if self._dimension == 3 or backend == 'vnative':
                     self._cf_data[current_line:, :] = \
                         np.concatenate((times,
                                         contact_points),
@@ -2360,12 +2499,12 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
         if self._output_contact_forces:
             self.log(self.output_contact_forces, with_timer)()
 
-        if self._output_contact_info and backend == 'bullet':
+        if self._output_contact_info and (backend == 'bullet' or backend == 'vnative'):
             self.log(self.output_contact_info, with_timer)()
         else:
             self.print_verbose('[warning] output_contact_info is only available with bullet backend for the moment')
             self.print_verbose('          to remove this message set output_contact_info options to False')
-
+            
         if self._output_contact_work and backend == 'bullet':
             self.log(self.output_contact_work, with_timer)()
             if self._run_options['skip_last_update_output'] or self._run_options['skip_last_update_input']:
@@ -2379,12 +2518,11 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
         if self._output_energy_work:
             self.log(self.output_energy_and_work, with_timer)()
 
+
         if self._should_output_domains:
             self.log(self.output_domains, with_timer)()
 
         self.log(self.output_solver_infos, with_timer)()
-
-
 
         self.log(self._out.flush)()
 
@@ -2628,6 +2766,7 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
             time_stepping=None,
             interaction_manager=None,
             bullet_options=None,
+            vnative_options=None,
             body_class=None,
             shape_class=None,
             face_class=None,
@@ -2956,6 +3095,7 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
         # SiconosBulletOptions if one is provided.
         multipoints_iterations =run_options.get('multipoints_iterations')
         bullet_options = run_options.get('bullet_options')
+        vnative_options = run_options.get('vnative_options')
         if (multipoints_iterations is not None ) and (bullet_options is not None):
             msg = '[io.mechanics] run(): one cannot give multipoints_iterations and bullet_options simultaneously. \n'
             msg += '                             multipoints_iterations will be marked as obsolete. use preferably bullet_options\n'
@@ -2978,7 +3118,12 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
                 # this is a second place to set the default
                 self._dimension = 3
 
-        self._interman = interaction_manager(bullet_options)
+        if backend == 'vnative':
+            if vnative_options == None:
+                vnative_options = vbridge.SpaceFilterOptions()
+            self._interman = interaction_manager(vnative_options)
+        else:
+            self._interman = interaction_manager(bullet_options)
 
 
         joints = list(self.joints())
@@ -3203,6 +3348,10 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
 
         self._simulation = simulation
 
+        # time step necessary for output
+        if backend == 'vnative':
+            self._io.setSimulation(self._simulation)
+
         if len(self._plugins) > 0:
             self.print_verbose('import plugins ...')
             self.import_plugins()
@@ -3290,6 +3439,8 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
                           ' has no exploded version')
                     self.log(self._simulation.computeOneStep, with_timer)()
             else:
+                if backend == 'vnative':
+                    self.log(self._simulation.updateInteractions, with_timer)()
                 self.log(self._simulation.computeOneStep, with_timer)()
 
             cond = self._output_frequency and (self._k % self._output_frequency == 0)
