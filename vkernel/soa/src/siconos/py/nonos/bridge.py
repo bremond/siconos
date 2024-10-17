@@ -201,7 +201,7 @@ class Simulation(Stored):
         pass # unimplemented
 
     def insertNonSmoothProblem(self, osnspb):
-        pass # unimplemented
+        self._osnspb = osnspb
 
     def insertInteractionManager(self, interman):
         self._interman = interman
@@ -215,6 +215,9 @@ class Simulation(Stored):
     def setNewtonTolerance(self, newtontol):
         pass # unimplemented
 
+    def setNewtonWarningOnNonConvergence(self, opt):
+        pass # unimplemented
+
     def setSkipLastUpdateOutput(self, skipluo):
         pass # unimplemented
 
@@ -226,6 +229,9 @@ class Simulation(Stored):
 
     def setDisplayNewtonConvergence(self, dnc):
         pass # unimplemented
+
+    def setWarningNonsmoothSolver(self, opt):
+        pass #unimplemented
 
     def startingTime(self):
         return self.handle().time_discretization().t0()
@@ -249,6 +255,9 @@ class Simulation(Stored):
 
     def nextStep(self):
         pass # unimplemented
+
+    def oneStepNSProblem(self, idx):
+        return self._osnspb
 
 class Body(Stored):
 
@@ -355,9 +364,12 @@ class OSNSPB(Stored):
     def getSizeOutput(self):
         return 0 # unimplemented
 
+    def numericsSolverOptions(self):
+        return self.handle().options()
 
-class SICONOS_TS_NONLINEAR():
-    pass
+
+SICONOS_TS_NONLINEAR = "SICONOS_TS_NONLINEAR"
+
 
 MoreauJeanOSI = Osi
 

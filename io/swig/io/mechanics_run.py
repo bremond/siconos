@@ -2522,7 +2522,8 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
         if self._should_output_domains:
             self.log(self.output_domains, with_timer)()
 
-        self.log(self.output_solver_infos, with_timer)()
+        if (backend != "vnative"):
+            self.log(self.output_solver_infos, with_timer)()
 
         self.log(self._out.flush)()
 

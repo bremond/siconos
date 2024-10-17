@@ -41,7 +41,7 @@ while [ $# -gt 0 ]; do
       shift
       cat>.siconos-disks-manifest.scm<<EOF
 (specifications->manifest
- '( "siconos" "benchmark" "clang-toolchain" "valgrind"
+ '( "siconos-with-vkernel" "benchmark" "clang-toolchain" "valgrind"
     "suitesparse" "eigen" "boost" "fmt" "range-v3"
     "cmake" "ninja" "make" "bash" "coreutils" "which" "python" "python-pip" "python-numpy"
     "python-scikit-build" "python-setuptools"
@@ -66,7 +66,7 @@ EOF
        (url "https://gitlab.inria.fr/bremond/guix-hpc.git")
        (branch "add-siconosx")
        (commit
-        "bcc3b8f1bb514e93e65ff241192ebd7888147ec0")))
+        "79fbe3b399100de4a63cda5758ef0d9f8b640e7b")))
 EOF
       # guix environment setup
       # export PATH=/var/guix/profiles/per-user/root/current-guix/bin:$PATH
@@ -79,7 +79,8 @@ EOF
       guix_cmd="guix time-machine -C ./.siconos-vrun-channels.scm --"
       exec $guix_cmd shell $guix_isolation_args \
            --root=.siconos-guix-profile \
-           -m .siconos-disks-manifest.scm -- $0  "$@"
+           -m .siconos-disks-manifest.scm \
+           -- $0  "$@"
       ;;
 
     --venv-dir)
@@ -183,7 +184,7 @@ EOF
       else
         xex="exec"
       fi
-      . ${venv}/bin/activate
+      . ${mydir}/${venv}/bin/activate
       export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/${venv}/lib/python${python_version}/site-packages/nonos/
       if [ ! -z "$timer" ]; then
         $xex $timer -f "$timer_args" $interp $script $args

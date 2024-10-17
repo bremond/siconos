@@ -1872,19 +1872,37 @@ class VView(object):
                 source.SetYLength(attrs[1])
                 source.SetZLength(self.opts.depth_2d)
 
+            elif primitive == 'Segment':
+                line = vtk.vtkLineSource()
+                (x1, y1, x2, y2) = attrs
+
+                line.SetPoint1(x1, y1, 0)
+                line.SetPoint2(x2, y2, 0)
+
+                source = vtk.vtkTubeFilter()
+                source.SetInputConnection(line.GetOutputPort())
+                source.SetRadius(.1)
+                source.SetNumberOfSides(30)
+                source.Update()
+
             elif primitive == 'Line':
                 line = vtk.vtkLineSource()
                 (a, b, c) = attrs
-                a2pb2 = a*a+b*b
+                a2pb2 = a*a + b*b
                 assert (a2pb2 > 0)
-                x0 = a*c/a2pb2
-                y0 = a*b/a2pb2
 
-                x1 = x0 + b
-                y1 = y0 - a
+                if (b != 0):
+                    x0 = 0.
+                    y0 = -c / b
+                else:
+                    x0 =-c / a
+                    y0 = 0.
 
-                x2 = x0 - b
-                y2 = y0 + a
+                x1 = x0 - b
+                y1 = y0 + a
+
+                x2 = x0 + b
+                y2 = y0 - a
 
                 line.SetPoint1(x1, y1, 0)
                 line.SetPoint2(x2, y2, 0)
