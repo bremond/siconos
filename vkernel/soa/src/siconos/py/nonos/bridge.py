@@ -44,7 +44,8 @@ class SpaceFilter(Stored):
         segment.set_maxpoints(mp) # fix / size of smallest disk
         segment.initialize()
 
-        segment.set_ident(self._static_shape_counter)
+        # negative for static shape
+        segment.set_ident(- self._static_shape_counter)
         self._static_shape_counter = self._static_shape_counter + 1
 
         disksegment = vkernel.disks.add_disksegment_r(self.data())
@@ -62,7 +63,8 @@ class SpaceFilter(Stored):
         line.set_maxpoints(10000)
         line.initialize()
 
-        line.set_ident(self._static_shape_counter)
+         # negative for static shape
+        line.set_ident(- self._static_shape_counter)
         self._static_shape_counter = self._static_shape_counter + 1
 
         print("new line,  p0:", line.p0())
@@ -90,7 +92,8 @@ class SpaceFilter(Stored):
         translated_disk_shape.set_item(disk_shape)
         translated_disk_shape.set_translation(array([translation[0],translation[1],0]))
 
-        translated_disk_shape.set_ident(self._static_shape_counter)
+        # negative for static shape
+        translated_disk_shape.set_ident(- self._static_shape_counter)
         self._static_shape_counter = self._static_shape_counter + 1
 
 
