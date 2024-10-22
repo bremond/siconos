@@ -96,7 +96,6 @@ class SpaceFilter(Stored):
         translated_disk_shape.set_ident(- self._static_shape_counter)
         self._static_shape_counter = self._static_shape_counter + 1
 
-
         diskfdisk = vkernel.disks.add_diskfdisk_r(self.data())
         diskfdisk.set_translated_disk_shape(translated_disk_shape)
 

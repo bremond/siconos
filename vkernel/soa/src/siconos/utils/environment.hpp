@@ -23,6 +23,7 @@ struct standard_environment {
   using boolean = uint8_t; // not bool => cf CompactNSearch sort.
   using scalar = double;
   using indice = std::size_t;
+  using integer = std::int64_t;
 
   template <typename K, typename V>
   using map = std::map<K, V>;

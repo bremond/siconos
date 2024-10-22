@@ -29,6 +29,8 @@ struct scalar : attribute<> {};
 
 struct indice : attribute<> {};
 
+struct integer : attribute<> {};
+
 struct undefined_indice_parameter : attribute<> {};
 
 template <string_literal S>

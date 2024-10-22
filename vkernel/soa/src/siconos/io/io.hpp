@@ -38,7 +38,7 @@ struct io : item<> {
   using properties =
       // an attached global ident for contact shapes
       gather<
-          storage::attached<ContactShapes, symbol<"ident">, some::indice>...>;
+          storage::attached<ContactShapes, symbol<"ident">, some::integer>...>;
 
   template <typename Handle>
   struct interface : default_interface<Handle> {
@@ -245,6 +245,7 @@ struct io : item<> {
       using env_t = decltype(self()->env());
       using indice = typename env_t::indice;
       using scalar = typename env_t::scalar;
+      using integer = typename env_t::integer;
 
       auto& relations =
           storage::attr_values<interaction, "relation">(data, step);
@@ -277,7 +278,7 @@ struct io : item<> {
                   },
                   [&](auto) {
                     // another kind of relation
-                    return (indice)0;
+                    return (integer)0;
                   }));
 
           attr<"co_info">(*self()).push_back(
