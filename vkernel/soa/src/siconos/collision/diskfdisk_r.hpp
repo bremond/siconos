@@ -23,6 +23,8 @@ struct diskfdisk_r : item<>,
       return handle(self()->data(), attr<"translated_disk_shape">(*self()));
     };
 
+    decltype(auto) shape() { return self()->translated_disk_shape(); }
+
     decltype(auto) compute_h(auto& ds)
     {
       auto& data = self()->data();

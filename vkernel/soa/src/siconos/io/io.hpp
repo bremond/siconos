@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "siconos/algebra/numerics.hpp"
+#include "siconos/model/lagrangian_r.hpp"
 #include "siconos/collision/collision.hpp"
 #include "siconos/collision/diskfdisk_r.hpp"
 #include "siconos/collision/disksegment_r.hpp"
@@ -16,12 +17,13 @@ namespace siconos::io {
 using namespace storage;
 using namespace storage::pattern;
 
-template <typename Osi>
+template <typename Osi, typename... ContactShapes>
 struct io : item<> {
   using osi = Osi;
   using system = typename osi::system;
   using interaction = typename osi::interaction;
   using relations_t = typename interaction::relations;
+  using contact_shapes = gather<ContactShapes...>;
 
   using attributes =
       gather<attribute<"pos_info", some::unbounded_collection<some::vector<
@@ -31,7 +33,12 @@ struct io : item<> {
              attribute<"cp_info", some::unbounded_collection<some::vector<
                                       some::scalar, some::indice_value<25>>>>,
              attribute<"co_info", some::unbounded_collection<some::vector<
-                                      some::scalar, some::indice_value<6>>>>>;
+                                      some::scalar, some::indice_value<4>>>>>;
+
+  using properties =
+      // an attached global ident for contact shapes
+      gather<
+          storage::attached<ContactShapes, symbol<"ident">, some::indice>...>;
 
   template <typename Handle>
   struct interface : default_interface<Handle> {
@@ -262,35 +269,24 @@ struct io : item<> {
           auto static_shape_info = variant::visit(
               data, relation,
               ground::overload(
-                  // disk/segment
-                  [&](storage::index<collision::disksegment_r, indice> rrel) {
+                  // relation1 with static shape : the concept is missing
+                  [&]<match::relation1 Relation>(Relation rrel) {
                     auto hrel = storage::handle(data, rrel);
-
-                    // static -> direct indexing
-                    return ground::make_pair(-hrel.segment().get(), 0);
+                    // must provide shape method
+                    return storage::prop<"ident">(hrel.shape());
                   },
-                  // disk/fixed disk
-                  [&](storage::index<collision::diskfdisk_r, indice> rrel) {
-                    auto hrel = storage::handle(data, rrel);
+                  [&](auto) {
+                    // another kind of relation
+                    return (indice)0;
+                  }));
 
-                    // static -> direct indexing
-                    return ground::make_pair(
-                        -hrel.translated_disk_shape().get(), 1);
-                  },
-                  [&](auto) { return ground::make_pair((indice)0, 0); }));
-
-          attr<"co_info">(*self()).push_back({
-            (scalar) inter_index, (scalar)index_ds1, (scalar)index_ds2,
-                (scalar)ground::first(
-                    static_shape_info) /* index of static shape */,
-                (scalar)ground::second(
-                    static_shape_info) /* type of static_shape */,
-                (scalar)hds1.get() /* index of interaction in indexset 0 */
-          });
+          attr<"co_info">(*self()).push_back(
+              {(scalar)inter_index, (scalar)index_ds1, (scalar)index_ds2,
+               (scalar)static_shape_info});
         }
       }
 
-      return algebra::matrix_view<algebra::unbounded_col_matrix<scalar, 6>>(
+      return algebra::matrix_view<algebra::unbounded_col_matrix<scalar, 4>>(
           attr<"co_info">(*self()).data()->data(),
           attr<"co_info">(*self()).size(),
           attr<"co_info">(*self()).data()->size());

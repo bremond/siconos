@@ -19,7 +19,9 @@ struct disksegment_r : item<>,
     decltype(auto) segment()
     {
       return handle(self()->data(), attr<"segment">(*self()));
-    };
+    }
+
+    decltype(auto) shape() { return self()->segment(); }
 
     decltype(auto) compute_h(auto& ds)
     {
@@ -56,15 +58,18 @@ struct disksegment_r : item<>,
       const scalar tmp8 = tmp0 * tmp7 + tmp3;
       const scalar tmp9 = tmp1 * tmp7 + tmp4;
       const scalar tmp10 = pow(pow(tmp8, 2) + pow(tmp9, 2), -1.0 / 2.0);
-      const scalar tmp11 = ((tmp5 > 1) ? (0) : ((tmp5 == 1) ? (1.0 / 2.0) : (1)));
-      const scalar tmp12 = ((tmp6 < 0) ? (0) : ((tmp6 == 0) ? (1.0 / 2.0) : (1)));
+      const scalar tmp11 =
+          ((tmp5 > 1) ? (0) : ((tmp5 == 1) ? (1.0 / 2.0) : (1)));
+      const scalar tmp12 =
+          ((tmp6 < 0) ? (0) : ((tmp6 == 0) ? (1.0 / 2.0) : (1)));
       const scalar tmp13 = -tmp0 * tmp11 * tmp12 * tmp2;
       const scalar tmp14 = -tmp1 * tmp11 * tmp12 * tmp2;
 
       h_matrix1(0, 0) = tmp10 * (tmp1 * tmp13 * tmp9 +
                                  (1.0 / 2.0) * tmp8 * (2 * tmp0 * tmp13 + 2));
-      h_matrix1(1, 0) = -tmp10 * (tmp0 * tmp14 * tmp8 +
-                                 (1.0 / 2.0) * tmp9 * (2 * tmp1 * tmp14 + 2));
+      h_matrix1(1, 0) =
+          -tmp10 *
+          (tmp0 * tmp14 * tmp8 + (1.0 / 2.0) * tmp9 * (2 * tmp1 * tmp14 + 2));
       h_matrix1(0, 1) = -h_matrix1(1, 0);
       h_matrix1(1, 1) = h_matrix1(0, 0);
       h_matrix1(0, 2) = 0;

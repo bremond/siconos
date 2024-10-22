@@ -16,7 +16,9 @@ struct diskline_r : item<>, model::relation1, model::any_lagrangian_relation {
     decltype(auto) line()
     {
       return handle(self()->data(), attr<"line">(*self()));
-    };
+    }
+
+    decltype(auto) shape() { return self()->line(); }
 
     decltype(auto) compute_h(auto& ds)
     {

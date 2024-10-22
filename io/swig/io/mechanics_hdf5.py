@@ -608,24 +608,12 @@ class MechanicsHdf5(object):
 
 
         try:
-            if self._backend == 'bullet':
-                self._cf_info = data(self._data, 'cf_info', 5,
-                                     use_compression=self._use_compression)
-                if self._mode == 'w':
-                    self._cf_info.attrs['info'] = '[0] : time [0],\n [1] : interaction id,\n'
-                    self._cf_info.attrs['info'] += ' [1] : ds 1 number,\n [3] : ds 2 number,\n'
-                    self._cf_info.attrs['info'] += ' [4] : static body number'
-
-            else:
-                self._cf_info = data(self._data, 'cf_info', 7,
-                                     use_compression=self._use_compression)
-                if self._mode == 'w':
-                    self._cf_info.attrs['info'] =  'inter id in indexset 1,'
-                    self._cf_info.attrs['info'] += 'ds1 id,'
-                    self._cf_info.attrs['info'] += 'ds2 id,'
-                    self._cf_info.attrs['info'] += 'shape id,'
-                    self._cf_info.attrs['info'] += 'shape type (integer),'
-                    self._cf_info.attrs['info'] += 'inter id in indexset 0'
+            self._cf_info = data(self._data, 'cf_info', 5,
+                                 use_compression=self._use_compression)
+            if self._mode == 'w':
+                self._cf_info.attrs['info'] = '[0] : time [0],\n [1] : interaction id,\n'
+                self._cf_info.attrs['info'] += ' [1] : ds 1 number,\n [3] : ds 2 number,\n'
+                self._cf_info.attrs['info'] += ' [4] : static body number'
 
         except Exception as e:
             self.print_io_mechanics('Warning -  cf_info in the hdf5 file')

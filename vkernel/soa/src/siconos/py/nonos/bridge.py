@@ -21,6 +21,8 @@ class Stored():
 
 class SpaceFilter(Stored):
 
+    _static_shape_counter = 1 # in cf_info 0 -> shape associated to some ds
+
     def __init__(self, options):
         self._options = options
         self._initialized = False
@@ -42,6 +44,9 @@ class SpaceFilter(Stored):
         segment.set_maxpoints(mp) # fix / size of smallest disk
         segment.initialize()
 
+        segment.set_ident(self._static_shape_counter)
+        self._static_shape_counter = self._static_shape_counter + 1
+
         disksegment = vkernel.disks.add_disksegment_r(self.data())
         disksegment.set_segment(segment)
 
@@ -56,6 +61,9 @@ class SpaceFilter(Stored):
         line.set_c(c)
         line.set_maxpoints(10000)
         line.initialize()
+
+        line.set_ident(self._static_shape_counter)
+        self._static_shape_counter = self._static_shape_counter + 1
 
         print("new line,  p0:", line.p0())
         print("--------, dir:", line.direction())
@@ -81,6 +89,10 @@ class SpaceFilter(Stored):
             vkernel.disks.add_translated_disk_shape(self.data())
         translated_disk_shape.set_item(disk_shape)
         translated_disk_shape.set_translation(array([translation[0],translation[1],0]))
+
+        translated_disk_shape.set_ident(self._static_shape_counter)
+        self._static_shape_counter = self._static_shape_counter + 1
+
 
         diskfdisk = vkernel.disks.add_diskfdisk_r(self.data())
         diskfdisk.set_translated_disk_shape(translated_disk_shape)
