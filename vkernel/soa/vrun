@@ -66,7 +66,7 @@ EOF
        (url "https://gitlab.inria.fr/bremond/guix-hpc.git")
        (branch "add-siconosx")
        (commit
-        "498b2f0a23c0beadab7ef94bf7955551d56198dc")))
+        "c1860b4e26b4b874a1840634f90047fad2916231")))
 EOF
       # guix environment setup
       # export PATH=/var/guix/profiles/per-user/root/current-guix/bin:$PATH
