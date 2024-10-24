@@ -1,12 +1,22 @@
-#pragma once
+module;
 
 #include "siconos/storage/ground/ground.hpp"
+
+export module siconos.storage:info;
 
 namespace siconos::storage {
 
 // the storage info key
-struct info {};
+export struct info {};
 
+export template <typename... Pairs>
+auto get_info(ground::tuple<Pairs...>&& data);
+
+export template <typename... Pairs>
+auto get_info(const ground::tuple<Pairs...>& data);
+}  // namespace siconos::storage
+
+namespace siconos::storage {
 // pre-map cases
 template <typename... Pairs>
 auto get_info(ground::tuple<Pairs...>&& data)
@@ -34,7 +44,7 @@ auto get_info(ground::database<Pairs...>&& data)
   return ground::get<info>(static_cast<ground::database<Pairs...>&&>(data));
 }
 
-template <typename D>
+export template <typename D>
 using get_info_t = decltype(get_info(std::decay_t<D>{}));
 
 }  // namespace siconos::storage

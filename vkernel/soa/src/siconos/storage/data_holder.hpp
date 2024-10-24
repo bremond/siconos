@@ -1,6 +1,7 @@
 #pragma once
 
-#include "siconos/storage/info.hpp"
+import siconos.storage;
+
 #include "siconos/storage/some/some.hpp"
 
 

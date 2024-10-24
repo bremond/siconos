@@ -55,7 +55,7 @@ EOF
         (url "https://git.savannah.gnu.org/git/guix.git")
         (branch "master")
         (commit
-          "6f72ad465c1e2df965e8d73b209497b4ef456527")
+          "2b2b6a7675d43ff82487718c729cfaf5edf98c8d")
         (introduction
           (make-channel-introduction
             "9edb3f66fd807b096b48283debdcddccfea34bad"
@@ -184,7 +184,7 @@ EOF
       else
         xex="exec"
       fi
-      . ${mydir}/${venv}/bin/activate
+      [ -f ${mydir}/${venv}/bin/activate ] && . ${mydir}/${venv}/bin/activate
       export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:`pwd`/${venv}/lib/python${python_version}/site-packages/nonos/
       if [ ! -z "$timer" ]; then
         $xex $timer -f "$timer_args" $interp $script $args

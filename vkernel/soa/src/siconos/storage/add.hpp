@@ -1,9 +1,9 @@
 #pragma once
 
+import siconos.storage;
+
 #include "siconos/storage/ground/ground.hpp"
-#include "siconos/storage/info.hpp"
 #include "siconos/storage/pattern/base.hpp"
-#include "siconos/storage/properties.hpp"
 
 namespace siconos::storage {
 

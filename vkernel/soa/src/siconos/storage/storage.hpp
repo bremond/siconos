@@ -1,13 +1,12 @@
 #pragma once
 
-#include "siconos/storage/info.hpp"
+import siconos.storage;
+
 #include "siconos/storage/memory.hpp"
-#include "siconos/storage/properties.hpp"
 #include "siconos/storage/handle.hpp"
 #include "siconos/storage/make.hpp"
 #include "siconos/storage/remove.hpp"
 #include "siconos/storage/add.hpp"
-#include "siconos/storage/get.hpp"
 #include "siconos/storage/data_holder.hpp"
 
 namespace siconos::storage {

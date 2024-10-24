@@ -24,7 +24,7 @@ set_target_properties(fixed_disks PROPERTIES COMPILE_FLAGS "${flags}")# -fconcep
 
 
 target_link_libraries(t1 Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
-target_link_libraries(bouncing_ball  Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
+target_link_libraries(bouncing_ball  Eigen3::Eigen Siconos::numerics benchmark pthread fmt siconos.storage)
 target_link_libraries(bouncing_balls Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
 target_link_libraries(bouncing_disk Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch)
 target_link_libraries(bouncing_disk_sf Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch)

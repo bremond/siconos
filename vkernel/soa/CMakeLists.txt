@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.28)
 project(
   ${SKBUILD_PROJECT_NAME}
   VERSION ${SKBUILD_PROJECT_VERSION}
@@ -32,7 +32,9 @@ if(WITH_GPU)
   set(flags "-DWITH_GPU -DCUNSEARCH_USE_DOUBLE_PRECISION")
 endif()
 
-set(flags "${flags} -Wall --std=c++20")
+set(CMAKE_CXX_STANDARD 20)
+set(flags "${flags} -Wall")
+
 set(fconcepts_diagnostics)
 check_cxx_compiler_flag("-fconcepts-diagnostics-depth=1" fconcepts_diagnostics)
 check_cxx_compiler_flag("-ftemplate-backtrace-limit=1" ftemplate_backtrace_limit)

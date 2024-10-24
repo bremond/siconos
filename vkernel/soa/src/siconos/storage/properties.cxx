@@ -1,4 +1,4 @@
-#pragma once
+module;
 
 #include "siconos/storage/ground/ground.hpp"
 #include "siconos/storage/pattern/base.hpp"
@@ -6,7 +6,12 @@
 #include "siconos/storage/pattern/pattern.hpp"
 #include "siconos/storage/some/some.hpp"
 
-namespace siconos::storage {
+export module siconos.storage:properties;
+
+import :info;
+
+export namespace siconos::storage {
+
 using namespace pattern;
 
 template <match::item I, typename Tag, match::attribute DataSpec>
@@ -99,8 +104,7 @@ struct unbounded_diagonal : property::unbounded_diagonal {
 };
 
 template <match::property K>
-static auto pre_map_all_properties_as =
-    []<typename D>(D& data) constexpr -> auto {
+auto pre_map_all_properties_as = []<typename D>(D& data) constexpr -> auto {
   using info_t = get_info_t<D>;
   using all_properties_t = typename info_t::all_properties_t;
 
@@ -108,7 +112,7 @@ static auto pre_map_all_properties_as =
 };
 
 template <match::property K>
-static auto all_properties_as = []<typename D>(D& data) constexpr -> auto {
+auto all_properties_as = []<typename D>(D& data) constexpr -> auto {
   using info_t = get_info_t<D>;
   using all_properties_t = typename info_t::all_properties_t;
 
@@ -116,7 +120,7 @@ static auto all_properties_as = []<typename D>(D& data) constexpr -> auto {
 };
 
 template <match::attribute Attr>
-static auto attribute_properties = [](auto& data) constexpr -> auto {
+auto attribute_properties = [](auto& data) constexpr -> auto {
   using info_t = get_info_t<decltype(data)>;
   using all_properties_t = typename info_t::all_properties_t;
 
@@ -126,7 +130,7 @@ static auto attribute_properties = [](auto& data) constexpr -> auto {
 };
 
 template <match::item Item, typename properties>
-static constexpr auto item_properties_from()
+constexpr auto item_properties_from()
 {
   return ground::filter(properties{},
                         ground::is_a_model<[]<typename T>() consteval {
@@ -140,7 +144,7 @@ static constexpr auto item_properties_from()
 };
 
 template <match::item Item, typename Data>
-static constexpr auto item_properties(Data&& data)
+constexpr auto item_properties(Data&& data)
 {
   using info_t = get_info_t<Data>;
   using all_properties_t = typename info_t::all_properties_t;
@@ -149,7 +153,7 @@ static constexpr auto item_properties(Data&& data)
 };
 
 template <match::attribute Attr, match::property K>
-static constexpr bool has_property(auto& data)
+constexpr bool has_property(auto& data)
 {
   return ground::any_of(all_properties_as<K>(data), []<match::property P>(P) {
     return std::derived_from<Attr, typename P::type>;
@@ -157,7 +161,7 @@ static constexpr bool has_property(auto& data)
 }
 
 template <match::item Item, match::property K, typename properties>
-static constexpr bool has_property_from()
+constexpr bool has_property_from()
 {
   return ground::any_of(
       item_properties_from<Item, properties>(),
@@ -165,7 +169,7 @@ static constexpr bool has_property_from()
 };
 
 template <match::item Item, match::property K>
-static constexpr bool has_property(auto&& data)
+constexpr bool has_property(auto&& data)
 {
   return ground::any_of(
       item_properties<Item>(data),
@@ -173,7 +177,7 @@ static constexpr bool has_property(auto&& data)
 };
 
 template <match::item Item, typename Properties>
-static constexpr auto bind_name()
+constexpr auto bind_name()
 {
   return ground::find_if(item_properties_from<Item, Properties>(),
                          ground::is_a_model<[]<match::property P>() {
@@ -188,9 +192,8 @@ static constexpr auto bind_name()
 template <typename A, typename K, typename D>
 using has_property_t = std::decay_t<decltype(has_property<A, K>(D{}))>;
 
-static auto refine_attribute = []<match::attribute Attr, typename D>(
-                                   const D& data,
-                                   Attr) constexpr -> decltype(auto) {
+auto refine_attribute = []<match::attribute Attr, typename D>(
+                            const D& data, Attr) constexpr -> decltype(auto) {
   using refines = decltype(ground::filter(
       pre_map_all_properties_as<property::refine>(data),
       ground::is_inside_type_parent<Attr>));
@@ -204,31 +207,30 @@ static auto refine_attribute = []<match::attribute Attr, typename D>(
   }
 };
 
-static constexpr auto refine_recursively_attribute =
-    []<match::attribute Attr>(auto& data, Attr) {
-      using data_t = std::decay_t<decltype(data)>;
-      constexpr auto rec_loop = []<typename IAttr>(auto&& loop,
-                                                   IAttr) constexpr {
-        if constexpr (match::attribute_with_internal_type<IAttr>) {
-          // look inside and apply fun
-          if constexpr (match::attribute<typename IAttr::type>) {
-            using r =
-                refine_with_type<IAttr, decltype(loop(
-                                            loop, typename IAttr::type{}))>;
-            return refine_attribute(data_t{}, r{});
-          }
-          else {
-            return refine_attribute(data_t{}, IAttr{});
-          }
-        }
-        else {
-          // terminal attribute
-          return refine_attribute(data_t{}, IAttr{});
-        }
-      };
+constexpr auto refine_recursively_attribute = []<match::attribute Attr>(
+                                                  auto& data, Attr) {
+  using data_t = std::decay_t<decltype(data)>;
+  constexpr auto rec_loop = []<typename IAttr>(auto&& loop, IAttr) constexpr {
+    if constexpr (match::attribute_with_internal_type<IAttr>) {
+      // look inside and apply fun
+      if constexpr (match::attribute<typename IAttr::type>) {
+        using r =
+            refine_with_type<IAttr,
+                             decltype(loop(loop, typename IAttr::type{}))>;
+        return refine_attribute(data_t{}, r{});
+      }
+      else {
+        return refine_attribute(data_t{}, IAttr{});
+      }
+    }
+    else {
+      // terminal attribute
+      return refine_attribute(data_t{}, IAttr{});
+    }
+  };
 
-      return rec_loop(rec_loop, Attr{});
-    };
+  return rec_loop(rec_loop, Attr{});
+};
 
 template <typename Handle, typename Data>
 using attached_storages_t =
@@ -260,7 +262,7 @@ using attached_storages_t =
 
 // use storage::attached_storages(...) instead
 template <typename Item>
-static constexpr auto is_attached_storage =
+constexpr auto is_attached_storage =
     ground::is_a_model<[]<typename T>() constexpr {
       return match::attached_storage<T, Item>;
     }>;

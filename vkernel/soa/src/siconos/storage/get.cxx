@@ -1,16 +1,22 @@
-#pragma once
+module;
 
 #include "siconos/storage/ground/ground.hpp"
 #include "siconos/storage/pattern/base.hpp"
 #include "siconos/storage/pattern/base_concepts.hpp"
 #include "siconos/storage/pattern/pattern.hpp"
+#include "siconos/storage/memory.hpp"
 
-namespace siconos::storage {
+export module siconos.storage:get;
+
+import :info;
+import :properties;
+
+export namespace siconos::storage {
 
 using namespace pattern;
 
 template <typename A>
-static auto get = ground::overload(
+auto get = ground::overload(
     // get<Attr>(data, step, handle)
     []<match::handle_attribute<A> Handle, typename Data>(
         Data&& data, auto step, Handle&& handle) constexpr -> decltype(auto) {
@@ -94,42 +100,42 @@ struct access {
 };
 
 template <string_literal S>
-static auto param = [](auto h) constexpr -> decltype(auto) {
+auto param = [](auto h) constexpr -> decltype(auto) {
   return h.template env_param<S>();
 };
 
 template <string_literal S>
-static auto prop = [](auto h) constexpr -> decltype(auto) {
+auto prop = [](auto h) constexpr -> decltype(auto) {
   return h.template property<S>();
 };
 
 template <string_literal S>
-static auto attr = []<typename H>(H h, typename H::indice step =
+auto attr = []<typename H>(H h, typename H::indice step =
                                            0) constexpr -> decltype(auto) {
   using attr_n = attr_t<typename H::type, S>;
   return memory(step, ground::get<attr_n>(h.data()))[h.get()];
 };
 
 template <match::attribute T>
-static constexpr decltype(auto) attr_memory(auto& data)
+constexpr decltype(auto) attr_memory(auto& data)
 {
   return ground::get<T>(data);
 };
 
 template <match::item I, string_literal S>
-static constexpr decltype(auto) attr_memory(auto& data)
+constexpr decltype(auto) attr_memory(auto& data)
 {
   return ground::get<attr_t<I, S>>(data);
 };
 
 template <string_literal S>
-static constexpr auto is_identified_by =
+constexpr auto is_identified_by =
     ground::is_a_model<[]<typename T>() constexpr {
       return match::tag<T, symbol<S>>;
     }>;
 
 template <match::item I, string_literal S>
-static auto prop_memory = [](auto& data) constexpr -> decltype(auto) {
+auto prop_memory = [](auto& data) constexpr -> decltype(auto) {
   using info_t = get_info_t<decltype(data)>;
   constexpr auto tpl =
       ground::filter(ground::filter(typename info_t::all_properties_t{},
@@ -149,26 +155,26 @@ static auto prop_memory = [](auto& data) constexpr -> decltype(auto) {
 };
 
 template <match::attribute T>
-static constexpr decltype(auto) attr_values(auto& data, auto step)
+constexpr decltype(auto) attr_values(auto& data, auto step)
 {
   return memory(step, (attr_memory<T>(data)));
 };
 
 template <match::item I, string_literal S, typename D>
-static constexpr decltype(auto) attr_values(D&& data, auto step)
+constexpr decltype(auto) attr_values(D&& data, auto step)
 {
   return memory(step, (attr_memory<I, S>(data)));
 };
 
 template <match::item I, string_literal S>
-static auto prop_values =
+auto prop_values =
     [](auto& data, auto step) constexpr -> decltype(auto) {
   return memory(step, (prop_memory<I, S>(data)));
 };
 
 // fix H is a handle defined in storage
 template <typename Hc>
-static auto constexpr methods(Hc hc)
+auto constexpr methods(Hc hc)
 {
   using handle_t = typename decltype(+hc)::type;
   auto data = typename handle_t::data_t{};
@@ -183,7 +189,7 @@ static auto constexpr methods(Hc hc)
 }
 
 template <typename Astor>
-static auto constexpr attached_storage_name(Astor astor)
+auto constexpr attached_storage_name(Astor astor)
 {
   using tag = typename Astor::tag;
   if constexpr (match::symbol<tag>) {

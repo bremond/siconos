@@ -1,8 +1,5 @@
 #pragma once
 
-#include <concepts>
-#include <tuple>
-
 #include "siconos/storage/pattern/pattern.hpp"
 #include "siconos/storage/some/some.hpp"
 
