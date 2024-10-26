@@ -1,6 +1,8 @@
 module;
 
-#include "siconos/storage/ground/ground.hpp"
+#include <type_traits>
+
+import siconos.storage.ground;
 
 export module siconos.storage:info;
 

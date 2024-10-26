@@ -1,14 +1,14 @@
-#pragma once
+module;
 
-#include "siconos/storage/pattern/base.hpp"
+export module siconos.storage.some;
 
-namespace siconos::storage::some {
+import siconos.storage.ground;
 
-using namespace siconos::storage::pattern;
+export namespace siconos::storage::some {
 
 template <typename... Args>
 struct attribute {
-  using args = pattern::gather<Args...>;
+  using args = ground::tuple<Args...>;
   using attribute_t = void;
 };
 
@@ -33,19 +33,19 @@ struct integer : attribute<> {};
 
 struct undefined_indice_parameter : attribute<> {};
 
-template <string_literal S>
+template <ground::string_literal S>
 struct indice_parameter : undefined_indice_parameter {
   static constexpr auto name = S;
 };
 
 struct undefined_type_parameter : attribute<> {};
 
-template <string_literal S>
+template <ground::string_literal S>
 struct type_parameter : undefined_type_parameter {
   static constexpr auto name = S;
 };
 
-template <string_literal S>
+template <ground::string_literal S>
 struct item : type_parameter<S> {};
 
 struct undefined_indice_value : attribute<> {};
@@ -88,7 +88,7 @@ struct undefined_unbounded_array : unbounded_storage {};
 
 template <typename... Sizes>
 struct with_sizes {
-  using sizes = pattern::gather<Sizes...>;
+  using sizes = ground::tuple<Sizes...>;
 };
 
 template <typename Type>
@@ -98,7 +98,7 @@ struct with_type {
 
 template <typename... Types>
 struct with_types {
-  using types = pattern::gather<Types...>;
+  using types = ground::tuple<Types...>;
 };
 
 template <typename Type, typename N, typename M>
@@ -106,8 +106,8 @@ struct matrix : undefined_matrix, with_sizes<N, M>, with_type<Type> {};
 
 template <typename Mat>
 struct transposed_matrix : undefined_matrix,
-                           with_sizes<nth_t<1, typename Mat::sizes>,
-                                      nth_t<0, typename Mat::sizes>>,
+                           with_sizes<ground::nth_t<1, typename Mat::sizes>,
+                                      ground::nth_t<0, typename Mat::sizes>>,
                            with_type<typename Mat::type> {};
 
 template <typename Type = some::scalar>
@@ -118,7 +118,7 @@ struct unbounded_vector : undefined_unbounded_vector, with_type<Type> {};
 
 template <typename Type, typename M>
 struct diagonal_matrix : undefined_diagonal_matrix,
-                         with_sizes<nth_t<0, typename M::sizes>>,
+                         with_sizes<ground::nth_t<0, typename M::sizes>>,
                          with_type<Type> {};
 
 template <typename Type>
@@ -154,7 +154,8 @@ struct bounded_collection : undefined_bounded_collection,
                             with_type<Type> {};
 
 // xx should be elsewhere
-template <match::item T>
+// template <match::item T>
+template <typename T>
 struct item_ref : attribute<>, with_type<T> {};
 
 struct undefined_polymorphic_type {};
@@ -165,7 +166,7 @@ struct polymorph : undefined_polymorphic_type, with_types<Ts...> {
 
 template <typename... Ts>
 struct polymorphic_attribute : attribute<>,
-                               with_type<gather<Ts...>>,
+                               with_type<ground::tuple<Ts...>>,
                                polymorph<Ts...> {};
 
 struct given_type {};
@@ -178,7 +179,7 @@ struct specific : given_type, attribute<> {
 
 struct given_definition : attribute<> {};
 
-template <string_literal S>
-struct definition : given_definition, symbol<S> {};
+//template <ground::string_literal S>
+//struct definition : given_definition, symbol<S> {};
 
 }  // namespace siconos::storage::some

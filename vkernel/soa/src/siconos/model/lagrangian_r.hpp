@@ -25,7 +25,7 @@ struct lagrangian_r : item<>,
                       relation1,
                       relation2,
                       any_lagrangian_relation {
-  using nslaw_size = some::param_val<NSLSize>;
+  using nslaw_size = param_val<NSLSize>;
   using dof = some::indice_parameter<"dof">;
 
   using attributes = gather<

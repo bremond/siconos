@@ -2,11 +2,11 @@
 
 #include "siconos/algebra/numerics.hpp"
 #include "siconos/model/lagrangian_r.hpp"
-#include "siconos/storage/ground/ground.hpp"
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/print.hpp"
-#include "siconos/utils/range.hpp"
 #include "siconos/utils/variant.hpp"
+
+import siconos.storage.ground;
 
 namespace siconos::simul {
 
@@ -40,10 +40,11 @@ struct one_step_integrator {
         attribute<"h_matrix_assembled", some::unbounded_matrix<h_matrix1>>,
         attribute<"mass_matrix_assembled",
                   some::unbounded_matrix<attr_t<system, "mass_matrix">>>,
-        attribute<"w_matrix",
-                  some::unbounded_matrix<some::matrix<
-                      some::scalar, nth_t<0, typename h_matrix1::sizes>,
-                      nth_t<0, typename h_matrix1::sizes>>>>,
+        attribute<
+            "w_matrix",
+            some::unbounded_matrix<some::matrix<
+                some::scalar, ground::nth_t<0, typename h_matrix1::sizes>,
+                ground::nth_t<0, typename h_matrix1::sizes>>>>,
         attribute<
             "q_nsp_vector_assembled",
             some::unbounded_vector<some::vector<some::scalar, nslaw_size>>>,
@@ -472,16 +473,17 @@ struct one_step_integrator {
           }
         }
 
+        print(
+            "  [compute_active_interactions] total number of ds: {}, total "
+            "number of "
+            "interactions: {}\n",
+            std::size(involveds), std::size(activations));
 
         print(
-          "  [compute_active_interactions] total number of ds: {}, total number of "
-          "interactions: {}\n",
-          std::size(involveds), std::size(activations));
-
-        print(
-          "  [compute_active_interactions] number of involved ds:{}, number of "
-          "activated interactions: {}\n",
-          ds_counter, inter_counter);
+            "  [compute_active_interactions] number of involved ds:{}, "
+            "number of "
+            "activated interactions: {}\n",
+            ds_counter, inter_counter);
         return std::pair{inter_counter, ds_counter};
       }
 

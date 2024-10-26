@@ -11,7 +11,6 @@
 #include "siconos/algebra/eigen.hpp"
 #include "siconos/algebra/linear_algebra.hpp"
 #include "siconos/algebra/numerics.hpp"
-#include "siconos/storage/pattern/pattern.hpp"
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/SiconosGraph.hpp"  // modified for std::array
 

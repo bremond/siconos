@@ -1,11 +1,16 @@
-#pragma once
+module;
 
-import siconos.storage;
+export module siconos.storage:data_holder;
 
-#include "siconos/storage/some/some.hpp"
+import siconos.storage.ground;
+import siconos.storage.pattern;
+import siconos.storage.some;
+import :info;
+import :get;
 
+export namespace siconos::storage {
 
-namespace siconos::storage {
+using namespace pattern;
 
 template <typename Handle>
 struct default_interface {
@@ -24,7 +29,7 @@ struct default_interface {
 
   auto params() { return typename decltype(env())::params{}; }
 
-  template <string_literal S>
+  template <ground::string_literal S>
   constexpr auto env_param()
   {
     return ground::get<pattern::param<S>>(self()->params()).value;

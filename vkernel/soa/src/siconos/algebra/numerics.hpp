@@ -5,8 +5,8 @@
 #include <siconos/numerics/NumericsSparseMatrix.h>
 #include "siconos/algebra/algebra.hpp"
 #include "siconos/algebra/linear_algebra.hpp"
-#include "siconos/storage/pattern/pattern.hpp"
-#include "siconos/storage/traits/traits.hpp"
+
+import siconos.storage;
 
 namespace siconos::storage::pattern::match {
 template <typename T>

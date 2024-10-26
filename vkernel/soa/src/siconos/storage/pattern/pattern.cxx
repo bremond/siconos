@@ -1,17 +1,22 @@
-#pragma once
+module;
 
+#include <boost/hana/string.hpp>
 #include <functional>
 #include <initializer_list>
 #include <tuple>
 #include <type_traits>
 #include <utility>
 
-#include "siconos/storage/ground/ground.hpp"
-#include "siconos/storage/pattern/base.hpp"
-#include "siconos/storage/pattern/base_concepts.hpp"
-#include "siconos/storage/some/some.hpp"
+import siconos.storage.ground;
+import siconos.storage.some;
 
-namespace siconos::storage::pattern {
+export module siconos.storage.pattern;
+export import :base;
+export import :base_concepts;
+
+export namespace siconos::storage::pattern {
+
+using namespace boost::hana::literals;
 
 using ground::append;
 using ground::concat;
@@ -40,11 +45,9 @@ struct recursive {
 template <typename F>
 recursive(F) -> recursive<F>;
 
-static auto const rec = [](auto f) constexpr {
-  return recursive{std::move(f)};
-};
+auto const rec = [](auto f) constexpr { return recursive{std::move(f)}; };
 
-static auto proj = [](auto& data) constexpr -> decltype(auto) {
+auto proj = [](auto& data) constexpr -> decltype(auto) {
   return ([&data](auto&& fun) constexpr -> decltype(auto) {
     return ([&data,
              &fun]<typename... As>(As&&... args) constexpr -> decltype(auto) {
@@ -53,20 +56,20 @@ static auto proj = [](auto& data) constexpr -> decltype(auto) {
   });
 };
 
-static auto compose = [](auto&& f, auto&& g) constexpr -> decltype(auto) {
+auto compose = [](auto&& f, auto&& g) constexpr -> decltype(auto) {
   return [&f, &g]<typename Arg>(Arg arg) constexpr -> decltype(auto) {
     return f(g(std::forward<Arg>(arg)));
   };
 };
 
-static auto car = []<typename Tpl>(Tpl tpl) constexpr {
+auto car = []<typename Tpl>(Tpl tpl) constexpr {
   static_assert(ground::size(Tpl{}) > ground::size_c<0_c>);
   return tpl[0_c];
 };
 
 static_assert(std::is_same_v<decltype(car(gather<int, float, char>{})), int>);
 
-static auto cdr =
+auto cdr =
     []<typename A0, typename... As>(ground::tuple<A0, As...> tpl) constexpr {
       return ground::drop_front(tpl, ground::size_c<1_c>);
     };
@@ -74,8 +77,8 @@ static auto cdr =
 static_assert(std::is_same_v<decltype(cdr(gather<int, float, char>{})),
                              gather<float, char>>);
 
-static auto cons = []<typename A, typename... As>(
-                       A a, ground::tuple<As...> tpl) constexpr {
+auto cons = []<typename A, typename... As>(
+                A a, ground::tuple<As...> tpl) constexpr {
   return ground::insert(tpl, 0_c, a);
 };
 
@@ -85,13 +88,13 @@ using cons_x = decltype(cons(T{}, Tpl{}));
 static_assert(std::is_same_v<decltype(cons(int{}, gather<float, char>{})),
                              gather<int, float, char>>);
 
-// static auto append = []<concepts::tuple_like... Tpls>(Tpls... tpls)
+// auto append = []<concepts::tuple_like... Tpls>(Tpls... tpls)
 // constexpr
 // {
 //   return std::tuple_cat(tpls...);
 // };
 
-// static auto flatten = []<concepts::tuple_like Tpl>(Tpl tpl) constexpr {
+// auto flatten = []<concepts::tuple_like Tpl>(Tpl tpl) constexpr {
 //   if constexpr (std::tuple_size_v < Tpl >> 0) {
 //     if constexpr (concepts::tuple_like<decltype(car(tpl))>) {
 //       return std::apply(append, tpl);
@@ -108,7 +111,7 @@ static_assert(std::is_same_v<decltype(cons(int{}, gather<float, char>{})),
 using ground::transform;
 
 // template <typename F>
-// static auto filter = []<typename Tpl>(const Tpl tpl) constexpr {
+// auto filter = []<typename Tpl>(const Tpl tpl) constexpr {
 //   auto loop = rec([]<typename Itpl>(auto&& loop, Itpl) constexpr {
 //     auto v = car(Itpl{});
 //     using v_t = std::decay_t<decltype(v)>;
@@ -148,21 +151,20 @@ struct degrees_of_freedom : size<N> {
 };
 
 template <typename T>
-static constexpr auto instance = T{};
+constexpr auto instance = T{};
 
 template <typename T>
 struct hold {
   static constexpr auto value = T{};
 };
 template <typename T>
-static constexpr auto make_instance(T&&)
+constexpr auto make_instance(T&&)
 {
   return instance<T>;
 };
 
 template <typename U>
-static auto contains =
-    []<typename... Attrs>(gather<Attrs...>) constexpr -> bool {
+auto contains = []<typename... Attrs>(gather<Attrs...>) constexpr -> bool {
   return (std::is_same_v<U, Attrs> || ...);
 };
 
@@ -331,7 +333,7 @@ concept vertex_item_t = requires(T t) {
 }  // namespace concepts
 
 // rename to attr_name ? (cf with_name)
-template <string_literal Name, match::attribute A>
+template <ground::string_literal Name, match::attribute A>
 struct attribute : A, symbol<Name> {};
 
 // association for non nested type (should be the default now)
@@ -373,7 +375,7 @@ concept named_item = item<T> && std::derived_from<T, any_symbol>;
 }
 
 template <match::item Item, match::attribute A>
-static constexpr decltype(auto) named_attribute_maybe(Item, A)
+constexpr decltype(auto) named_attribute_maybe(Item, A)
 {
   if constexpr (std::derived_from<A, any_symbol>) {
     // for an attribute declared inline inside attributes type, attach
@@ -393,8 +395,7 @@ static constexpr decltype(auto) named_attribute_maybe(Item, A)
   }
 }
 
-static auto attributes =
-    []<match::item Item>(Item) constexpr -> decltype(auto) {
+constexpr auto attributes = []<match::item Item>(Item) {
   if constexpr (match::attributes<Item>) {
     return ground::transform(typename Item::attributes{},
                              []<match::attribute A>(A) {
@@ -406,16 +407,15 @@ static auto attributes =
   }
 };
 
-template <typename Attrs, string_literal S>
+template <typename Attrs, ground::string_literal S>
 using get_attr_t = std::decay_t<decltype(ground::filter(
     Attrs{}, ground::derive_from<symbol<S>>)[0_c])>;
 
-template <match::item Item, string_literal S>
+template <match::item Item, ground::string_literal S>
 using attr_t = std::decay_t<decltype(ground::filter(
     attributes(Item{}), ground::derive_from<symbol<S>>)[0_c])>;
 
-static auto properties =
-    []<match::item Item>(Item) constexpr -> decltype(auto) {
+auto properties = []<match::item Item>(Item) constexpr -> decltype(auto) {
   if constexpr (match::properties<Item>) {
     return typename Item::properties{};
   }
@@ -424,15 +424,15 @@ static auto properties =
   }
 };
 
-static auto is_a_ref = ground::is_a_model<[]<typename T>() consteval {
+auto is_a_ref = ground::is_a_model<[]<typename T>() consteval {
   return match::item_ref<T>;
 }>;
 
-static auto is_a_poly_ref = ground::is_a_model<[]<typename T>() consteval {
+auto is_a_poly_ref = ground::is_a_model<[]<typename T>() consteval {
   return match::polymorphic_type<T>;
 }>;
 
-static auto all_items = rec([](auto&& all_items, match::item auto root_item) {
+auto all_items = rec([](auto&& all_items, match::item auto root_item) {
   using type_t = std::decay_t<decltype(root_item)>;
 
   auto items_ref = [&root_item]() {
@@ -470,18 +470,18 @@ static auto all_items = rec([](auto&& all_items, match::item auto root_item) {
   }
 });
 
-static auto all_attributes = []<match::item Item>(Item) constexpr {
+auto all_attributes = []<match::item Item>(Item) constexpr {
   return ground::tuple_unique(
-      ground::concat_all(transform(all_items(Item{}), attributes)));
+    ground::concat_all(ground::transform(all_items(Item{}), attributes)));
 };
 
-static auto all_properties = []<match::item Item>(Item) constexpr {
+auto all_properties = []<match::item Item>(Item) constexpr {
   return ground::tuple_unique(
-      ground::concat_all(transform(all_items(Item{}), properties)));
+    ground::concat_all(ground::transform(all_items(Item{}), properties)));
 };
 
 //  template<typename K>
-//  static auto all_items_of_property = [](match::item auto&& t)
+//  auto all_items_of_property = [](match::item auto&& t)
 //    constexpr -> decltype(auto)
 //  {
 //    return filter<hold<decltype([]<typename T>(T) { return
@@ -515,6 +515,7 @@ concept attribute_of =
     must::contains<T, decltype(siconos::storage::pattern::attributes(I{}))>;
 }  // namespace match
 namespace types {
+
 template <template <typename T> typename Transform, typename... Args>
 using transform = decltype(transform(
     []<typename A>(A) { return Transform<A>{}; }, gather<Args...>{}));
@@ -531,12 +532,12 @@ using properties_of_items =
 
 }  // namespace types
 
-template <string_literal S>
+template <ground::string_literal S>
 struct indice_value : symbol<S> {
   std::size_t value;
 };
 
-template <string_literal S>
+template <ground::string_literal S>
 struct param : symbol<S> {};
 
 template <auto V>
@@ -550,7 +551,7 @@ struct param_type {
 };
 
 template <match::attribute Attr>
-static auto item_attribute = [](auto items) constexpr {
+auto item_attribute = [](auto items) constexpr {
   using items_t = std::decay_t<decltype(items)>;
 
   auto loop = rec([]<typename Tpl>(auto&& loop, Tpl tpl) {
@@ -577,7 +578,7 @@ static auto item_attribute = [](auto items) constexpr {
   return loop(items);
 };
 
-static auto constexpr attribute_name(match::attribute auto a)
+auto constexpr attribute_name(match::attribute auto a)
 {
   return a.str.value;
 };
@@ -608,9 +609,9 @@ template <typename T>
 concept methods = requires(T h) { h.methods(); };
 }  // namespace match
 
-static auto constexpr method_name(auto m) { return std::get<0>(m); }
+auto constexpr method_name(auto m) { return std::get<0>(m); }
 
-static auto constexpr method_def(auto m) { return std::get<1>(m); }
+auto constexpr method_def(auto m) { return std::get<1>(m); }
 
 namespace match {
 template <typename T>

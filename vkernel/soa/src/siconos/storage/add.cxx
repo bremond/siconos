@@ -1,16 +1,23 @@
-#pragma once
+module;
 
-import siconos.storage;
+#include <type_traits>
+#include <bits/range_access.h>
 
-#include "siconos/storage/ground/ground.hpp"
-#include "siconos/storage/pattern/base.hpp"
+import siconos.storage.ground;
+import siconos.storage.pattern;
 
-namespace siconos::storage {
+export module siconos.storage:add;
+
+import :info;
+import :properties;
+import :memory;
+
+export namespace siconos::storage {
 
 using namespace siconos::storage::pattern;
 
 template <match::item Item>
-static auto add = [](auto&& data) constexpr -> decltype(auto) {
+auto add = [](auto&& data) constexpr -> decltype(auto) {
   using data_t = std::decay_t<decltype(data)>;
   using info_t = get_info_t<data_t>;
   using all_keeps_t = decltype(all_properties_as<property::keep>(data));
@@ -20,11 +27,9 @@ static auto add = [](auto&& data) constexpr -> decltype(auto) {
       typename info_t::all_properties_t{}, is_attached_storage<Item>);
 
   constexpr auto attrs =
-      ground::tuple_unique(concat(attributes(Item{}), attached_storage));
+    ground::tuple_unique(concat(attributes(Item{}), attached_storage));
 
-  using attrs_t = std::decay_t<decltype(attrs)>;
-
-  if constexpr (ground::size(attrs_t{}) > ground::size_c<0>) {
+  if constexpr (ground::size(attrs) > ground::size_c<0>) {
     indice index = 0;
     ground::for_each(attrs, [&data, &index]<match::attribute A>(A) {
       ground::for_each(

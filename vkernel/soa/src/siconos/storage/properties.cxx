@@ -1,12 +1,12 @@
 module;
 
-#include "siconos/storage/ground/ground.hpp"
-#include "siconos/storage/pattern/base.hpp"
-#include "siconos/storage/pattern/base_concepts.hpp"
-#include "siconos/storage/pattern/pattern.hpp"
-#include "siconos/storage/some/some.hpp"
+#include <concepts>
 
 export module siconos.storage:properties;
+
+import siconos.storage.ground;
+import siconos.storage.pattern;
+import siconos.storage.some;
 
 import :info;
 
@@ -52,12 +52,12 @@ struct with_properties : item<> {
   using properties = gather<Parts...>;
 };
 
-template <match::attribute Attr, std::size_t N>
+template <match::attribute Attr, auto N>
 struct keep : property::keep {
   using type = Attr;
   using keep_t = void;
   //    using attribute = Attr;
-  static constexpr std::size_t size = N;
+  static constexpr auto size = N;
 };
 
 template <match::item Item, template <typename... Ts> typename Wrapper>
@@ -74,7 +74,7 @@ struct time_invariant : property::time_invariant {
   using time_invariant_t = void;
 };
 
-template <match::item Item, string_literal S>
+template <match::item Item, ground::string_literal S>
 struct bind : property::bind, symbol<S> {
   using item = Item;
   using bind_t = void;
@@ -198,8 +198,8 @@ auto refine_attribute = []<match::attribute Attr, typename D>(
       pre_map_all_properties_as<property::refine>(data),
       ground::is_inside_type_parent<Attr>));
 
-  if constexpr (ground::size(refines{}) > ground::size_c<0_c>) {
-    return typename nth_t<0, refines>::template refine<Attr>{};
+  if constexpr (ground::size(refines{}) > ground::size_c<0>) {
+    return typename ground::nth_t<0, refines>::template refine<Attr>{};
   }
   else {
     // return attribute as it is

@@ -15,7 +15,8 @@ struct lagrangian_ds
       attribute<"fext", some::vector<some::scalar, dof>>>;
 
   template <typename Handle>
-  struct interface : default_interface<Handle> {
+  struct interface :
+    default_interface<Handle> {
     using default_interface<Handle>::self;
 
     decltype(auto) mass_matrix() { return attr<"mass_matrix">(*self()); }

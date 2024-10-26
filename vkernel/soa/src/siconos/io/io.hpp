@@ -7,9 +7,6 @@
 #include "siconos/collision/collision.hpp"
 #include "siconos/collision/diskfdisk_r.hpp"
 #include "siconos/collision/disksegment_r.hpp"
-#include "siconos/storage/pattern/base.hpp"
-#include "siconos/storage/pattern/pattern.hpp"
-#include "siconos/storage/some/some.hpp"
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/variant.hpp"
 

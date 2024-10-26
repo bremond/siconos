@@ -1,13 +1,22 @@
-#pragma once
+module;
 
-#include "siconos/storage/ground/ground.hpp"
-#include "siconos/storage/pattern/base.hpp"
-#include "siconos/storage/pattern/base_concepts.hpp"
-#include "siconos/storage/pattern/pattern.hpp"
+#include <type_traits>
+#include <algorithm>
+#include <assert.h>
 
-namespace siconos::storage {
+export module siconos.storage:remove;
 
-static auto move_back = [](const auto i, auto& a) constexpr {
+import siconos.storage.ground;
+import siconos.storage.pattern;
+
+import :info;
+import :properties;
+
+export namespace siconos::storage {
+
+using namespace pattern;
+
+auto move_back = [](const auto i, auto& a) constexpr {
   if constexpr (match::push_back<std::decay_t<decltype(a)>>) {
     assert((int)a.size() >= 1);
 
@@ -19,7 +28,7 @@ static auto move_back = [](const auto i, auto& a) constexpr {
   // else...
 };
 
-static auto remove = [](auto& data, auto& h) {
+auto remove = [](auto& data, auto& h) {
   using item_t = typename std::decay_t<decltype(h)>::type;
   using info_t = get_info_t<decltype(data)>;
   using all_keeps_t = decltype(all_properties_as<property::keep>(data));

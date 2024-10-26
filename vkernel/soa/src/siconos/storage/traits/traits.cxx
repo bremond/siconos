@@ -1,17 +1,23 @@
-#pragma once
+module;
 
-#include "siconos/storage/pattern/pattern.hpp"
-#include "siconos/storage/some/some.hpp"
+#include <concepts>
+#include <boost/hana/string.hpp>
 
-namespace siconos::storage::traits {
+export module siconos.storage.traits;
 
-using siconos::storage::pattern::nth_t;
+import siconos.storage.ground;
+import siconos.storage.pattern;
+import siconos.storage.some;
+
+export namespace siconos::storage::traits {
+
+using namespace boost::hana::literals;
+using siconos::storage::ground::nth_t;
 using siconos::storage::pattern::param;
 using siconos::storage::pattern::rec;
 namespace match = siconos::storage::pattern::match;
 
-static auto translate = rec([]<typename E, typename T>(auto&& translate, E,
-                                                       T) {
+auto translate = rec([]<typename E, typename T>(auto&& translate, E, T) {
   if constexpr (match::type_t<T>) {
     // return the embedded type
     return typename T::xtype{};
@@ -113,11 +119,9 @@ static auto translate = rec([]<typename E, typename T>(auto&& translate, E,
     return typename E::template item_ref<typename T::type>{};
   }
   else {
-    []<typename Attr = T, bool flag = false>()
-    {
+    []<typename Attr = T, bool flag = false>() {
       static_assert(flag, "cannot translate attribute");
-    }
-    ();
+    }();
   }
 });
 

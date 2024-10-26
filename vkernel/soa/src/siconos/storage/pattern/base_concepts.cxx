@@ -1,12 +1,14 @@
-#pragma once
+module;
 
 #include <functional>
 #include <tuple>
 
-namespace siconos::storage::pattern {
+export module siconos.storage.pattern:base_concepts;
+
+export namespace siconos::storage::pattern {
 
 template <typename Attrs>
-static auto tags = []() constexpr {
+auto tags = []() constexpr {
   return transform(
       []<typename Attr>(Attr) { return std::tuple<typename Attr::tag>{}; },
       Attrs{});
@@ -40,9 +42,7 @@ template <typename T>
 concept array_like = requires(T a) {
   typename T::size_type;
   typename T::value_type;
-  {
-    std::size(a)
-  } -> std::convertible_to<std::size_t>;
+  { std::size(a) } -> std::convertible_to<std::size_t>;
 } && []<std::size_t... N>(std::index_sequence<N...>) {
   return (has_tuple_element<T, N> && ...);
 }(std::make_index_sequence<std::tuple_size_v<T>>());
@@ -50,9 +50,7 @@ concept array_like = requires(T a) {
 template <typename T>
 concept keep = requires(T t) {
   typename T::tag;
-  {
-    t.size
-  };
+  { t.size };
 };
 
 template <typename T>
@@ -96,11 +94,9 @@ concept item = has_attributes<typename T::definition>;
 
 template <typename T>
 concept vertex_item = requires {
-  {
-    T::definition::vertex_item == true
-  };
+  { T::definition::vertex_item == true };
 };
 
 }  // namespace concepts
 
-}  // namespace siconos::pattern
+}  // namespace siconos::storage::pattern

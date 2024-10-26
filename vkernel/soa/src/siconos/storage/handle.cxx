@@ -1,14 +1,23 @@
-#pragma once
+module;
 
-#include "siconos/storage/ground/ground.hpp"
-#include "siconos/storage/pattern/base.hpp"
-#include "siconos/storage/pattern/base_concepts.hpp"
-#include "siconos/storage/pattern/pattern.hpp"
+#include <bits/range_access.h>
+
+#include <boost/hana/string.hpp>
+#include <type_traits>
+
 #include "siconos/utils/range.hpp"
 
-namespace siconos::storage {
+export module siconos.storage:handle;
 
-  using namespace pattern;
+import siconos.storage.ground;
+import siconos.storage.pattern;
+
+import :info;
+import :memory;
+
+export namespace siconos::storage {
+using namespace boost::hana::literals;
+using namespace pattern;
 
 template <match::item T, typename R>
 struct index {
@@ -74,7 +83,7 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
 
   // not convenient, it needs to specify template keyword:
   // some_handle.template property<S>() = ...
-  template <string_literal S>
+  template <ground::string_literal S>
   constexpr decltype(auto) property(indice step = 0)
   {
     return property(symbol<S>{}, step);
@@ -102,7 +111,7 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
 };
 
 template <match::item T>
-static decltype(auto) make_half_handle(auto indx)
+decltype(auto) make_half_handle(auto indx)
 {
   using indice = std::decay_t<decltype(indx)>;
   return index<T, indice>{indx};
@@ -126,7 +135,7 @@ decltype(auto) make_handle(auto& h)
 }
 
 template <match::item I>
-static auto handles =
+auto handles =
     [](auto& data, std::size_t step = 0) constexpr -> decltype(auto) {
   using info_t = get_info_t<decltype(data)>;
   using env = typename info_t::env;
@@ -135,7 +144,8 @@ static auto handles =
   using attributes_t = std::decay_t<decltype(attributes(I{}))>;
   // need at least one attributes
   // empty items are not supposed to exist
-  indice num = std::size(attr_values<nth_t<0, attributes_t>>(data, step));
+  indice num =
+      std::size(attr_values<ground::nth_t<0, attributes_t>>(data, step));
   return view::iota((indice)0, num) | view::transform([&data](indice i) {
            return handle<I, indice, std::decay_t<decltype(data)>>(
                data, index<I, indice>(i));

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <range/v3/view/iota.hpp>
+#include <range/v3/view/transform.hpp>
 #include <math.h>
 
 #include "siconos/collision/collision_head.hpp"

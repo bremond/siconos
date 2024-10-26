@@ -22,13 +22,13 @@
 #include "siconos/simul/time_discretization.hpp"
 #include "siconos/simul/time_stepping.hpp"
 #include "siconos/simul/topology.hpp"
-#include "siconos/storage/ground/ground.hpp"
-#include "siconos/storage/pattern/pattern.hpp"
 #include "siconos/storage/storage.hpp"
 #include "siconos/utils/environment.hpp"
 #if defined(__clang__)
 #include <boost/hana/experimental/type_name.hpp>
 #endif
+
+import siconos.storage.ground;
 
 namespace siconos {
 using siconos::storage::access;

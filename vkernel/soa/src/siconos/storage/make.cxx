@@ -1,23 +1,31 @@
-#pragma once
+module;
 
-#include "siconos/storage/ground/ground.hpp"
-#include "siconos/storage/pattern/base.hpp"
-#include "siconos/storage/pattern/base_concepts.hpp"
-#include "siconos/storage/pattern/pattern.hpp"
-#include "siconos/storage/some/some.hpp"
-#include "siconos/storage/traits/traits.hpp"
+#include <type_traits>
+#include <algorithm>
 
-namespace siconos::storage {
+export module siconos.storage:make;
+
+import siconos.storage.ground;
+import siconos.storage.pattern;
+import siconos.storage.some;
+import siconos.storage.traits;
+
+import :info;
+import :properties;
+import :memory;
+
+export namespace siconos::storage {
+using namespace pattern;
 template <match::item Item, typename Wrappers, typename Storage>
-static constexpr auto apply_wrapper(Storage storage)
+constexpr auto apply_wrapper(Storage storage)
 {
   auto tpl = ground::filter(Wrappers{},
                             ground::is_a_model<[]<typename T>() consteval {
                               return std::is_same_v<Item, typename T::type>;
                             }>);
   if constexpr (ground::size(tpl) > ground::size_c<0>) {
-    return typename std::decay_t<decltype(tpl[0_c])>::template wrapper<
-        Storage>{};
+    return
+        typename std::decay_t<decltype(tpl[0])>::template wrapper<Storage>{};
   }
   else {
     // without wrapper
@@ -82,7 +90,7 @@ struct item_storage {
 };
 
 template <typename Info>
-static constexpr auto item_storage_transform =
+constexpr auto item_storage_transform =
     []<typename D>(D&& d, auto&& f) constexpr -> decltype(auto) {
   using info_t = Info;
 
@@ -95,20 +103,20 @@ static constexpr auto item_storage_transform =
     if constexpr (match::attribute<typename key_t::type>) {
       using attr_t = typename key_t::type;
       return f(item_attribute<attr_t>(typename info_t::all_items_t{}),
-               attr_t{}, std::forward<value_t>(value));
+               attr_t{}, static_cast<value_t&&>(value));
     }
     else {
-      return std::forward<std::decay_t<P>>(key_value);
+      return static_cast<P&&>(key_value);
     }
   });
 };
 
-static constexpr auto attribute_storage_transform =
+constexpr auto attribute_storage_transform =
     []<typename D, typename F>(D&& d, F&& f) constexpr -> decltype(auto) {
   return ground::pre_map_value_transform(
-      std::forward<D>(d), [&f]<typename K, typename S>(K, S&& s) {
+      static_cast<D&&>(d), [&f]<typename K, typename S>(K, S&& s) {
         if constexpr (match::attribute<typename K::type>) {
-          return std::forward<F>(f)(typename K::type{}, std::forward<S>(s));
+          return static_cast<F&&>(f)(typename K::type{}, static_cast<S&&>(s));
         }
         else {
           return std::move(s);
@@ -117,7 +125,7 @@ static constexpr auto attribute_storage_transform =
 };
 
 template <typename Env, match::item... Items>
-static auto make = []() constexpr -> decltype(auto) {
+auto make = []() constexpr -> decltype(auto) {
   using item_storage_t = item_storage<Env, Items...>;
   using info_t = typename item_storage_t::iinfo;
   auto base_storage = typename item_storage_t::type{};
