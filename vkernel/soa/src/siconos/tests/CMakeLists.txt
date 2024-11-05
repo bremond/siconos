@@ -23,14 +23,14 @@ set_target_properties(bouncing_disks PROPERTIES COMPILE_FLAGS "${flags}")# -fcon
 set_target_properties(fixed_disks PROPERTIES COMPILE_FLAGS "${flags}")# -fconcepts-diagnostics-depth=10")
 
 
-target_link_libraries(t1 Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
+target_link_libraries(t1 Eigen3::Eigen Siconos::numerics benchmark pthread fmt siconos.storage)
 target_link_libraries(bouncing_ball  Eigen3::Eigen Siconos::numerics benchmark pthread fmt siconos.storage)
-target_link_libraries(bouncing_balls Eigen3::Eigen Siconos::numerics benchmark pthread fmt)
-target_link_libraries(bouncing_disk Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch)
-target_link_libraries(bouncing_disk_sf Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch)
-target_link_libraries(bouncing_disk_line Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch)
-target_link_libraries(bouncing_disks Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch)
-target_link_libraries(fixed_disks Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch)
+target_link_libraries(bouncing_balls Eigen3::Eigen Siconos::numerics benchmark pthread fmt siconos.storage)
+target_link_libraries(bouncing_disk Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch siconos.storage)
+target_link_libraries(bouncing_disk_sf Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch siconos.storage)
+target_link_libraries(bouncing_disk_line Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch siconos.storage)
+target_link_libraries(bouncing_disks Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch siconos.storage)
+target_link_libraries(fixed_disks Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch siconos.storage)
 
 
 

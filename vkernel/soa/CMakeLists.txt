@@ -12,6 +12,18 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 include(CheckCXXCompilerFlag)
 set(Siconos_DIR ${SICONOS_INSTALL_DIR})
 
+# modules/compilation units failure without that
+if (UNIX)
+find_package(OpenMP)
+if (OPENMP_FOUND)
+	if (CMAKE_VERSION VERSION_GREATER "3.8")
+		link_libraries(OpenMP::OpenMP_CXX)
+	else()
+		set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+	endif()
+endif(OPENMP_FOUND)
+endif (UNIX)
+
 find_package(Siconos REQUIRED)
 find_package(Boost REQUIRED)
 find_package(Eigen3 REQUIRED)
@@ -75,9 +87,9 @@ python_add_library(_nonos MODULE
 set_target_properties(_nonos PROPERTIES COMPILE_FLAGS "${flags}")
 
 if(WITH_GPU)
-  target_link_libraries(_nonos PRIVATE Eigen3::Eigen Siconos::numerics benchmark pthread fmt cuNSearch pybind11::headers)
+  target_link_libraries(_nonos PRIVATE Eigen3::Eigen Siconos::numerics benchmark pthread fmt cuNSearch pybind11::headers siconos.storage)
 else()
-  target_link_libraries(_nonos PRIVATE Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch pybind11::headers)
+  target_link_libraries(_nonos PRIVATE Eigen3::Eigen Siconos::numerics benchmark pthread fmt CompactNSearch pybind11::headers siconos.storage)
 endif()
 
 

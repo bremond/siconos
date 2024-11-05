@@ -133,14 +133,14 @@ template <match::item Item, typename properties>
 constexpr auto item_properties_from()
 {
   return ground::filter(properties{},
-                        ground::is_a_model<[]<typename T>() consteval {
+                        ground::is_a_model([]<typename T>() consteval {
                           if constexpr (match::item_property<T>) {
                             return std::derived_from<Item, typename T::item>;
                           }
                           else {
                             return false;
                           };
-                        }>);
+                        }));
 };
 
 template <match::item Item, typename Data>
@@ -180,9 +180,9 @@ template <match::item Item, typename Properties>
 constexpr auto bind_name()
 {
   return ground::find_if(item_properties_from<Item, Properties>(),
-                         ground::is_a_model<[]<match::property P>() {
+                         ground::is_a_model([]<match::property P>() {
                            return std::derived_from<P, property::bind>;
-                         }>)
+                         }))
       .value_or([]<bool flag = false>() {
         static_assert(flag, "no binding found!");
       })
@@ -243,9 +243,9 @@ constexpr decltype(auto) attached_storages(Item, auto& data)
   using item_t = Item;
 
   return ground::filter(typename info_t::all_properties_t{},
-                        ground::is_a_model<[]<typename T>() {
+                        ground::is_a_model([]<typename T>() {
                           return match::attached_storage<T, item_t>;
-                        }>);
+                        }));
 };
 
 template <typename Item>
@@ -262,9 +262,7 @@ using attached_storages_t =
 
 // use storage::attached_storages(...) instead
 template <typename Item>
-constexpr auto is_attached_storage =
-    ground::is_a_model<[]<typename T>() constexpr {
-      return match::attached_storage<T, Item>;
-    }>;
+constexpr auto is_attached_storage = ground::is_a_model(
+    []<typename T>() constexpr { return match::attached_storage<T, Item>; });
 
 }  // namespace siconos::storage

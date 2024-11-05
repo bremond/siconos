@@ -1,9 +1,18 @@
 #include <concepts>
 
+#include "siconos/collision/point.hpp"
+#include "siconos/collision/shape/disk.hpp"
+#include "siconos/collision/space_filter.hpp"
 #include "siconos/config/config.hpp"
+#include "siconos/model/lagrangian_r.hpp"
 #include "siconos/siconos.hpp"
-#include "siconos/storage/pattern/base.hpp"
+#include "siconos/utils/environment.hpp"
 #include "siconos/utils/print.hpp"
+
+import siconos.storage.pattern;
+import siconos.storage.ground;
+import siconos.storage.some;
+import siconos.storage.traits;
 
 namespace siconos::config {
 using params = map<assoc<param<"dof">, param_val<3>>>;
@@ -13,15 +22,6 @@ using namespace siconos;
 
 using env = standard_environment<config::params>;
 
-#include "siconos/collision/point.hpp"
-#include "siconos/collision/shape/disk.hpp"
-#include "siconos/collision/space_filter.hpp"
-#include "siconos/model/lagrangian_r.hpp"
-#include "siconos/storage/ground/ground.hpp"
-#include "siconos/storage/some/some.hpp"
-#include "siconos/storage/traits/traits.hpp"
-#include "siconos/utils/environment.hpp"
-
 namespace siconos {
 
 namespace some = storage::some;
@@ -30,6 +30,7 @@ namespace ground = storage::ground;
 using namespace storage::pattern;
 
 struct aaa {
+  using aaa_t = void;
   int v = 1;
 };
 struct bbb : item<> {
@@ -45,6 +46,9 @@ struct bbb : item<> {
     };
   };
 };
+
+template <typename T>
+concept is_a_aaa = requires { typename T::aaa_t; };
 
 static_assert(std::is_same_v<traits::config<standard_environment<int>>::
                                  convert<some::scalar>::type,
@@ -96,6 +100,29 @@ static_assert(
                                           some::indice_value<1>>>>>>);
 
 static_assert(
+    std::is_same_v<decltype(ground::filter(gather<aaa, bbb>{},
+                                           ground::is_a_model([]<typename T>() {
+//                                               ground::type_trace<T>();
+                                             return is_a_aaa<T>;
+                                           }))),
+                   gather<aaa>>);
+
+static_assert(
+    std::is_same_v<
+        decltype(ground::filter(
+            typename std::decay_t<decltype(ground::get<storage::info>(
+                storage::make<standard_environment<int>, item0,
+                              storage::with_properties<storage::attached<
+                                  item0, symbol<"zz">, some::scalar>>>()))>::
+                all_properties_t{},
+            ground::is_a_model([]<typename T>() {
+              return match::attached_storage<T, item0>;
+            }))),
+        ground::tuple<siconos::storage::attached<
+            siconos::item0, siconos::storage::pattern::symbol<"zz">,
+            siconos::storage::some::scalar>>>);
+
+static_assert(
     std::is_same_v<
         typename std::decay_t<decltype(ground::get<storage::info>(
             storage::make<standard_environment<int>, item0,
@@ -128,21 +155,6 @@ static_assert(
 //                      ground::is_a_model<[]<typename T>() constexpr {
 //                        return match::attached_storage<T, Item>;
 //                      }>);
-
-static_assert(
-    std::is_same_v<
-        decltype(ground::filter(
-            typename std::decay_t<decltype(ground::get<storage::info>(
-                storage::make<standard_environment<int>, item0,
-                              storage::with_properties<storage::attached<
-                                  item0, symbol<"zz">, some::scalar>>>()))>::
-                all_properties_t{},
-            ground::is_a_model<[]<typename T>() constexpr {
-              return match::attached_storage<T, item0>;
-            }>)),
-        ground::tuple<siconos::storage::attached<
-            siconos::item0, siconos::storage::pattern::symbol<"zz">,
-            siconos::storage::some::scalar>>>);
 
 static_assert(match::diagonal_matrix<
               decltype(storage::attr<"attr0">(storage::add<item0>(
@@ -191,9 +203,11 @@ static_assert(
                          .radius())>,
         typename standard_environment<int>::scalar>);
 
-//   error: static assertion expression is not an integral constant expression
+//   error: static assertion expression is not an integral constant
+//   expression
 // static_assert(
-//     storage::has_property<collision::shape::disk, storage::property::bind>(
+//     storage::has_property<collision::shape::disk,
+//     storage::property::bind>(
 //         storage::make<standard_environment<int>, collision::shape::disk,
 //                       storage::with_properties<storage::bind<
 //                           collision::shape::disk, "disk_shape">>>()));
@@ -404,7 +418,8 @@ using params = map<iparam<"dof", 3>>;
 //                 storage::attached<
 //                     config::disk, storage::pattern::symbol<"shape">,
 //                     storage::some::item_ref<config::disk_shape>>,
-//                 storage::time_invariant<storage::attr_t<config::disk, "fex"
+//                 storage::time_invariant<storage::attr_t<config::disk,
+//                 "fex"
 //                                                                       "t">>,
 //                 storage::diagonal<
 //                     storage::attr_t<config::disk, "mass_matrix">>,

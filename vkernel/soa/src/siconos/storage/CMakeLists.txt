@@ -5,9 +5,10 @@ add_subdirectory(some)
 add_subdirectory(traits)
 
 add_library(siconos.storage)
-target_sources(siconos.storage PUBLIC FILE_SET CXX_MODULES FILES
-  siconos_storage.cxx info.cxx add.cxx get.cxx properties.cxx memory.cxx
-  make.cxx handle.cxx remove.cxx data_holder.cxx)
+target_sources(siconos.storage
+  PUBLIC FILE_SET CXX_MODULES FILES
+  siconos_storage.cxx info.cxx handle.cxx add.cxx get.cxx properties.cxx memory.cxx
+  make.cxx remove.cxx data_holder.cxx)
 
 target_link_libraries(siconos.storage siconos.storage.ground)
 target_link_libraries(siconos.storage siconos.storage.pattern)

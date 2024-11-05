@@ -5,12 +5,10 @@ module;
 #include <boost/hana/string.hpp>
 #include <type_traits>
 
-#include "siconos/utils/range.hpp"
-
-export module siconos.storage:handle;
-
 import siconos.storage.ground;
 import siconos.storage.pattern;
+
+export module siconos.storage:handle;
 
 import :info;
 import :memory;
@@ -48,9 +46,9 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
   using indice = typename info_t::env::indice;
   using attached_storages_t =
       decltype(ground::filter(typename info_t::all_properties_t{},
-                              ground::is_a_model<[]<typename X>() {
+                              ground::is_a_model([]<typename X>() {
                                 return match::attached_storage<X, T>;
-                              }>));
+                              })));
 
   data_t& _data;
 
@@ -70,9 +68,9 @@ struct handle : index<T, R>, T::template interface<handle<T, R, D>> {
     using item_t = T;
     constexpr auto tpl = ground::filter(
         typename info_t::all_properties_t{},
-        ground::is_a_model<[]<typename X>() {
+        ground::is_a_model([]<typename X>() {
           return (match::attached_storage<X, item_t> && (match::tag<X, A>));
-        }>);
+          }));
 
     static_assert(ground::size(tpl) >= ground::size_c<1>,
                   "attached storage not found");
@@ -134,21 +132,4 @@ decltype(auto) make_handle(auto& h)
   return make_full_handle<T>(h.data(), h.get());
 }
 
-template <match::item I>
-auto handles =
-    [](auto& data, std::size_t step = 0) constexpr -> decltype(auto) {
-  using info_t = get_info_t<decltype(data)>;
-  using env = typename info_t::env;
-  using indice = typename env::indice;
-
-  using attributes_t = std::decay_t<decltype(attributes(I{}))>;
-  // need at least one attributes
-  // empty items are not supposed to exist
-  indice num =
-      std::size(attr_values<ground::nth_t<0, attributes_t>>(data, step));
-  return view::iota((indice)0, num) | view::transform([&data](indice i) {
-           return handle<I, indice, std::decay_t<decltype(data)>>(
-               data, index<I, indice>(i));
-         });
-};
 }  // namespace siconos::storage

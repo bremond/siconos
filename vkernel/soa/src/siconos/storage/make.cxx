@@ -1,7 +1,8 @@
 module;
 
-#include <type_traits>
 #include <algorithm>
+#include <type_traits>
+#include <boost/hana/string.hpp>
 
 export module siconos.storage:make;
 
@@ -15,17 +16,17 @@ import :properties;
 import :memory;
 
 export namespace siconos::storage {
+using namespace boost::hana::literals;
 using namespace pattern;
 template <match::item Item, typename Wrappers, typename Storage>
 constexpr auto apply_wrapper(Storage storage)
 {
-  auto tpl = ground::filter(Wrappers{},
-                            ground::is_a_model<[]<typename T>() consteval {
+  auto tpl = ground::filter(Wrappers{}, ground::is_a_model([]<typename T>() {
                               return std::is_same_v<Item, typename T::type>;
-                            }>);
+                            }));
   if constexpr (ground::size(tpl) > ground::size_c<0>) {
-    return
-        typename std::decay_t<decltype(tpl[0])>::template wrapper<Storage>{};
+    return typename std::decay_t<decltype(tpl[0_c])>::template wrapper<
+        Storage>{};
   }
   else {
     // without wrapper
@@ -188,3 +189,4 @@ auto make = []() constexpr -> decltype(auto) {
 };
 
 }  // namespace siconos::storage
+

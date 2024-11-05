@@ -25,10 +25,9 @@ constexpr auto memory = []<typename T>(
 template <match::attribute Attr, typename keeps_t>
 constexpr std::size_t memory_size()
 {
-  auto tpl = ground::filter(keeps_t{},
-                            ground::is_a_model<[]<typename T>() consteval {
+  auto tpl = ground::filter(keeps_t{}, ground::is_a_model([]<typename T>() {
                               return std::is_same_v<Attr, typename T::type>;
-                            }>);
+                            }));
   if constexpr (ground::size(tpl) > ground::size_c<0_c>) {
     return tpl[0_c].size;
   }

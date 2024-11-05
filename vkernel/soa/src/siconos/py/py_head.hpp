@@ -15,8 +15,6 @@
 #include "siconos/collision/shape/segment.hpp"
 #include "siconos/collision/space_filter.hpp"
 #include "siconos/siconos.hpp"
-#include "siconos/storage/ground/ground.hpp"
-#include "siconos/storage/pattern/pattern.hpp"
 #include "siconos/storage/storage.hpp"
 
 namespace py = pybind11;

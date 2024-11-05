@@ -1,7 +1,7 @@
 module;
 
-#include <type_traits>
 #include <boost/hana/string.hpp>
+#include <type_traits>
 
 export module siconos.storage:get;
 
@@ -11,6 +11,7 @@ import siconos.storage.pattern;
 import :info;
 import :properties;
 import :memory;
+import :add;
 
 export namespace siconos::storage {
 using namespace boost::hana::literals;
@@ -130,10 +131,8 @@ constexpr decltype(auto) attr_memory(auto& data)
 };
 
 template <ground::string_literal S>
-constexpr auto is_identified_by =
-    ground::is_a_model<[]<typename T>() constexpr {
-      return match::tag<T, symbol<S>>;
-    }>;
+constexpr auto is_identified_by = ground::is_a_model(
+    []<typename T>() constexpr { return match::tag<T, symbol<S>>; });
 
 template <match::item I, ground::string_literal S>
 auto prop_memory = [](auto& data) constexpr -> decltype(auto) {

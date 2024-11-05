@@ -10,6 +10,7 @@ module;
 #include <boost/hana/experimental/type_name.hpp>
 #endif
 #include <boost/hana/ext/std/array.hpp>
+#include <boost/hana/ext/std/integral_constant.hpp>
 #include <boost/hana/ext/std/tuple.hpp>
 #include <boost/hana/functional/overload_linearly.hpp>
 #include <boost/hana/fwd/find_if.hpp>
@@ -23,8 +24,8 @@ module;
 #include <boost/hana/string.hpp>
 #include <boost/type_index.hpp>
 #include <numeric>
-#include <type_traits>
 #include <string_view>
+#include <type_traits>
 
 export module siconos.storage.ground;
 
@@ -33,7 +34,7 @@ export module siconos.storage.ground;
 //  https://www.boost.org/doc/libs/1_80_0/libs/hana/doc/html/structboost_1_1hana_1_1string.html#ad77f7afff008c2ce15739ad16a8bf0a8
 
 // with clang 18.1.8 this does not work
-//export namespace literals = boost::hana::literals;
+// export namespace literals = boost::hana::literals;
 
 export namespace siconos::storage::ground {
 
@@ -76,33 +77,59 @@ using hana::take_while;
 template <typename T>
 using inner_type = typename std::remove_reference<T>::type;
 
-using hana::append;
-using hana::at;
+// using hana::append;
+template <typename Xs, typename X>
+decltype(auto) append(Xs &&xs, X &&x)
+{
+  return hana::append(static_cast<Xs &&>(xs), static_cast<X &&>(x));
+};
+// using hana::at;
+template <typename Xs>
+constexpr decltype(auto) at(Xs &&xs, auto const &n)
+{
+  return hana::at(static_cast<Xs &&>(xs), n);
+}
 using hana::equal;
 using hana::eval;
-using hana::flatten;
+// using hana::flatten;
+template <typename Xs>
+decltype(auto) flatten(Xs &&xs)
+{
+  return hana::flatten(static_cast<Xs &&>(xs));
+};
 using hana::index_if;
 using hana::integral_constant;
 using hana::is_valid;
 using hana::make_lazy;
 using hana::pair;
-using hana::prepend;
+constexpr auto prepend = hana::prepend;
 using hana::set;
-using hana::size;
-using hana::size_c;
+// using hana::size;
+template <typename Xs>
+constexpr std::size_t size(Xs &&xs)
+{
+  return hana::size(static_cast<Xs &&>(xs));
+};
+// using hana::size_c;
+template <std::size_t i>
+constexpr std::integral_constant<std::size_t, i> size_c{};
+
 using hana::to_map;
-//using hana::to_set;
+// using hana::to_set;
 using hana::to_tuple;
-using hana::tuple;
+// using hana::tuple;
+template <typename... Args>
+using tuple = hana::tuple<Args...>;
+
 using hana::unique;
-using hana::unpack;
+constexpr auto unpack = hana::unpack;
 
 constexpr auto typeid_ = hana::typeid_;
 
 template <template <typename... Ts> typename F>
 constexpr auto trait = hana::trait<F>;
 
-using hana::compose;
+constexpr auto compose = hana::compose;
 
 constexpr auto lockstep = hana::lockstep;
 
@@ -119,8 +146,8 @@ template <std::size_t N>
 constexpr auto iterate = hana::iterate<N>;
 
 auto fold_left = []<typename Array, typename State, typename Fun>(
-                            Array &&array, State &&initial_state,
-                            Fun &&fun) constexpr -> decltype(auto) {
+                     Array &&array, State &&initial_state,
+                     Fun &&fun) constexpr -> decltype(auto) {
   using array_type = std::decay_t<Array>;
 
   /* ~ static */
@@ -144,13 +171,13 @@ auto fold_left = []<typename Array, typename State, typename Fun>(
 
 auto overload = hana::overload_linearly;
 
-using hana::transform;
+auto transform = hana::transform;
 
-using hana::apply;
+auto apply = hana::apply;
 
-using hana::find_if;
+auto find_if = hana::find_if;
 
-using hana::for_each;
+auto for_each = hana::for_each;
 
 auto insert = hana::insert;
 
@@ -166,8 +193,8 @@ auto reverse = hana::reverse;
 
 auto scan_left = hana::scan_left;
 
+auto drop_front = hana::drop_front;
 
-using hana::drop_front;
 auto concat = hana::concat;
 
 template <typename... Args>
@@ -196,9 +223,9 @@ using key_value =
 
 using hana::type_c;
 
-auto make_key_value =
-    []<typename First, typename Second>(
-        First, Second &&second) constexpr -> decltype(auto) {
+auto make_key_value = []<typename First, typename Second>(
+                          First,
+                          Second &&second) constexpr -> decltype(auto) {
   return hana::make_pair(hana::type_c<First>, std::forward<Second>(second));
 };
 
@@ -285,10 +312,7 @@ decltype(auto) get(ground::database<Pairs...> &data)
 
 auto make_type_c = []<typename T>(T) constexpr { return type_c<T>; };
 
-constexpr auto all_type_c(auto tpl)
-{
-  return transform(tpl, make_type_c);
-};
+constexpr auto all_type_c(auto tpl) { return transform(tpl, make_type_c); };
 
 constexpr auto all_inside_types(auto tpl)
 {
@@ -307,7 +331,7 @@ constexpr bool contains(Xs xs, X)
       transform(xs, []<typename IX>(IX) { return type_c<IX>; }), type_c<X>);
 }
 
-using hana::filter;
+auto filter = hana::filter;
 
 auto filter_t = []<typename Xs, typename Pred>(Xs &&xs, Pred &&pred) {
   return transform(hana::filter(all_type_c(static_cast<Xs &&>(xs)),
@@ -331,8 +355,8 @@ static_assert(dup(hana::plus)(1) == 2);
 static_assert(dup(hana::mult)(2) == 4);
 
 // map_transform pair(first, f(first, second)),
-auto map_value_transform =
-    []<typename M, typename F>(M &&m, F &&f) constexpr -> decltype(auto) {
+auto map_value_transform = []<typename M, typename F>(
+                               M &&m, F &&f) constexpr -> decltype(auto) {
   return map_transform(
       std::forward<M>(m),
       dup(hana::lockstep(hana::make_pair)(
@@ -340,8 +364,8 @@ auto map_value_transform =
                            hana::first, hana::second)))));
 };
 
-auto pre_map_value_transform =
-    []<typename M, typename F>(M &&m, F &&f) constexpr -> decltype(auto) {
+auto pre_map_value_transform = []<typename M, typename F>(
+                                   M &&m, F &&f) constexpr -> decltype(auto) {
   return transform(std::forward<M>(m),
                    dup(hana::lockstep(hana::make_pair)(
                        hana::first, dup(hana::lockstep(std::forward<F>(f))(
@@ -384,51 +408,33 @@ constexpr const auto itransform(const auto &array, auto &&func)
     }();
   }
 }
-template <typename Base>
-struct from {
-  template <typename T>
-  struct is_a_derivation {
-    using type = is_a_derivation<T>;
-    static constexpr bool value = std::derived_from<T, Base>;
+
+template <typename F>
+constexpr decltype(auto) is_a_model(F &&)
+{
+  return [&]<typename T>(T) {
+    if constexpr (static_cast<F &&>(F{}).template operator()<T>())
+      return std::true_type{};
+    else
+      return std::false_type{};
   };
 };
 
-template <auto F, typename... Ts>
-using check = std::conditional_t<F.template operator()<Ts...>(),
-                                 std::true_type, std::false_type>;
-
-template <auto F, typename... Ts>
-struct on_concept {
-  template <typename T2>
-  struct is_a_model {
-    using type = is_a_model<T2>;
-    static constexpr bool value = check<F, T2, Ts...>::value;
-  };
-};
-
-template <auto F, typename... Ts>
-constexpr auto is_a_model =
-    compose(trait<on_concept<F, Ts...>::template is_a_model>, typeid_);
-
-constexpr auto is_integral = is_a_model<[]<typename T>() consteval {
-  return std::is_integral<T>::value;
-}>;
+auto is_integral =
+    is_a_model([]<typename T>() { return std::is_integral<T>::value; });
 
 template <typename B>
-constexpr auto derive_from = is_a_model<[]<typename T>() consteval {
-  return std::derived_from<T, B>;
-}>;
+constexpr const auto derive_from = is_a_model(
+    []<typename T>() constexpr { return std::derived_from<T, B>; });
 
 template <typename B>
-constexpr auto is_parent = is_a_model<[]<typename T>() consteval {
-  return std::derived_from<B, T>;
-}>;
+auto is_parent = is_a_model(
+    []<typename T>() consteval { return std::derived_from<B, T>; });
 
 template <typename B>
-constexpr auto is_inside_type_parent =
-    is_a_model<[]<typename T>() consteval {
-      return std::derived_from<B, typename T::type>;
-    }>;
+constexpr auto is_inside_type_parent = is_a_model([]<typename T>() consteval {
+  return std::derived_from<B, typename T::type>;
+});
 
 template <typename D>
 constexpr auto dump_keys(D, auto &&fun)
@@ -484,8 +490,8 @@ constexpr std::size_t index_of(const std::tuple<Ts...> &)
   return found ? count - 1 : count;
 }
 
-//template <typename T, typename Tpl>
-//using cons_t = std::decay_t<decltype(std::tuple_cat<std::tuple<T>, Tpl>)>;
+// template <typename T, typename Tpl>
+// using cons_t = std::decay_t<decltype(std::tuple_cat<std::tuple<T>, Tpl>)>;
 
 // https://ctrpeach.io/posts/cpp20-string-literal-template-parameters/
 // https://stackoverflow.com/questions/62266052/c20-string-literal-template-argument-working-example
@@ -507,13 +513,12 @@ decltype(auto) operator""_x()
 };
 
 template <typename T>
-constexpr auto make_string_literal(T&& t)
+constexpr auto make_string_literal(T &&t)
 {
   return string_literal(std::forward<T>(t));
 };
 
 template <size_t N, typename tpl>
 using nth_t = std::decay_t<decltype(tpl{}[size_c<N>])>;
-
 
 }  // namespace siconos::storage::ground

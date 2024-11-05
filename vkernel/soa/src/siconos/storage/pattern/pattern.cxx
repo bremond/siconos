@@ -7,10 +7,11 @@ module;
 #include <type_traits>
 #include <utility>
 
-import siconos.storage.ground;
 import siconos.storage.some;
 
 export module siconos.storage.pattern;
+
+import siconos.storage.ground;
 export import :base;
 export import :base_concepts;
 
@@ -424,20 +425,15 @@ auto properties = []<match::item Item>(Item) constexpr -> decltype(auto) {
   }
 };
 
-auto is_a_ref = ground::is_a_model<[]<typename T>() consteval {
-  return match::item_ref<T>;
-}>;
-
-auto is_a_poly_ref = ground::is_a_model<[]<typename T>() consteval {
-  return match::polymorphic_type<T>;
-}>;
-
 auto all_items = rec([](auto&& all_items, match::item auto root_item) {
   using type_t = std::decay_t<decltype(root_item)>;
 
   auto items_ref = [&root_item]() {
     if constexpr (match::attributes<type_t>) {
-      return transform(ground::filter(attributes(root_item), is_a_ref),
+      return transform(ground::filter(attributes(root_item),
+                                      ground::is_a_model([]<typename T>() {
+                                        return match::item_ref<T>;
+                                      })),
                        []<typename T>(T) { return typename T::type{}; });
     }
     else {
@@ -448,9 +444,12 @@ auto all_items = rec([](auto&& all_items, match::item auto root_item) {
   auto poly_ref = [&root_item]() {
     if constexpr (match::attributes<type_t>) {
       return transform(
-          flatten(
-              transform(ground::filter(attributes(root_item), is_a_poly_ref),
-                        []<typename T>(T) { return typename T::type{}; })),
+          flatten(transform(
+              ground::filter(attributes(root_item),
+                             ground::is_a_model([]<typename T>() constexpr {
+                               return match::polymorphic_type<T>;
+                             })),
+              []<typename T>(T) { return typename T::type{}; })),
           []<typename T>(T) { return typename T::type{}; });
     }
     else {
@@ -472,12 +471,12 @@ auto all_items = rec([](auto&& all_items, match::item auto root_item) {
 
 auto all_attributes = []<match::item Item>(Item) constexpr {
   return ground::tuple_unique(
-    ground::concat_all(ground::transform(all_items(Item{}), attributes)));
+      ground::concat_all(ground::transform(all_items(Item{}), attributes)));
 };
 
 auto all_properties = []<match::item Item>(Item) constexpr {
   return ground::tuple_unique(
-    ground::concat_all(ground::transform(all_items(Item{}), properties)));
+      ground::concat_all(ground::transform(all_items(Item{}), properties)));
 };
 
 //  template<typename K>

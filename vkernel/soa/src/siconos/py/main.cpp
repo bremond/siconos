@@ -14,7 +14,7 @@ PYBIND11_MODULE(_nonos, m)
       py::class_<siconos::python::disks::data_t>(disks, "data_t");
 
   using disks_info_t =
-    siconos::storage::get_info_t<siconos::python::disks::idata_t>;
+      siconos::storage::get_info_t<siconos::python::disks::idata_t>;
 
   using indice_t = typename disks_info_t::env::indice;
 
@@ -32,10 +32,10 @@ PYBIND11_MODULE(_nonos, m)
 
   // ground::type_trace<disks_items_t>();
   auto named_disks_items = ground::tuple_unique(ground::filter(
-      disks_items_t{}, ground::is_a_model<[]<typename T>() {
+      disks_items_t{}, ground::is_a_model([]<typename T>() {
         return storage::has_property_from<T, storage::property::bind,
                                           disks_properties_t>();
-      }>));
+      })));
 
   // ground::type_trace<std::decay_t<decltype(named_disks_items)>>();
 
@@ -106,8 +106,7 @@ PYBIND11_MODULE(_nonos, m)
               .def(
                   fmt::format("{}", pattern::attribute_name(a)).c_str(),
                   [](handle_t& h) -> attr_value_t {
-                    return out_formatter(h,
-                                         storage::get<A>(h.data(), h));
+                    return out_formatter(h, storage::get<A>(h.data(), h));
                   },
                   py::return_value_policy::reference)
               .def(

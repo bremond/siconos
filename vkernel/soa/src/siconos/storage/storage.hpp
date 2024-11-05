@@ -1,5 +1,8 @@
 #pragma once
 
+#include "siconos/utils/range.hpp"
+#include <boost/hana/string.hpp>
+
 import siconos.storage;
 import siconos.storage.ground;
 
@@ -29,8 +32,29 @@ static auto apply_fun = []<typename Item, typename SomeFun>(
 
 
 
+template <match::item I>
+constexpr decltype(auto) handles(auto& data, std::size_t step = 0) {
+  using info_t = get_info_t<decltype(data)>;
+  using env = typename info_t::env;
+  using indice = typename env::indice;
+
+  using attributes_t = std::decay_t<decltype(attributes(I{}))>;
+  // need at least one attributes
+  // empty items are not supposed to exist
+  indice num =
+      std::size(attr_values<ground::nth_t<0, attributes_t>>(data, step));
+  return view::iota((indice)0, num) | view::transform([&data](indice i) {
+           return handle<I, indice, std::decay_t<decltype(data)>>(
+               data, index<I, indice>(i));
+         });
+};
+
 
 using pattern::attr_t;
 using pattern::wrap;
+
+using namespace boost::hana::literals;
+
+/* the neighborhood engine */
 
 }  // namespace siconos::storage

@@ -11,6 +11,7 @@ import siconos.storage.pattern;
 
 import :info;
 import :properties;
+import :memory;
 
 export namespace siconos::storage {
 

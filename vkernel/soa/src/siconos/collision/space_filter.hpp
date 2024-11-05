@@ -9,10 +9,10 @@
 #include "siconos/collision/point.hpp"
 #include "siconos/collision/shape/disk.hpp"
 #include "siconos/collision/shape/segment.hpp"
-#include "siconos/storage/pattern/base.hpp"
-#include "siconos/storage/storage.hpp"
 #include "siconos/utils/print.hpp"
 #include "siconos/utils/variant.hpp"
+
+import siconos.storage.pattern;
 
 #define USE_DOUBLE
 

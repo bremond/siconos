@@ -2,7 +2,7 @@ module;
 
 #include <type_traits>
 #include <bits/range_access.h>
-
+#include <assert.h>
 import siconos.storage.ground;
 import siconos.storage.pattern;
 
