@@ -1045,7 +1045,7 @@ class MechanicsHdf5(object):
         """
         # infer the dimension of the problem
         if primitive == 'Disk' or primitive == 'Box2d' or primitive == 'Line' \
-           or primitive == 'Circle':
+           or primitive == 'Circle' or primitive == 'Segment':
             self._dimension = 2
         else:
             if self._dimension == 2:
