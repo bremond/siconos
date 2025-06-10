@@ -111,7 +111,7 @@ struct one_step_integrator {
         auto &data = self()->data();
 
         auto &mats = storage::attr_values<system, "mass_matrix">(data, step);
-        auto &fs = storage::attr_values<system, "velocity">(data, step);
+        auto &fs = storage::attr_values<system, "fext">(data, step);
 
         for (auto [mat, f] : view::zip(mats, fs)) {
           f = mat.inverse() * f;
