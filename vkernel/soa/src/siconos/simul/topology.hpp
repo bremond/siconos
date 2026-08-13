@@ -65,8 +65,6 @@ struct topology : item {
       storage::attached<finteraction, symbol<"nds">, some::indice>,
       storage::attached<finteraction, symbol<"ds1">, some::item_ref<fsystem>>,
       storage::attached<finteraction, symbol<"ds2">, some::item_ref<fsystem>>,
-      storage::attached<finteraction, symbol<"ydot_backup">,
-                        some::vector<some::scalar, nslaw_size>>,
       storage::attached<finteraction, symbol<"activation">, some::boolean>,
 
       storage::attached<dfinteraction, symbol<"nds">, some::indice>,
@@ -74,8 +72,6 @@ struct topology : item {
                         some::item_ref<fsystem>>,
       storage::attached<dfinteraction, symbol<"ds2">,
                         some::item_ref<dsystem>>,
-      storage::attached<dfinteraction, symbol<"ydot_backup">,
-                        some::vector<some::scalar, nslaw_size>>,
       storage::attached<dfinteraction, symbol<"activation">, some::boolean>,
 
       storage::attached<ddinteraction, symbol<"nds">, some::indice>,
@@ -83,8 +79,6 @@ struct topology : item {
                         some::item_ref<dsystem>>,
       storage::attached<ddinteraction, symbol<"ds2">,
                         some::item_ref<dsystem>>,
-      storage::attached<ddinteraction, symbol<"ydot_backup">,
-                        some::vector<some::scalar, nslaw_size>>,
       storage::attached<ddinteraction, symbol<"activation">, some::boolean>>;
 
   template <typename Handle>

@@ -90,7 +90,7 @@ struct moreau_jean_element : item {
         }
       }
       else {
-        // compile time systems => sum dofs useless
+        // compile
       }
     }
 
@@ -255,7 +255,7 @@ struct moreau_jean_element : item {
         using vec_mu_t = traits::config<env_t>::template convert<
             some::vector<some::scalar, some::indice_value<1>>>::type;
         return algebra::vec_view<vec_mu_t>(
-            assembled_osi().mu_vector_assembled(), inter_offset()/2);
+            assembled_osi().mu_vector_assembled(), inter_offset() / 2);
       }
       else {
         // cf
@@ -565,7 +565,7 @@ struct moreau_jean_element : item {
 
                     y[0] = rrel.compute_h(step, hds1, hds2);
 
-                    indice i = 4*rrel.contact_index();
+                    indice i = 4 * rrel.contact_index();
                     indice idx1 = rrel.mesh().global_indices()[i];
                     indice idy1 = rrel.mesh().global_indices()[i + 1];
                     indice idx2 = rrel.mesh().global_indices()[i + 2];
@@ -602,25 +602,22 @@ struct moreau_jean_element : item {
       auto&& lambda_assembled = lambda_vector_assembled();
       auto&& ydot_assembled = ydot_vector_assembled();
 
-      auto& lambdas = storage::attr_values<interaction, "lambda">(data, step);
-      auto& ydots_bck =
-          storage::prop_values<interaction, "ydot_backup">(data, step);
+      auto& lambdas =
+          storage::attr_values<interaction, "lambda">(data, step);
 
       auto activations =
           storage::prop_values<interaction, "activation">(data, step);
 
       size_t k = 0;
-      for (auto [lambda, ydot_bck, activation] :
-           view::zip(lambdas, ydots_bck, activations)) {
+      for (auto [lambda, activation] :
+           view::zip(lambdas, activations)) {
         if (activation) {
           if constexpr (match::fixed_size_vector<velocity>) {
             lambda = get_vector(lambda_assembled, k);
-            ydot_bck = get_vector(ydot_assembled, k);
             k++;
           }
           else {
             lambda = get_vector(lambda_assembled, k, lambda.size());
-            ydot_bck = get_vector(ydot_assembled, k, ydot_bck.size());
             k++;
           }
         }
