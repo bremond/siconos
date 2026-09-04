@@ -1085,24 +1085,33 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
                     femodel = fesolid.FEModel()
                     mesh = femodel.mesh()
 
-                    # segments in counter clockwise order
-                    segments = femodel.getContactSegments(contact_tag)  # list of array([dof_x1, dof_y1, dof_x2, dof_y2])
+                    # Get FEM contact segments
+                    segments = femodel.getContactSegments(contact_tag)
 
-                    # ordered vertices: first vertex of each segment
-                    ordered_vertex_dofs = [seg[:2] for seg in segments]  # [dof_x, dof_y] for each vertex in CCW order
+                    # Build DOF -> coord mapping from FEM model
+                    dof_to_coord = {}
+                    for node in femodel.nodes():
+                        dofs = node.global_dof_index()
+                        if len(dofs) >= 2:
+                            dof_to_coord[dofs[0]] = (node.x(), node.y())
+                            dof_to_coord[dofs[1]] = (node.x(), node.y())
 
-                    # contact_nodes from vertex coordinates
+                    # contact_nodes: unique vertices in chain order (first vertex of each segment)
+                    # For chained_segment shape: N nodes for N segments (closed loop)
                     contact_nodes = []
-                    for dofs in ordered_vertex_dofs:
-                        # vertex index from DOF (2D)
-                        v_idx = dofs[0] // 2
-                        vertex = mesh.vertices()[v_idx]
-                        contact_nodes.append([vertex.x(), vertex.y(), 0.0])
+                    for seg in segments:
+                        dof_x = seg[0]
+                        if dof_x in dof_to_coord:
+                            contact_nodes.append([dof_to_coord[dof_x][0], dof_to_coord[dof_x][1], 0.0])
+                        else:
+                            v_idx = dof_x // 2
+                            vertex = mesh.vertices()[v_idx]
+                            contact_nodes.append([vertex.x(), vertex.y(), 0.0])
 
                     contact_nodes = np.array(contact_nodes, dtype=np.float64)
 
-                    # global_indices: flatten segments
-                    global_indices = np.array(segments, dtype=np.uint64).flatten()
+                    # global_indices: 4 DOFs per segment (vertex_i + vertex_{i+1}) - FLATTEN SEGMENTS
+                    global_indices = np.array(segments, dtype=np.uint64).flatten()  # 20 × 4 = 80 DOFs
 
                     body.init_fem(mesh_data, fesolid, contact_nodes, global_indices)
 
@@ -1113,6 +1122,7 @@ class MechanicsHdf5Runner(siconos.io.mechanics_hdf5.MechanicsHdf5):
                     body.handle().set_fext(fesolid.fext_vector())
                     body.handle().set_velocity(fesolid.velocity())
                     body.handle().set_bc_velocities_0(boundary_conditions)
+
                 elif self._shape.attributes(ctor.shape_name)["primitive"] == "Disk":
                     initial_pos = np.concatenate([translation, orientation], axis=0)
                     self._q0.append(initial_pos.copy())
